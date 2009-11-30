@@ -1,0 +1,92 @@
+<?xml version="1.0" ?>
+<!-- a Process XML Description schema (doc. rev. 15) -->
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://code.google.com/p/en-deep"
+    xmlns="http://code.google.com/p/en-deep"
+    elementFormDefault="qualified" >
+
+    <!-- type declarations -->
+
+    <xsd:complexType name="idType" > <!-- for dataset, feature; base for task types -->
+        <xsd:attribute name="id" type="xsd:token" />
+    </xsd:complexType>
+
+    <xsd:complexType name="pathType" > <!-- for files -->
+        <xsd:attribute name="path" type="xsd:anyURI" />
+    </xsd:complexType>
+
+    <xsd:simpleType name="className" > <!-- java class definition string -->
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="([A-Z][a-z]_)*" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="classType" > <!-- for algorithms, filters, metrics -->
+        <xsd:attribute name="class" type="className" />
+        <xsd:attribute name="parameters" type="xsd:string" />
+    </xsd:complexType>
+
+    <xsd:complexType name="featType" > <!-- input/output fields, this may contain features only -->
+        <xsd:choice maxOccurs="unbounded" >
+            <xsd:element name="feature" type="idType" />
+        </xsd:choice>
+    </xsd:complexType>
+
+    <xsd:complexType name="dataSetType" > <!-- ditto; may contain dataSets only -->
+        <xsd:choice maxOccurs="unbounded" >
+            <xsd:element name="dataSet" type="idType" />
+        </xsd:choice>
+    </xsd:complexType>
+
+    <xsd:complexType name="fileType" >    <!-- ditto; this may contain only filepaths -->
+        <xsd:choice maxOccurs="unbounded" >
+            <xsd:element name="file" type="pathType" />
+        </xsd:choice>
+    </xsd:complexType>
+
+    <xsd:complexType name="fileDataSetType" > <!-- ditto; this may contain filepaths and dataSets -->
+        <xsd:choice maxOccurs="unbounded" >
+            <xsd:element name="file" type="pathType" />
+            <xsd:element name="dataset" type="idType" />
+        </xsd:choice>
+    </xsd:complexType>
+
+    <!-- element declarations -->
+
+    <xsd:element name="computation"> <!-- computation tasks, operate with features -->
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="algorithm" type="classType" />
+                <xsd:element name="dataSet" type="idType" maxOccurs="unbounded" />
+                <xsd:element name="input" type="featType" />
+                <xsd:element name="output" type="featType" />
+            </xsd:sequence>
+            <xsd:attribute name="id" type="xsd:token" />
+        </xsd:complexType>
+    </xsd:element>
+    
+    <xsd:element name="manipulation"> <!-- data manipulation tasks, operate with dataSets -->
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="filter" type="classType" />
+                <xsd:element name="input" type="fileDataSetType" />
+                <xsd:element name="output" type="fileDataSetType" />
+            </xsd:sequence>
+            <xsd:attribute name="id" type="xsd:token" />
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="evaluation"> <!-- evaluation tasks, operate with features, output to files -->
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="metric" type="classType" />
+                <xsd:element name="dataSet" type="idType" maxOccurs="unbounded" />
+                <xsd:element name="input" type="featType" />
+                <xsd:element name="output" type="fileType" />
+            </xsd:sequence>
+            <xsd:attribute name="id" type="xsd:token" />
+        </xsd:complexType>
+    </xsd:element>
+
+</xsd:schema>
