@@ -35,6 +35,6 @@ package en_deep.mlprocess.evaluation;
  *
  * @author Ondrej Dusek
  */
-public class Evaluation {
+public class Evaluation extends Task {
 
 }

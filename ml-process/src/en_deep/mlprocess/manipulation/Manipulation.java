@@ -35,6 +35,6 @@ package en_deep.mlprocess.manipulation;
  *
  * @author Ondrej Dusek
  */
-public class Manipulation {
+public class Manipulation extends Task {
 
 }

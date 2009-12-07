@@ -24,11 +24,15 @@
  *  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.ParamException;
 import gnu.getopt.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 
 /**
  * The main executable class, responsible for the whole process.
@@ -40,59 +44,72 @@ import gnu.getopt.*;
  * it exits.
  * </p>
  * <p>
- * The program has three command parameters:
+ * The program has following command parameters:
  * </p>
  * <ul>
  * <li>the input file with the XML process description (obligatory, no switches)</li>
  * <li><tt>--threads</tt> number of {@link Worker} threads for this {@link Process} instance (default: 1)</li>
  * <li><tt>--instances</tt> number of instances that are going to be run simultaneously (default: 1)</li>
+ * <li><tt>--verbosity</tt> the desired verbosity level (0-4, default: 0 - i.e. no messages)</li>
  * </ul>
  * <p>
  * The <tt>--instances</tt> parameter determines the level of parallelization for the process plan
  * creation, i.e. states how many parts the data should be split into for parallelizable tasks. If the
  * <tt>--instances</tt> parameter is too low (i.e. lower than <tt>--threads</tt> or lower than the
  * actual number of instances run), many threads may end up idle.
+ * </p>
+ * <p>
+ * The verbosity setting looks as follows:
+ * </p>
+ * <ul>
+ * <li>4 - debug</li>
+ * <li>3 - information</li>
+ * <li>2 - warning</li>
+ * <li>1 - important</li>
+ * <li>0 - nothing</li>
+ * </ul>
  *
- * TODO: verbosity level / debug messages setting ?
+ * TODO set working dir ?
  *
  * @author Ondrej Dusek
  */
 public class Process {
 
     /* CONSTANTS */
-
     /** The --threads option long name */
     private static final String OPTL_THREADS = "threads";
     /** The --instances option long name */
     private static final String OPTL_INSTANCES = "instances";
+    /** The --verbosity option long name */
+    private static final String OPTL_VERBOSITY = "verbosity";
     /** The --threads option short name */
     private static final char OPTS_THREADS = 't';
     /** The --threads option short name */
     private static final char OPTS_INSTANCES = 'i';
-
+    /** The --verbosity option short name */
+    private static final char OPTS_VERBOSITY = 'v';
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process";
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "i:t:";
+    private static final String OPTSTRING = "i:t:v:";
 
     /* DATA */
-
     /** The only instance of Process */
     private static Process instance;
-
     /** The input process XML scenario file */
     private String inputFile;
     /** The number of threads this instance should launch */
     private int instances;
     /** Instances the number of instances that are to be run in total */
     private int threads;
+    /** The process plan file */
+    private RandomAccessFile plan;
 
     /* METHODS */
-
     /**
      * Returns the only instance of the process, but never creates one.
      */
-    public static Process getInstance(){
+    public static Process getInstance() {
         return Process.instance;
     }
 
@@ -104,47 +121,53 @@ public class Process {
 
         int threads = 1; // default values to parameters
         int instances = 1;
+        int verbosity = Logger.V_NOTHING;
 
-        
         try {
             // parsing the options
-            LongOpt [] opts = new LongOpt[2];
+            LongOpt[] opts = new LongOpt[3];
             opts[0] = new LongOpt(OPTL_THREADS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_THREADS);
-            opts[0] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
+            opts[1] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
+            opts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.OPTIONAL_ARGUMENT, null, OPTS_VERBOSITY);
 
             Getopt getter = new Getopt(PROGNAME, args, OPTSTRING, opts);
             int c;
             getter.setOpterr(false);
 
-            while((c = getter.getopt()) != -1){
-                switch(c){
+            while ((c = getter.getopt()) != -1) {
+                switch (c) {
                     case OPTS_INSTANCES:
                         instances = Process.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
                         break;
                     case OPTS_THREADS:
                         instances = Process.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
                         break;
+                    case OPTS_VERBOSITY:
+                        verbosity = Process.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg());
+                        break;
+
                     case '?':
                         throw new ParamException(ParamException.ERR_INVPAR, "" + getter.getOptopt());
                 }
             }
 
             // checking the number of parameters for one input scenario file
-            if (getter.getOptind() > args.length - 1){
+            if (getter.getOptind() > args.length - 1) {
                 throw new ParamException(ParamException.ERR_MISSING, "input XML scenario file name");
-            }
-            else if (getter.getOptind() < args.length - 1){
+            } else if (getter.getOptind() < args.length - 1) {
                 throw new ParamException(ParamException.ERR_TOO_MANY);
-            }            
-        }
-        catch(ParamException e){
-            System.err.println(e.getErrorMessage());
+            }
+        } catch (ParamException e) {
+            Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
             System.exit(1);
         }
 
+        // set logging verbosity
+        Logger.getInstance().setVerbosity(verbosity);
+
         // if the parameters are correct and everything is set up, create the actual process
         // and launch it
-        Process p = new Process(args[args.length -1], threads, instances);
+        Process p = new Process(args[args.length - 1], threads, instances);
         p.run();
     }
 
@@ -158,11 +181,9 @@ public class Process {
 
         try {
             return Integer.parseInt(parValue);
-        }
-        catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
             throw new ParamException(ParamException.ERR_NONNUMARG, argName);
-        }
-        catch (NullPointerException e){
+        } catch (NullPointerException e) {
             throw new ParamException(ParamException.ERR_INVPAR, argName);
         }
     }
@@ -180,16 +201,39 @@ public class Process {
         this.inputFile = inputFile;
         this.threads = threads;
         this.instances = instances;
+
+        Logger.getInstance().message("Starting process - input:" + inputFile + ", " + threads + "threads, "
+                + instances + "instances assumed.", Logger.V_INFO);
     }
 
     /**
-     * All the actual work of the {@link Process} is done in here. First, a process
-     * plan is created and then, {@link Worker}(s) is/are launched to perform all the
-     * prescribed {@link Task}s.
+     * Returns the name of the input process file.
+     * @return the name of the input process file
+     */
+    public String getInputFile(){
+        return this.inputFile;
+    }
+
+    /**
+     * Returns the maximum number of {@link Worker}s that are supposed to be active.
+     * This is the number of {@link Process} instances times the number of {@link Worker}s per instance.
+     *
+     * @return the maximum expected number of {@link Worker}s
+     */
+    public int getMaxWorkers(){
+        return this.threads * this.instances;
+    }
+
+    /**
+     * All the actual work of the {@link Process} is done in here. 
+     * {@link Worker}(s) is/are launched to perform all the prescribed {@link Task}s. They use
+     * the {@link Plan} singleton to obtain the {@link Task}s. The first call  to
+     * {@link Plan.getNextPendingTask()} among all instances of the {@link Process} results
+     * in creation of the to-do file, other just mark the individual {@Task}s in it as done.
      */
     private void run() {
-        // TODO create plan (or in constructor ?)
-        // TODO launch the worker(s) and wait for all of them
+        // TODO create workers and run them
     }
+
 
 }

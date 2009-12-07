@@ -27,12 +27,38 @@
 
 package en_deep.mlprocess;
 
+import java.io.Serializable;
+
 /**
  * A general task to be computed or performed ~ specialized into {@link computation.Computation},
  * {@link manipulation.Manipulation} and {@link evaluation.Evaluation} classes.
  * 
  * @author Ondrej Dusek
  */
-public abstract class Task {
+public abstract class Task implements Serializable {
 
+    /* DATA */
+
+    /** The task's status */  // TODO : not done / in progress / done !
+    private boolean done = false;
+
+    /* METHODS */
+
+    /** 
+     * Checks the task's status.
+     * 
+     * @return  true if the task is done
+     */
+    public boolean isDone(){
+        return this.done;
+    }
+
+    /**
+     * Performs the given task.
+     */
+    public abstract void perform();
+
+    // TODO melo by mit moznost oznacit task za hotovy primo v plan souboru, ale jak? nejakym unique id?
+    // jinak nebude mozne zajistit dependence ~ prip. si delat serializaci sam, beztak jde jen o metadata :-P.
+    // reprezentace DAGu pravdepodobne pomoci pointru na dalsi ??
 }
