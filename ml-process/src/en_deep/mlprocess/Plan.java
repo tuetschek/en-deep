@@ -31,14 +31,18 @@ import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.TaskData.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 import java.util.Vector;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLReaderFactory;
 
 
 /**
@@ -57,6 +61,9 @@ public class Plan {
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
 
+    /** The tasks and their features and pending statuses */
+    private static Vector<TaskData> tasks;
+
     /* METHODS */
 
     /**
@@ -65,7 +72,7 @@ public class Plan {
      */
     private Plan(){
         
-        // open the planFile file (do not require
+        // open the planFile file (and create it if necessary)
         this.planFile = new File(Process.getInstance().getInputFile() + ".todo");
 
         try {
@@ -75,7 +82,6 @@ public class Plan {
         catch(IOException ex){
             Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
         }
-        
     }
 
     /**
@@ -94,14 +100,20 @@ public class Plan {
 
 
     /**
-     * Tries to get the next pending task from the to-do file. Locks the to-do file
+     * Tries to get the next pending task from the to-do file.
+     * <p>
+     * Locks the to-do file
      * to avoid concurrent access from within several instances. If the to-do file does
      * not exist or is empty, creates it and fills it with a planFile.
+     * </p><p>
+     * Returns null in case of an error or nothing else to do. All errors are logged with
+     * the highest importance setting.
+     * <p>
      *
      * @return the next pending task to be done, or null if there are no tasks to be done (or an
      *         error occurred)
      */
-    public synchronized Task getNextPendingTask(){
+    public synchronized Task getNextPendingTask() {
 
         FileLock lock = null;
         Task nextPending = null;
@@ -121,6 +133,11 @@ public class Plan {
             Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
             return null;
         }
+        catch(SAXException ex){
+            Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+            return null;
+        }
+
         // always releas the lock on the to-do file
         finally {
             if (lock != null && lock.isValid()){
@@ -145,11 +162,20 @@ public class Plan {
      * instances of the {@link Process}.
      *
      * @param planFileIO the to-do file, locked and opened for writing
+     * @throws SAXException if the input XML file is invalid
+     * @throws IOException if there are some I/O problems with the file
      */
-    private void createPlan(RandomAccessFile planFileIO) {
-        // TODO createPlan - vytvori samotny graf (a ten by pak mel jit ulozit ve forme
-        // TaskData - viz "getNextPendingTask") - tj. nacita a vytvari TaskData z XML
-        throw new UnsupportedOperationException("Not yet implemented");
+    private void createPlan(RandomAccessFile planFileIO) throws SAXException, IOException {
+
+        XMLReader parser;
+        ScenarioParser dataCollector = new ScenarioParser(this.planFile.getName());
+
+        parser = XMLReaderFactory.createXMLReader();
+        parser.setContentHandler(dataCollector);
+        parser.parse(new InputSource(new FileReader(planFileIO.getFD())));
+
+        // TODO tak dataCollector.tasks, resolve dependencies and parallelize!
+        
     }
 
     /**
@@ -191,6 +217,11 @@ public class Plan {
 
         /** The currently processed {@link TaskData} element */
         TaskData current;
+
+        /** Is the root element opened? */
+        boolean open;
+        /** Has the root element been closed? */
+        boolean closed;
 
 
         /* METHODS */
@@ -263,7 +294,21 @@ public class Plan {
          * Starts an element - tries to add new data to the element currently processed.
          */
         public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException {
-            
+
+            if (this.closed){
+                throw new SAXException("Elements past the end of input at " + this.getLocationInfo());
+            }
+            if (localName.equals("process")){
+                if (!this.open){
+                    this.open = true;
+                    return;
+                }
+                throw new SAXException("Only one <process> is allowed in the file at " + this.getLocationInfo());
+            }
+            if (!this.open){
+                throw new SAXException("The root element must be opened first at " + this.getLocationInfo());
+            }
+
             // start new tasks of different types
             if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")){
                 if (this.current != null){
@@ -281,6 +326,7 @@ public class Plan {
                         throw new SAXException("Duplicate task id at " + this.getLocationInfo());
                     }
                 }
+                return;
             }
             // opens a new data sources section
             if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
@@ -293,24 +339,40 @@ public class Plan {
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
+                return;
             }
             // adds data sources specifications
             try {
                 if (localName.equals("dataSet")){
                     this.current.addDataSource(new DataSetDescription(atts.getValue("id")));
+                    return;
                 }
                 else if (localName.equals("feature")){
                     this.current.addDataSource(new FeatureDescription(atts.getValue("id")));
+                    return;
                 }
                 else if (localName.equals("file")){
                     this.current.addDataSource(new FileDescription(atts.getValue("name")));
+                    return;
                 }
             }
             catch (DataException ex){
                 throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
             }
             // adds an algorithm description
-            
+            if (localName.equals("algorithm") || localName.equals("filter") || localName.equals("metric")){
+                try {
+                    this.current.setAlgorithm(TaskData.AlgorithmType.valueOf(localName.toUpperCase()),
+                            atts.getValue("class"), atts.getValue("parameters"),
+                            atts.getValue("parallelizable").equals("true"));
+                }
+                catch(DataException ex){
+                    throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                }
+            }
+            else {
+                throw new SAXException("Unknown element at " + this.getLocationInfo());
+            }
         }
 
         /**
@@ -319,8 +381,16 @@ public class Plan {
          */
         public void endElement(String uri, String localName, String qName) throws SAXException {
 
+            // this ends the main element
+            if (localName.equals("process")){
+                if (this.current != null){
+                    throw new SAXException("Cannot close <process> if a task description has not finished at "
+                            + this.getLocationInfo());
+                }
+                this.closed = true;
+            }
             // ends a task - checks for compulsory elements
-            if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")){
+            else if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")){
 
                 if (this.current.getType() != TaskType.valueOf(localName.toUpperCase())){
                     throw new SAXException("Opening and closing type of Tasks don't match at " + this.getLocationInfo());
@@ -334,9 +404,11 @@ public class Plan {
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
+                this.tasks.add(this.current);
+                this.current = null;
             }
             // ends a data sources section
-            if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
+            else if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
                     || localName.equals("data") || localName.equals("input") || localName.equals("output")){
 
                 try{
@@ -346,6 +418,11 @@ public class Plan {
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
+            }
+            // ends non-pair tags
+            else if (!localName.equals("dataSet") && !localName.equals("file") && !localName.equals("feature")
+                    && !localName.equals("metric") && !localName.equals("algorithm") && !localName.equals("filter")){
+                throw new SAXException("Unknown element at " + this.getLocationInfo());
             }
 
         }

@@ -28,11 +28,6 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.ParamException;
 import gnu.getopt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileLock;
 
 /**
  * The main executable class, responsible for the whole process.

@@ -40,8 +40,14 @@ class TaskData {
 
     /* CONSTANTS */
 
+    /** Possible types of a data sources sections within the task specification */
     enum DataSourcesSection {
         NONE, TRAIN, DEVEL, EVAL, INPUT, OUTPUT, DATA
+    }
+
+    /** Possible types of algorithms (for different task types) */
+    enum AlgorithmType {
+        ALGORITHM, FILTER, METRIC
     }
 
     /* DATA */
@@ -114,15 +120,21 @@ class TaskData {
 
     /**
      * Sets the algorithm specification - the class name, parameters, parallelizability.
-     * @param className
-     * @param parameters
-     * @param parallelizable
+     * 
+     * @param className the algorithm class name
+     * @param parameters the algorithm parameters
+     * @param parallelizable true if the algorithm is parallelizable
      * @throws DataException if the algorithm is already set or if parallelizability is specified for a {@link Manipulation} task.
      */
-    void setAlgorithm(String className, String parameters, boolean parallelizable) throws DataException {
+    void setAlgorithm(AlgorithmType type, String className, String parameters, boolean parallelizable) throws DataException {
 
         if (this.algorithm != null){
             throw new DataException(DataException.ERR_ALGORITHM_ALREADY_SET);
+        }
+        if ((this.type == TaskType.COMPUTATION && type != AlgorithmType.ALGORITHM)
+                || (this.type == TaskType.EVALUATION && type != AlgorithmType.FILTER)
+                || (this.type == TaskType.MANIPULATION && type != AlgorithmType.METRIC)){
+            throw new DataException(DataException.ERR_INVALID_ALGORITHM_TYPE);
         }
         if (this.type == TaskType.MANIPULATION && parallelizable){
             throw new DataException(DataException.ERR_CANNOT_PARALELIZE_MANIPULATION);

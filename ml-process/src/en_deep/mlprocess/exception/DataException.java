@@ -59,6 +59,8 @@ public class DataException extends GeneralException {
     public static final int ERR_OPEN_DATA_SECTION = 11;
     /** Exception code: "Cannot close this type of data sources section here" */
     public static final int ERR_INVALID_DATA_SECTION_CLOSE = 12;
+    /** Exception code: "The algorithm type does not match the task type" */
+    public static final int ERR_INVALID_ALGORITHM_TYPE = 13;
 
     /* METHODS */
 
@@ -100,6 +102,8 @@ public class DataException extends GeneralException {
                 return "Cannot end Task within an open data sources section";
             case ERR_INVALID_DATA_SECTION_CLOSE:
                 return "Cannot close this type of data sources section here";
+            case ERR_INVALID_ALGORITHM_TYPE:
+                return "The algorithm type does not match the task type";
             default:
                 return "Unknown error";
         }
