@@ -37,10 +37,24 @@ import java.io.Serializable;
  */
 public abstract class Task implements Serializable {
 
+    /* CONSTANTS */
+
+    /** The possible types of {@link Task}s */
+    public enum TaskType {
+        COMPUTATION, MANIPULATION, EVALUATION
+    }
+
+    /** The possible progress statuses of a {@link Task} */
+    public enum TaskStatus {
+        PENDING, IN_PROGRESS, DONE
+    }
+
+
+
     /* DATA */
 
-    /** The task's status */  // TODO : not done / in progress / done !
-    private boolean done = false;
+    /** The task's status */ 
+    private TaskStatus status = TaskStatus.PENDING;
 
     /* METHODS */
 
@@ -49,8 +63,8 @@ public abstract class Task implements Serializable {
      * 
      * @return  true if the task is done
      */
-    public boolean isDone(){
-        return this.done;
+    public TaskStatus getStatus(){
+        return this.status;
     }
 
     /**

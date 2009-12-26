@@ -27,10 +27,12 @@
 
 package en_deep.mlprocess.evaluation;
 
+import en_deep.mlprocess.Task;
+
 /**
  * An evaluation {@link en_deep.mlprocess.Task}.
  * 
- * Given the gold standard data and the computed prediction, returns the result(s)
+     * Given the gold standard data and the computed prediction, returns the result(s)
  * of a metric.
  *
  * @author Ondrej Dusek

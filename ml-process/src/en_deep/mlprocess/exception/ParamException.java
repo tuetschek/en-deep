@@ -81,19 +81,19 @@ public class ParamException extends GeneralException {
 
         switch(this.code){
             case ERR_OK:
-                return "No error.\n";
+                return "No error.";
             case ERR_INVPAR:
-                return "Invalid command parameter:" + this.parName + "\n";
+                return "Invalid command parameter:" + this.parName;
             case ERR_NONNUMARG:
-                return "Argument of a command parameter must be numeric:" + this.parName + "\n";
+                return "Argument of a command parameter must be numeric:" + this.parName;
             case ERR_INVARG:
-                return "Invalid argument of a command parameter:" + this.parName + "\n";
+                return "Invalid argument of a command parameter:" + this.parName;
             case ERR_MISSING:
-                return "Missing command parameter:" + this.parName + "\n";
+                return "Missing command parameter:" + this.parName;
             case ERR_TOO_MANY:
-                return "Too many arugments.\n";
+                return "Too many arugments.";
             default:
-                return "Unknown error.\n";
+                return "Unknown error.";
         }
     }
 

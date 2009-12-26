@@ -102,8 +102,6 @@ public class Process {
     private int instances;
     /** Instances the number of instances that are to be run in total */
     private int threads;
-    /** The process plan file */
-    private RandomAccessFile plan;
 
     /* METHODS */
     /**

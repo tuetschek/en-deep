@@ -27,6 +27,8 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Task;
+
 /**
  * A data manipulation {@link en_deep.mlprocess.Task}.
  *
