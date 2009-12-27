@@ -45,6 +45,11 @@ class TaskData {
         NONE, TRAIN, DEVEL, EVAL, INPUT, OUTPUT, DATA
     }
 
+    /** Possible usage of data sources in terms of {@link Task} dependencies (see {@link Plan.Occurrences}) */
+    enum DataSourcePurpose {
+        INPUT, OUTPUT
+    }
+
     /** Possible types of algorithms (for different task types) */
     enum AlgorithmType {
         ALGORITHM, FILTER, METRIC
@@ -74,6 +79,11 @@ class TaskData {
 
     /** The data sources section that is currently open */
     private DataSourcesSection open;
+
+    /** All the Tasks that this Task depends on */
+    private Vector<TaskData> iDependOn;
+    /** All the Task that are depending on this one */
+    private Vector<TaskData> dependOnMe;
 
     /* METHODS */
 
@@ -143,52 +153,111 @@ class TaskData {
     }
 
     /**
-     * Returns the set-up input files/data sets/features (depends on task type).
+     * Returns all the output files/data sets/features of this {@link Task}.
      * @return the set-up input
      */
-    Vector<DataSourceDescription> getInput() {
-        return this.input;
+    Vector<DataSourceDescription> getInputDataSources() {
+
+        Vector<DataSourceDescription> ids = new Vector<DataSourceDescription>();
+
+        if (this.type == TaskType.COMPUTATION){
+
+            // add input features for all input data sets
+            for (DataSourceDescription dsdFeat : this.input){
+
+                FeatureDescription feat = (FeatureDescription) dsdFeat;
+                Vector<DataSourceDescription> allSets = new Vector<DataSourceDescription>();
+
+                allSets.addAll(this.trainSets);
+                allSets.addAll(this.develSets);
+                allSets.addAll(this.evalSets);
+
+                for (DataSourceDescription dsdDS : allSets){
+                    if (dsdDS.type != DataSourceType.DATA_SET){
+                        continue;
+                    }
+                    DataSetDescription ds = (DataSetDescription) dsdDS;
+                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
+                }
+            }
+
+            // add output features in input data sets as input features
+            for (DataSourceDescription dsdFeat : this.output){
+
+                FeatureDescription feat = (FeatureDescription) dsdFeat;
+                Vector<DataSourceDescription> inputSets = new Vector<DataSourceDescription>();
+
+                inputSets.addAll(this.trainSets);
+                inputSets.addAll(this.develSets);
+
+                for (DataSourceDescription dsdDS : inputSets){
+                    if (dsdDS.type != DataSourceType.DATA_SET){
+                        continue;
+                    }
+                    DataSetDescription ds = (DataSetDescription) dsdDS;
+                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
+                }
+            }
+
+            // add the data sets themselves
+            ids.addAll(this.trainSets);
+            ids.addAll(this.develSets);
+            ids.addAll(this.evalSets);
+        }
+        else if (this.type == TaskType.MANIPULATION){
+
+            // just get the input data sets
+            ids.addAll(this.input);
+        }
+        else { // TaskType.EVALUATION
+
+            // add all the features for the input data set
+            for (DataSourceDescription dsdFeat : this.input){
+
+                FeatureDescription feat = (FeatureDescription) dsdFeat;
+
+                for (DataSourceDescription dsdDS : this.dataSets){
+                    DataSetDescription ds = (DataSetDescription) dsdDS;
+                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
+                }
+            }
+        }
+
+        return ids;
     }
 
     /**
-     * Returns the set-up output files/data sets/features (depends on task type).
+     * Returns all the output files/data sets/features of this {@link Task}.
      * @return the set-up output
      */
-    Vector<DataSourceDescription> getOutput() {
-        return this.output;
+    Vector<DataSourceDescription> getOutputDataSources() {
+
+        Vector<DataSourceDescription> ods = new Vector<DataSourceDescription>();
+
+        if (this.type == TaskType.COMPUTATION){
+
+            // add all output features in output data sets
+            for (DataSourceDescription dsdFeat : this.output){
+
+                FeatureDescription feat = (FeatureDescription) dsdFeat;
+
+                for (DataSourceDescription dsdDS : this.evalSets){
+                    if (dsdDS.type != DataSourceType.DATA_SET){
+                        continue;
+                    }
+                    DataSetDescription ds = (DataSetDescription) dsdDS;
+                    ods.add(new FeatureDescription(ds.id + "::" + feat.id));
+                }
+            }
+        }
+        else { // MANIPULATION or EVALUATION - add output data sets or files
+
+            ods.addAll(this.output);
+        }
+
+        return ods;
     }
 
-    /**
-     * Returns the data sets (applicable only to the {@link Evaluation} tasks).
-     * @return the data sets to perform the {@link Evaluation} on.
-     */
-    Vector<DataSetDescription> getDataSets() {
-        return this.dataSets;
-    }
-
-    /**
-     * Returns the training data sets (applicable only to the {@link Computation} tasks).
-     * @return the training data sets to perform the {@link Computation} on.
-     */
-    Vector<DataSourceDescription> getTrainSets() {
-        return this.trainSets;
-    }
-
-    /**
-     * Returns the development data sets (applicable only to the {@link Computation} tasks).
-     * @return the development data sets to perform the {@link Computation} on.
-     */
-    Vector<DataSetDescription> getDevelSets() {
-        return this.develSets;
-    }
-
-    /**
-     * Returns the evaluation data sets (applicable only to the {@link Computation} tasks).
-     * @return the evaluation data sets to perform the {@link Computation} on.
-     */
-    Vector<DataSourceDescription> getEvalSets() {
-        return this.evalSets;
-    }
 
     /**
      * Checks all the data sets-related constraints, throws a {@link DataException} if the object doesn't
@@ -309,12 +378,14 @@ class TaskData {
                 }
                 this.dataSets.add((DataSetDescription) desc);
                 break;
+
             case DEVEL:
                 if (desc.type != DataSourceType.DATA_SET){
                     throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
                 }
                 this.dataSets.add((DataSetDescription) desc);
                 break;
+
             case EVAL:
                 if ((desc.type != DataSourceType.DATA_SET && desc.type != DataSourceType.FILE)
                         || (this.evalSets.size() > 0 && this.evalSets.elementAt(0).type != desc.type)){
@@ -322,6 +393,7 @@ class TaskData {
                 }
                 this.evalSets.add(desc);
                 break;
+
             case INPUT:
                 if ((this.type == TaskType.COMPUTATION && desc.type != DataSourceType.FEATURE)
                         || (this.type == TaskType.MANIPULATION && (desc.type != DataSourceType.DATA_SET || desc.type != DataSourceType.FILE))
@@ -330,6 +402,7 @@ class TaskData {
                 }
                 this.input.add(desc);
                 break;
+
             case OUTPUT:
                 if ((this.type == TaskType.COMPUTATION && desc.type != DataSourceType.FEATURE)
                         || (this.type == TaskType.MANIPULATION && (desc.type != DataSourceType.DATA_SET || desc.type != DataSourceType.FILE))
@@ -338,6 +411,7 @@ class TaskData {
                 }
                 this.output.add(desc);
                 break;
+
             case TRAIN:
                 if ((desc.type != DataSourceType.DATA_SET && desc.type != DataSourceType.FILE)
                         || (this.trainSets.size() > 0 && this.trainSets.elementAt(0).type != desc.type)){
@@ -345,9 +419,29 @@ class TaskData {
                 }
                 this.trainSets.add(desc);
                 break;
+
             default:
                 throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
         }
+    }
+
+    /**
+     * Sets a dependency for this task (i.e\. marks this {@link TaskData} as depending
+     * on the parameter.
+     *
+     * @param source the governing {@link TaskData} that must be processed before this one.
+     */
+    void setDependency(TaskData source) {
+
+        if (this.iDependOn == null){
+            this.iDependOn = new Vector<TaskData>();
+        }
+        this.iDependOn.add(source);
+
+        if (source.dependOnMe == null){
+            source.dependOnMe = new Vector<TaskData>();
+        }
+        source.dependOnMe.add(this);
     }
 
 

@@ -27,22 +27,24 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.DataSourceDescription.DataSourceType;
 import en_deep.mlprocess.Task.TaskType;
+import en_deep.mlprocess.TaskData.DataSourcePurpose;
 import en_deep.mlprocess.TaskData.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
+import java.util.Hashtable;
 import java.util.Vector;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
-import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
+import sun.awt.geom.AreaOp.AddOp;
 
 
 /**
@@ -137,6 +139,10 @@ public class Plan {
             Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
             return null;
         }
+        catch(DataException ex){
+            Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+            return null;
+        }
 
         // always releas the lock on the to-do file
         finally {
@@ -164,17 +170,27 @@ public class Plan {
      * @param planFileIO the to-do file, locked and opened for writing
      * @throws SAXException if the input XML file is invalid
      * @throws IOException if there are some I/O problems with the file
+     * @throws DataException if there are some illogical event dependencies
      */
-    private void createPlan(RandomAccessFile planFileIO) throws SAXException, IOException {
+    private void createPlan(RandomAccessFile planFileIO) throws SAXException, IOException, DataException {
 
+        Process process = Process.getInstance();
         XMLReader parser;
-        ScenarioParser dataCollector = new ScenarioParser(this.planFile.getName());
+        ScenarioParser dataCollector = new ScenarioParser(process.getInputFile());
+        Vector<TaskData> plan;
 
         parser = XMLReaderFactory.createXMLReader();
         parser.setContentHandler(dataCollector);
-        parser.parse(new InputSource(new FileReader(planFileIO.getFD())));
+        parser.parse(process.getInputFile());
 
-        // TODO tak dataCollector.tasks, resolve dependencies and parallelize!
+        // nejdřív zjistit závislosti, pak paralelizovat, pak teprve uspořádat do DAGu a podle toho zapsat.
+        plan = dataCollector.tasks;
+        this.setDependencies(dataCollector);
+
+        // TODO parallelize! + write into planFileIO!
+        // paralelizace je vlastně vložení pár Tasků do grafu, tj. neovlivňuje vstup/ výstup z 1 bodu, jen
+        // se přesune výstup do jiného
+        // uspořádání - Topological sorting (Wiki)
         
     }
 
@@ -195,6 +211,51 @@ public class Plan {
         // - podle pointru by z nich mel jit autom. sestavit graf
         throw new UnsupportedOperationException("Not yet implemented");
     }
+
+    /**
+     * Set the dependencies according to features and data sets in the data itself and check them.
+     * <p>
+     * Check if all the data sets are correctly loaded or created in a {@link Manipulation} task.
+     * All the features that are not computed are assumed to be contained in the input data sets.
+     * All the files that are not written as output are assumed to exist before the {@link Process}
+     * begins.
+     * </p>
+     *
+     * @param plan the {@link TaskData} as given by the {@link ScenarioParser}
+     * @param parserOutput the {@link ScenarioParser} object <i>after</i> the parsing is finished
+     */
+    private void setDependencies(ScenarioParser parserOutput) throws DataException {
+
+        // set the data set dependencies (check for non-created data sets)
+        for (Occurrences oc : parserOutput.dataSetOccurrences.values()){
+            if (oc.asOutput == null){
+                throw new DataException(DataException.ERR_DATA_SET_NEVER_PRODUCED);
+            }
+            for (TaskData dep : oc.asInput){
+                dep.setDependency(oc.asOutput);
+            }
+        }
+        // set-up the file dependencies (no checks)
+        for (Occurrences oc : parserOutput.fileOccurrences.values()){
+            if (oc.asOutput == null){
+                continue;
+            }
+            for (TaskData dep : oc.asInput){
+                dep.setDependency(oc.asOutput);
+            }
+        }
+        // set-up the feature-level dependencies (no checks)
+        for (Occurrences oc : parserOutput.featureOccurrences.values()){
+            if (oc.asInput == null){
+                continue;
+            }
+            for (TaskData dep : oc.asInput){
+                dep.setDependency(oc.asOutput);
+            }
+        }
+    }
+
+    /* INNER CLASSES */
 
     /**
      * This creates the process plan from the input scenario XML file. It parses the XML file and
@@ -223,15 +284,29 @@ public class Plan {
         /** Has the root element been closed? */
         boolean closed;
 
+        /** All occurrences of files */
+        Hashtable<String, Occurrences> fileOccurrences;
+        /** All occurrences of data sets */
+        Hashtable<String, Occurrences> dataSetOccurrences;
+        /** All occurrences of features */
+        Hashtable<String, Occurrences> featureOccurrences;
+
 
         /* METHODS */
 
         /** 
-         * Constructor, stores just the file name for error messages.
+         * Constructor, stores just the file name for error messages. Creates the
+         * internal storage, too.
          * @param fileName the name of the processed file
          */
         ScenarioParser(String fileName){
+            
             this.fileName = fileName;
+
+            this.tasks = new Vector<TaskData>();
+            this.fileOccurrences = new Hashtable<String, Occurrences>();
+            this.featureOccurrences = new Hashtable<String, Occurrences>();
+            this.dataSetOccurrences = new Hashtable<String, Occurrences>();
         }
 
         /**
@@ -244,6 +319,76 @@ public class Plan {
         private String getLocationInfo() {
             return "file: \"" + this.fileName + "\", line: " + this.locator.getLineNumber()
                     + ", column: " + this.locator.getColumnNumber();
+        }
+
+        /**
+         * Adds a data source to the current {@link TaskData}.
+         *
+         * @param type type of the data source to add
+         * @param id the data source identifier, i.e\. file name or feature / data set id
+         * @throws DataException if the data source is not added properly
+         */
+        private void addDataSource(DataSourceType type, String id) throws DataException {
+
+            DataSourceDescription dsd = null;
+            
+            switch(type){
+                case DATA_SET:
+                    dsd = new DataSetDescription(id);
+                    break;
+                case FEATURE:
+                    dsd = new FeatureDescription(id);
+                    break;
+                case FILE:
+                    dsd = new FileDescription(id);
+                    break;
+            }
+
+            this.current.addDataSource(dsd);
+        }
+
+        /**
+         * Marks all the given data sources of the current {@link TaskData} to their respective
+         * {@link Occurrences} tables.
+         *
+         * @param dss the input or output data sources of the current {@link TaskData}
+         * @param purpose the purpose ({@link TaskData.DataSourcePurpose}) of the given data sources ({@link dss}, i.e\. input or output)
+         * @throws DataException if there are multiple tasks that output the same data source
+         */
+        private void markDataSources(Vector<DataSourceDescription> dss, DataSourcePurpose purpose) throws DataException {
+
+            Occurrences oc;
+
+            for (DataSourceDescription ds : dss){
+
+                switch(ds.type){
+                    case DATA_SET:
+                        DataSetDescription dsd = (DataSetDescription) ds;
+                        oc = this.dataSetOccurrences.get(dsd.id);
+                        if (oc == null){
+                            oc = new Occurrences();
+                            this.dataSetOccurrences.put(dsd.id, oc);
+                        }
+                        oc.add(this.current, purpose);
+                        break;
+                    case FEATURE:
+                        FeatureDescription fed = (FeatureDescription) ds;
+                        oc = this.featureOccurrences.get(fed.id);
+                        if (oc == null){
+                            oc = new Occurrences();
+                            this.featureOccurrences.put(fed.id, oc);
+                        }
+                        oc.add(this.current, purpose);
+                    case FILE:
+                        FileDescription fid = (FileDescription) ds;
+                        oc = this.fileOccurrences.get(fid.fileName);
+                        if (oc == null){
+                            oc = new Occurrences();
+                            this.fileOccurrences.put(fid.fileName, oc);
+                        }
+                        oc.add(this.current, purpose);
+                }
+            }
         }
 
 
@@ -342,23 +487,17 @@ public class Plan {
                 return;
             }
             // adds data sources specifications
-            try {
-                if (localName.equals("dataSet")){
-                    this.current.addDataSource(new DataSetDescription(atts.getValue("id")));
-                    return;
+            if (localName.equals("dataSet") || localName.equals("feature") || localName.equals("file")){
+
+                try {
+                    this.addDataSource(DataSourceDescription.DataSourceType.valueOf(localName.toUpperCase()),
+                            localName.equals("file") ? atts.getValue("name") : atts.getValue("id"));
                 }
-                else if (localName.equals("feature")){
-                    this.current.addDataSource(new FeatureDescription(atts.getValue("id")));
-                    return;
-                }
-                else if (localName.equals("file")){
-                    this.current.addDataSource(new FileDescription(atts.getValue("name")));
-                    return;
+                catch(DataException ex){
+                    throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
             }
-            catch (DataException ex){
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
-            }
+
             // adds an algorithm description
             if (localName.equals("algorithm") || localName.equals("filter") || localName.equals("metric")){
                 try {
@@ -389,7 +528,7 @@ public class Plan {
                 }
                 this.closed = true;
             }
-            // ends a task - checks for compulsory elements
+            // ends a task - checks for compulsory elements and mark data sources occurrence
             else if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")){
 
                 if (this.current.getType() != TaskType.valueOf(localName.toUpperCase())){
@@ -400,10 +539,13 @@ public class Plan {
                 }
                 try {
                     this.current.checkDataSets();
+                    this.markDataSources(this.current.getInputDataSources(), DataSourcePurpose.INPUT);
+                    this.markDataSources(this.current.getOutputDataSources(), DataSourcePurpose.OUTPUT);
                 }
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
+
                 this.tasks.add(this.current);
                 this.current = null;
             }
@@ -413,7 +555,6 @@ public class Plan {
 
                 try{
                     this.current.closeDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
-
                 }
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
@@ -452,5 +593,49 @@ public class Plan {
         public void skippedEntity(String name) throws SAXException {
         }
 
+    }
+
+    /**
+     * Used to store all occurrences of a particular file / data set / feature
+     * as input / output in order to resolve dependencies. This in fact means that all the
+     * {@link TaskData}s that are listed in the {@link Occurrences.asInput} member depend on
+     * the {@link TaskData} in the {@link Occurrences.asOutput} member.
+     */
+    private class Occurrences {
+
+        /* DATA */
+
+        /** Count all {@link TaskData}s where this data source shows up as the input */
+        Vector<TaskData> asInput;
+        /** The only one occurrence of {@link TaskData} where this data source is produced as an output belongs here */
+        TaskData asOutput;
+
+        /**
+         * Creates a new {@link Occurrences} object, with empty occurrence lists.
+         */
+        Occurrences(){
+            asInput = new Vector<TaskData>();
+        }
+
+        /**
+         * Adds the given {@link TaskData} into the given list, according to the task purpose.
+         * Throws an exception if the data source has more than one output occurrence.
+         *
+         * @param task the task to be added to the occurences list
+         * @param purpose the occurrences list specificiation
+         * @throws DataException if the data source has more than one output occurrence
+         */
+        void add(TaskData task, DataSourcePurpose purpose) throws DataException {
+
+            if (purpose == DataSourcePurpose.INPUT){
+                asInput.add(task);
+            }
+            else if (this.asOutput == null) {
+                this.asOutput = task;
+            }
+            else {
+                throw new DataException(DataException.ERR_DUPLICATE_OUTPUT);
+            }
+        }
     }
 }

@@ -61,6 +61,10 @@ public class DataException extends GeneralException {
     public static final int ERR_INVALID_DATA_SECTION_CLOSE = 12;
     /** Exception code: "The algorithm type does not match the task type" */
     public static final int ERR_INVALID_ALGORITHM_TYPE = 13;
+    /** Exception code: "A data source is marked as being produced by two or more Tasks" */
+    public static final int ERR_DUPLICATE_OUTPUT = 14;
+    /** Exception code: "A used data set is never produced by a Task" - TODO add parameter */
+    public static final int ERR_DATA_SET_NEVER_PRODUCED = 15;
 
     /* METHODS */
 
@@ -104,6 +108,10 @@ public class DataException extends GeneralException {
                 return "Cannot close this type of data sources section here";
             case ERR_INVALID_ALGORITHM_TYPE:
                 return "The algorithm type does not match the task type";
+            case ERR_DUPLICATE_OUTPUT:
+                return "A data source is marked as being produced by two or more Tasks";
+            case ERR_DATA_SET_NEVER_PRODUCED:
+                return "A used data set is never produced by a Task";
             default:
                 return "Unknown error";
         }
