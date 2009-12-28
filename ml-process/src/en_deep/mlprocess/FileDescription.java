@@ -3,7 +3,7 @@ package en_deep.mlprocess;
 /**
  * Description of a file data source
  */
-class FileDescription extends DataSourceDescription {
+public class FileDescription extends DataSourceDescription {
 
     /** The name of the input/output file */
     String fileName;

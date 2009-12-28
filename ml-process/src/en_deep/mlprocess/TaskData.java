@@ -55,6 +55,9 @@ class TaskData {
         ALGORITHM, FILTER, METRIC
     }
 
+    /** Prefix for id's of tasks that are system-generated (in parallelization) */
+    private static final String GENERATED_TASK_PREFIX = "##GENERATED##";
+
     /* DATA */
 
     /** The type of the {@link Task} - one of the possible {@link TaskType} values */
@@ -85,6 +88,15 @@ class TaskData {
     /** All the Task that are depending on this one */
     private Vector<TaskData> dependOnMe;
 
+    /**
+     * Ratio by which the parallelization applied to this {@link Task} should be reduced,
+     * because there are that many other tasks that will be performed in parallel.
+     */
+    private int parallelizationRatio;
+
+    /** This serves for generating tasks id in parallelization */
+    static private int lastId = 0;
+
     /* METHODS */
 
     /**
@@ -93,6 +105,7 @@ class TaskData {
      *
      * @param taskType the desired {@link TaskType}
      * @param id the global id of the {@link Task}
+     * @throws DataException for null or empty {@link id} parameter
      */
     TaskData(TaskType taskType, String id) throws DataException {
 
@@ -102,6 +115,7 @@ class TaskData {
 
         this.type = taskType;
         this.id = id;
+        this.parallelizationRatio = 1;
     }
 
     /**
@@ -258,6 +272,29 @@ class TaskData {
         return ods;
     }
 
+    /**
+     * This makes a copy of the given TaskData, without all the data sources ({@link input},
+     * {@link output} etc. The id of the new taskData is generated.
+     *
+     * @return a copy of this {@link TaskData} with no data sources set-up.
+     */
+    private TaskData cloneWithoutDataSources() {
+
+        TaskData copy = null;
+        
+        try {
+            copy = new TaskData(this.type, TaskData.generateId());
+        }
+        catch(DataException e){ // this should never happen, as we never pass an empty id
+            return null;
+        }
+
+        copy.algorithm = this.algorithm;
+        copy.open = this.open;
+        copy.parallelizationRatio = this.parallelizationRatio;
+
+        return copy;
+    }
 
     /**
      * Checks all the data sets-related constraints, throws a {@link DataException} if the object doesn't
@@ -427,7 +464,7 @@ class TaskData {
 
     /**
      * Sets a dependency for this task (i.e\. marks this {@link TaskData} as depending
-     * on the parameter.
+     * on the parameter).
      *
      * @param source the governing {@link TaskData} that must be processed before this one.
      */
@@ -445,6 +482,67 @@ class TaskData {
     }
 
 
+    /**
+     * Splits a task by data sources, if it's to be performed on more of them. This serves
+     * for better parallelization of the whole process.
+     *
+     * @return An array of split tasks, which are to be performed on one data source only.
+     */
+    TaskData [] split (){
+
+        TaskData [] splitTasks = null;
+
+        if (this.type == TaskType.COMPUTATION){
+
+            splitTasks = new TaskData[this.trainSets.size()];
+
+            for (int i = 0; i < splitTasks.length; ++i){
+                splitTasks[i] = this.cloneWithoutDataSources();
+                splitTasks[i].input = this.input;
+                splitTasks[i].output = this.output;
+
+                splitTasks[i].trainSets = new Vector<DataSourceDescription>(1);
+                splitTasks[i].trainSets.add(this.trainSets.get(i));
+                if (this.develSets.size() > i){
+                    splitTasks[i].develSets = new Vector<DataSetDescription>(1);
+                    splitTasks[i].develSets.add(this.develSets.get(i));
+                }
+                if (this.evalSets.size() > i){
+                    splitTasks[i].evalSets = new Vector<DataSourceDescription>(1);
+                    splitTasks[i].evalSets.add(this.evalSets.get(i));
+                }
+                splitTasks[i].parallelizationRatio *= splitTasks.length;
+            }
+        }
+        else if (this.type == TaskType.EVALUATION){
+
+            splitTasks = new TaskData[this.dataSets.size()];
+
+            for (int i = 0; i < splitTasks.length; ++i){
+
+                // TODO vyřešit problém s počtem souborů - mělo by jich být stejně jako datasetů
+            }
+        }
+
+        return splitTasks;
+    }
+
+    /**
+     * Returns an ID for a generated task (in parallelization).
+     *
+     * @return a generated ID string
+     */
+    private static synchronized String generateId(){
+
+        String taskId;
+
+        lastId++;
+        taskId = GENERATED_TASK_PREFIX + lastId;
+
+        return taskId;
+    }
+
+    
     /* INNER CLASSES */
 
 

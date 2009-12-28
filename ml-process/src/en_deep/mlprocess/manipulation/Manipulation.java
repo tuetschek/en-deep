@@ -27,7 +27,9 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.DataSourceDescription;
 import en_deep.mlprocess.Task;
+import java.util.Vector;
 
 /**
  * A data manipulation {@link en_deep.mlprocess.Task}.
@@ -37,6 +39,29 @@ import en_deep.mlprocess.Task;
  *
  * @author Ondrej Dusek
  */
-public class Manipulation extends Task {
+public abstract class Manipulation extends Task {
 
+    /* DATA */
+
+    /** All the input data sources descriptions */
+    private final Vector<DataSourceDescription> input;
+    /** All the output data sources descriptions */
+    private final Vector<DataSourceDescription> output;
+    
+    /* METHODS */
+
+    /**
+     * A constructor for the Manipulation tasks' base class, just setting the input
+     * and output variables.
+     * This is the form of the constructor that all Manipulation classes should have.
+     *
+     * @param params parameters given to the class
+     * @param input the input data sources
+     * @param output the output data sources
+     */
+    protected Manipulation(String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output){
+
+        this.input = input;
+        this.output = output;
+    }
 }

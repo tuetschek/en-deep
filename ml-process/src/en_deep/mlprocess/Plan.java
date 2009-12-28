@@ -32,6 +32,7 @@ import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.TaskData.DataSourcePurpose;
 import en_deep.mlprocess.TaskData.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
+import en_deep.mlprocess.manipulation.DataSplitter;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -44,7 +45,6 @@ import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
-import sun.awt.geom.AreaOp.AddOp;
 
 
 /**
@@ -55,6 +55,7 @@ import sun.awt.geom.AreaOp.AddOp;
  */
 public class Plan {
 
+
     /* DATA */
 
     /** The planFile file */
@@ -64,7 +65,7 @@ public class Plan {
     private static Plan instance = null;
 
     /** The tasks and their features and pending statuses */
-    private static Vector<TaskData> tasks;
+    private Vector<TaskData> tasks;
 
     /* METHODS */
 
@@ -187,6 +188,7 @@ public class Plan {
         plan = dataCollector.tasks;
         this.setDependencies(dataCollector);
 
+        this.parallelize(plan);
         // TODO parallelize! + write into planFileIO!
         // paralelizace je vlastně vložení pár Tasků do grafu, tj. neovlivňuje vstup/ výstup z 1 bodu, jen
         // se přesune výstup do jiného
@@ -199,7 +201,7 @@ public class Plan {
      * progress status.
      *
      * @param planFileIO the to-do file, locked and opened for writing
-     * @return the next pending task from the TODO file
+     * @return the next pending task from the .todo file
      */
     private Task getNextPendingTask(RandomAccessFile planFileIO) {
 
@@ -254,6 +256,39 @@ public class Plan {
             }
         }
     }
+
+    /**
+     * Parallelize all tasks that are set as "parallelizable" (in {@link TaskData.AlgorithmDescription} by
+     * splitting the data and running the task on them in parallel.
+     *
+     * @param plan the {@link Process} plan, as read by the {@link ScenarioParser}.
+     * @throws DataException if there's something wrong with the creation of the corresponding TaskData, should \
+     *      never happen.
+     */
+    private void parallelize(Vector<TaskData> plan) throws DataException {
+
+        int instances = Process.getInstance().getMaxWorkers();
+
+        for (TaskData task : plan){
+
+            // task is parallelizable -> parallelize it
+            if (task.getAlgorithm().parallelizable){
+                    
+                TaskData [] newTasks = new TaskData[instances + 2];
+
+                // create begin task
+                newTasks[0] = new TaskData(TaskType.MANIPULATION, this.generateTaskId());
+                newTasks[0].setAlgorithm(TaskData.AlgorithmType.FILTER, DataSplitter.class.getCanonicalName(), "", false);
+
+                // TODO dělat chytřejc, kopírovat tasky nějakým lepším způsobem
+
+                // create middle tasks
+
+                // create end task
+            }
+        }
+    }
+
 
     /* INNER CLASSES */
 
@@ -531,6 +566,8 @@ public class Plan {
             // ends a task - checks for compulsory elements and mark data sources occurrence
             else if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")){
 
+                TaskData [] allCurrent = null; // for splitting tasks performed on multiple data sources
+
                 if (this.current.getType() != TaskType.valueOf(localName.toUpperCase())){
                     throw new SAXException("Opening and closing type of Tasks don't match at " + this.getLocationInfo());
                 }
@@ -539,14 +576,36 @@ public class Plan {
                 }
                 try {
                     this.current.checkDataSets();
-                    this.markDataSources(this.current.getInputDataSources(), DataSourcePurpose.INPUT);
-                    this.markDataSources(this.current.getOutputDataSources(), DataSourcePurpose.OUTPUT);
+                    
+                    // checks if the task is performed on multiple data sources and splits it for better
+                    // parallelization
+                    if (this.current.sourcesCount() > 1){ // TODO sourcesCount
+
+                        allCurrent = this.current.split();
+
+                        for (TaskData splitTask : allCurrent){
+                            this.markDataSources(splitTask.getInputDataSources(), DataSourcePurpose.INPUT);
+                            this.markDataSources(splitTask.getOutputDataSources(), DataSourcePurpose.OUTPUT);
+                        }
+                    }
+                    else {
+                        this.markDataSources(this.current.getInputDataSources(), DataSourcePurpose.INPUT);
+                        this.markDataSources(this.current.getOutputDataSources(), DataSourcePurpose.OUTPUT);
+                    }
                 }
                 catch(DataException ex){
                     throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
                 }
 
-                this.tasks.add(this.current);
+                if (allCurrent != null){ // we have multiple split tasks
+                    for (TaskData splitTask : allCurrent){
+                        this.tasks.add(splitTask);
+                    }
+                }
+                else { // we have just one task, performed on a single data source
+                    this.tasks.add(this.current);
+                }
+                
                 this.current = null;
             }
             // ends a data sources section

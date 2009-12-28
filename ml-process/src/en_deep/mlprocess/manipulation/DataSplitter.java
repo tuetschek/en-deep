@@ -25,52 +25,39 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess;
+package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.exception.TaskException;
-import java.io.Serializable;
+import en_deep.mlprocess.DataSourceDescription;
+import java.util.Vector;
 
 /**
- * A general task to be computed or performed ~ specialized into {@link computation.Computation},
- * {@link manipulation.Manipulation} and {@link evaluation.Evaluation} classes.
- * 
+ * This class splits the 
  * @author Ondrej Dusek
  */
-public abstract class Task implements Serializable {
-
-    /* CONSTANTS */
-
-    /** The possible types of {@link Task}s */
-    public enum TaskType {
-        COMPUTATION, MANIPULATION, EVALUATION
-    }
-
-    /** The possible progress statuses of a {@link Task} */
-    public enum TaskStatus {
-        PENDING, IN_PROGRESS, DONE, FAILED
-    }
-
-
+public class DataSplitter extends Manipulation {
 
     /* DATA */
 
-    /** The task's status */ 
-    private TaskStatus status = TaskStatus.PENDING;
-
     /* METHODS */
 
-    /** 
-     * Checks the task's status.
-     * 
-     * @return  true if the task is done
+    /**
+     * This creates a new {@link DataSplitter} task. The class takes no parameters, the number of
+     * resulting classes is given by the {@link output} parameter. Therefore, the number of output
+     * data sources should be divisible by the number of input data sources.
+     *
+     * @param params have no sense here
+     * @param input the input data sets or files
+     * @param output the output data sets or files
      */
-    public TaskStatus getStatus(){
-        return this.status;
+    public DataSplitter(String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
+        super(params, input, output);
     }
 
-    /**
-     * Performs the given task.
-     */
-    public abstract void perform() throws TaskException;
-    
+
+    @Override
+    public void perform() {
+        // TODO WRITE DataSplitter code
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 }

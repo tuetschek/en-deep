@@ -7,12 +7,12 @@ package en_deep.mlprocess;
  *
  * @author Ondrej Dusek
  */
-abstract class DataSourceDescription {
+public abstract class DataSourceDescription {
 
     /* CONSTANTS */
 
     /** The possible types of data sources */
-    enum DataSourceType {
+    public enum DataSourceType {
         FILE, DATA_SET, FEATURE
     }
 

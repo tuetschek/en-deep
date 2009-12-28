@@ -65,6 +65,8 @@ import gnu.getopt.*;
  * </ul>
  *
  * TODO set working dir ?
+ * TODO second run - set a special switch: "overwrite, overwrite-newer + date, no-overwrite,
+ *          & overwrite-which, leave-which
  *
  * @author Ondrej Dusek
  */
@@ -225,7 +227,7 @@ public class Process {
      * in creation of the to-do file, other just mark the individual {@Task}s in it as done.
      */
     private void run() {
-        // TODO create workers and run them
+        // TODO create {@link Worker}s and run them
     }
 
 

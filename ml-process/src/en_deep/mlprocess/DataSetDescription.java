@@ -3,7 +3,7 @@ package en_deep.mlprocess;
 /**
  * Description of a Data Set data Source
  */
-class DataSetDescription extends DataSourceDescription {
+public class DataSetDescription extends DataSourceDescription {
 
     /** The global ID of the Data set */
     String id;

@@ -3,7 +3,7 @@ package en_deep.mlprocess;
 /**
  * Description of a Feature data Source
  */
-class FeatureDescription extends DataSourceDescription {
+public class FeatureDescription extends DataSourceDescription {
 
     /** The global ID of the Feature */
     String id;

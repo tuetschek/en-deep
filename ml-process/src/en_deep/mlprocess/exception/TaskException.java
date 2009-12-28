@@ -25,52 +25,51 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess;
-
-import en_deep.mlprocess.exception.TaskException;
-import java.io.Serializable;
+package en_deep.mlprocess.exception;
 
 /**
- * A general task to be computed or performed ~ specialized into {@link computation.Computation},
- * {@link manipulation.Manipulation} and {@link evaluation.Evaluation} classes.
- * 
+ * The exception class for all run-time task errors.
  * @author Ondrej Dusek
  */
-public abstract class Task implements Serializable {
+public class TaskException extends GeneralException {
 
     /* CONSTANTS */
 
-    /** The possible types of {@link Task}s */
-    public enum TaskType {
-        COMPUTATION, MANIPULATION, EVALUATION
-    }
+    /** Error message: "Wrong number of outputs." */
+    public static final int ERR_WRONG_NUM_OUTPUTS = 1;
+    /** Error message: "Wrong number of inputs." */
+    public static final int ERR_WRONG_NUM_INPUTS = 2;
 
-    /** The possible progress statuses of a {@link Task} */
-    public enum TaskStatus {
-        PENDING, IN_PROGRESS, DONE, FAILED
-    }
-
-
-
-    /* DATA */
-
-    /** The task's status */ 
-    private TaskStatus status = TaskStatus.PENDING;
 
     /* METHODS */
 
-    /** 
-     * Checks the task's status.
-     * 
-     * @return  true if the task is done
+    /**
+     * Creates a new {@link Task} exception with the given code, according
+     * to the in-class constants.
+     *
+     * @param code the exception code
      */
-    public TaskStatus getStatus(){
-        return this.status;
+    public TaskException(int code){
+        super(code);
     }
 
     /**
-     * Performs the given task.
+     * Returns the error message according to the error code.
+     * @return the appropriate error message
      */
-    public abstract void perform() throws TaskException;
-    
+    @Override
+    public String getErrorMessage() {
+
+        switch(this.code){
+            case ERR_OK:
+                return "No error.";
+            case ERR_WRONG_NUM_OUTPUTS:
+                return "Wrong number of outputs.";
+            case ERR_WRONG_NUM_INPUTS:
+                return "Wrong number of inputs.";
+            default:
+                return "Unknown error.";
+        }
+    }
+
 }
