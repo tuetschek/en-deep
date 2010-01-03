@@ -30,13 +30,14 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.DataSourceDescription.DataSourceType;
 import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.exception.DataException;
+import en_deep.mlprocess.manipulation.DataSplitter;
 import java.util.Vector;
 
 /**
- *
+ * This class is used by the 
  * @author Ondrej Dusek
  */
-class TaskData {
+class TaskSection {
 
     /* CONSTANTS */
 
@@ -55,8 +56,6 @@ class TaskData {
         ALGORITHM, FILTER, METRIC
     }
 
-    /** Prefix for id's of tasks that are system-generated (in parallelization) */
-    private static final String GENERATED_TASK_PREFIX = "##GENERATED##";
 
     /* DATA */
 
@@ -66,6 +65,8 @@ class TaskData {
     private String id;
     /** The description of the algorithm used in the processing */
     private AlgorithmDescription algorithm;
+    /** Is the {@link Task} parallelizable ? */
+    private boolean parallelizable;
 
     /** Data sets (only for {@link Evaluation} tasks) */
     private Vector<DataSetDescription> dataSets;
@@ -83,19 +84,6 @@ class TaskData {
     /** The data sources section that is currently open */
     private DataSourcesSection open;
 
-    /** All the Tasks that this Task depends on */
-    private Vector<TaskData> iDependOn;
-    /** All the Task that are depending on this one */
-    private Vector<TaskData> dependOnMe;
-
-    /**
-     * Ratio by which the parallelization applied to this {@link Task} should be reduced,
-     * because there are that many other tasks that will be performed in parallel.
-     */
-    private int parallelizationRatio;
-
-    /** This serves for generating tasks id in parallelization */
-    static private int lastId = 0;
 
     /* METHODS */
 
@@ -107,7 +95,7 @@ class TaskData {
      * @param id the global id of the {@link Task}
      * @throws DataException for null or empty {@link id} parameter
      */
-    TaskData(TaskType taskType, String id) throws DataException {
+    TaskSection(TaskType taskType, String id) throws DataException {
 
         if (id == null || id.equals("")){
             throw new DataException(DataException.ERR_INVALID_ID);
@@ -115,7 +103,6 @@ class TaskData {
 
         this.type = taskType;
         this.id = id;
-        this.parallelizationRatio = 1;
     }
 
     /**
@@ -163,138 +150,10 @@ class TaskData {
         if (this.type == TaskType.MANIPULATION && parallelizable){
             throw new DataException(DataException.ERR_CANNOT_PARALELIZE_MANIPULATION);
         }
-        this.algorithm = new AlgorithmDescription(className, parameters, parallelizable);
+        this.algorithm = new AlgorithmDescription(className, parameters);
+        this.parallelizable = parallelizable;
     }
 
-    /**
-     * Returns all the output files/data sets/features of this {@link Task}.
-     * @return the set-up input
-     */
-    Vector<DataSourceDescription> getInputDataSources() {
-
-        Vector<DataSourceDescription> ids = new Vector<DataSourceDescription>();
-
-        if (this.type == TaskType.COMPUTATION){
-
-            // add input features for all input data sets
-            for (DataSourceDescription dsdFeat : this.input){
-
-                FeatureDescription feat = (FeatureDescription) dsdFeat;
-                Vector<DataSourceDescription> allSets = new Vector<DataSourceDescription>();
-
-                allSets.addAll(this.trainSets);
-                allSets.addAll(this.develSets);
-                allSets.addAll(this.evalSets);
-
-                for (DataSourceDescription dsdDS : allSets){
-                    if (dsdDS.type != DataSourceType.DATA_SET){
-                        continue;
-                    }
-                    DataSetDescription ds = (DataSetDescription) dsdDS;
-                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
-                }
-            }
-
-            // add output features in input data sets as input features
-            for (DataSourceDescription dsdFeat : this.output){
-
-                FeatureDescription feat = (FeatureDescription) dsdFeat;
-                Vector<DataSourceDescription> inputSets = new Vector<DataSourceDescription>();
-
-                inputSets.addAll(this.trainSets);
-                inputSets.addAll(this.develSets);
-
-                for (DataSourceDescription dsdDS : inputSets){
-                    if (dsdDS.type != DataSourceType.DATA_SET){
-                        continue;
-                    }
-                    DataSetDescription ds = (DataSetDescription) dsdDS;
-                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
-                }
-            }
-
-            // add the data sets themselves
-            ids.addAll(this.trainSets);
-            ids.addAll(this.develSets);
-            ids.addAll(this.evalSets);
-        }
-        else if (this.type == TaskType.MANIPULATION){
-
-            // just get the input data sets
-            ids.addAll(this.input);
-        }
-        else { // TaskType.EVALUATION
-
-            // add all the features for the input data set
-            for (DataSourceDescription dsdFeat : this.input){
-
-                FeatureDescription feat = (FeatureDescription) dsdFeat;
-
-                for (DataSourceDescription dsdDS : this.dataSets){
-                    DataSetDescription ds = (DataSetDescription) dsdDS;
-                    ids.add(new FeatureDescription(ds.id + "::" + feat.id));
-                }
-            }
-        }
-
-        return ids;
-    }
-
-    /**
-     * Returns all the output files/data sets/features of this {@link Task}.
-     * @return the set-up output
-     */
-    Vector<DataSourceDescription> getOutputDataSources() {
-
-        Vector<DataSourceDescription> ods = new Vector<DataSourceDescription>();
-
-        if (this.type == TaskType.COMPUTATION){
-
-            // add all output features in output data sets
-            for (DataSourceDescription dsdFeat : this.output){
-
-                FeatureDescription feat = (FeatureDescription) dsdFeat;
-
-                for (DataSourceDescription dsdDS : this.evalSets){
-                    if (dsdDS.type != DataSourceType.DATA_SET){
-                        continue;
-                    }
-                    DataSetDescription ds = (DataSetDescription) dsdDS;
-                    ods.add(new FeatureDescription(ds.id + "::" + feat.id));
-                }
-            }
-        }
-        else { // MANIPULATION or EVALUATION - add output data sets or files
-
-            ods.addAll(this.output);
-        }
-
-        return ods;
-    }
-
-    /**
-     * This makes a copy of the given TaskData, without all the data sources ({@link input},
-     * {@link output} etc. The id of the new taskData is generated.
-     *
-     * @return a copy of this {@link TaskData} with no data sources set-up.
-     */
-    private TaskData cloneWithoutDataSources() {
-
-        TaskData copy = null;
-        
-        try {
-            copy = new TaskData(this.type, TaskData.generateId());
-        }
-        catch(DataException e){ // this should never happen, as we never pass an empty id
-            return null;
-        }
-
-        copy.algorithm = this.algorithm;
-        copy.open = this.open;
-        copy.parallelizationRatio = this.parallelizationRatio;
-
-        return copy;
-    }
 
     /**
      * Checks all the data sets-related constraints, throws a {@link DataException} if the object doesn't
@@ -302,7 +161,7 @@ class TaskData {
      *
      * @throws DataException if the object doesn't fulfill all the data sets-related constraints
      */
-    void checkDataSets() throws DataException{
+    void checkDataSets() throws DataException {
 
         if (this.input == null || this.output == null){
             throw new DataException(DataException.ERR_NO_IN_OR_OUT);
@@ -326,6 +185,227 @@ class TaskData {
         if (this.open != DataSourcesSection.NONE){
             throw new DataException(DataException.ERR_OPEN_DATA_SECTION);
         }
+    }
+
+    /**
+     * Creates {@link Task} descriptions from all the data in the corresponding file
+     * section, applying parallelization. 
+     *     
+     * Parallelizes all tasks that are set as "parallelizable" (in {@link AlgorithmDescription} by
+     * creating mutliple {@link TaskDescription}s. Splits the Task, too, if it's to be performed
+     * on multiple data sources. Checks for the presence of all needed data sources.
+     */
+    Vector<TaskDescription> getDescriptions() throws DataException {
+
+        Vector<TaskDescription> tasks = new Vector<TaskDescription>();
+        Vector<FeatureDescription> inputFeats;
+
+        this.checkDataSets();
+
+        // TODO vytvoreni dependenci rovnou ?? asi ne
+        switch (this.type){
+            case COMPUTATION:
+
+                // input & output is features in Computation tasks
+                inputFeats = new Vector<FeatureDescription>(this.input.size());
+                Vector<FeatureDescription> outputFeats = new Vector<FeatureDescription>(this.output.size());
+
+                for (DataSourceDescription dsd : this.input){
+                    inputFeats.add((FeatureDescription) dsd);
+                }
+                for (DataSourceDescription dsd : this.output){
+                    outputFeats.add((FeatureDescription) dsd);
+                }
+                // create all needed task descriptions for different working sets
+                for (int i = 0; i < this.trainSets.size(); ++i){
+                    // parallelization is not enabled
+                    if (!this.parallelizable){
+                        tasks.add(new ComputationDescription(this.id, this.algorithm,
+                                this.trainSets.elementAt(i),
+                                this.develSets != null ? this.develSets.elementAt(i): null,
+                                this.evalSets.elementAt(i),
+                                inputFeats, outputFeats));
+                    }
+                    // parallelize the task
+                    else {                        
+                        tasks.addAll(this.getParallelizedComputation(i, inputFeats, outputFeats));
+                    }
+                }
+                break;
+
+            case MANIPULATION: // manipulation tasks are not parallelizable / no multiple data sources may be used
+                tasks.add(new ManipulationDescription(this.id, this.algorithm, this.input, this.output));
+                break;
+
+            case EVALUATION:
+                
+                inputFeats = new Vector<FeatureDescription>(this.input.size());
+
+                for (DataSourceDescription dsd : this.input){
+                    inputFeats.add((FeatureDescription) dsd);
+                }
+
+                for (int i = 0; i < this.dataSets.size(); ++i){
+
+                    if (!this.parallelizable){
+                        tasks.add(new EvaluationDescription(this.id, this.algorithm,
+                                this.dataSets.elementAt(i), inputFeats, (FileDescription) this.output.elementAt(i)));
+                    }
+                    // parallelize the task
+                    else {
+                        // TODO rozdělit do parallelized computation x evaluation
+                        tasks.addAll(this.getParallelizedEvaluation(i, inputFeats));
+                    }
+                }
+                break;
+        }
+        return tasks;
+
+        // TODO jak závislosti ?
+    }
+
+
+    /**
+     * Returns all the {@link TaskDescriptions} for the work needed to process this {@link Computation} 
+     * {@link TaskSection} in parallel on the given working data set.
+     *
+     * <p>
+     * This respects the {@link Process.getMaxWorkers()} setting and the number of working data sets
+     * for this {@link TaskSection} in total, so that the maximum number of created {@link TaskDescriptions}
+     * in total is just the number of working data sets * 3 ({@link en_deep.mlprocess.manipulation.DataSplitter})
+     * + {@link Process.getMaxWorkers()} + number of working data sets * 3 again
+     * {@link en_deep.mlprocess.manipulation.DataMerger}.
+     * </p>
+     *
+     * @param workingDataNo the number of the data sets to use (in the data sets fields' order)
+     * @param inputFeats the input features (this.input converted to Vector<FeatureDescription>)
+     * @param outputFeats the output features (this.output converted to Vector<FeatureDescription>), null for {@link Evaluation} tasks
+     * @return
+     */
+    Vector<TaskDescription> getParallelizedComputation(int workingDataNo, Vector<FeatureDescription> inputFeats,
+            Vector<FeatureDescription> outputFeats){
+
+        assert(this.type == TaskType.COMPUTATION);
+
+        int maxParallel = (int) Math.ceil(Process.getInstance().getMaxWorkers() /
+                (double)(this.trainSets.size()));
+        Vector<TaskDescription> tasks = new Vector<TaskDescription>(6 + maxParallel);
+
+        // no need to parallelize, there's enough working data sets to keep all Workers occupied
+        if (maxParallel == 1){
+
+            tasks.add(new ComputationDescription(this.id, this.algorithm, this.trainSets.elementAt(workingDataNo),
+                    this.develSets != null ? this.develSets.elementAt(workingDataNo) : null,
+                    this.evalSets.elementAt(workingDataNo),
+                    inputFeats, outputFeats));
+        }
+        // now we have to parallelize
+        else {
+            Vector<DataSourceDescription> splitTrain = new Vector<DataSourceDescription>();
+            Vector<DataSourceDescription> splitDevel = new Vector<DataSourceDescription>();
+            Vector<DataSourceDescription> splitEval = new Vector<DataSourceDescription>();
+
+            tasks.add(this.getSplitterTask(maxParallel, this.trainSets.elementAt(workingDataNo), splitTrain));
+            if (this.develSets != null){
+                tasks.add(this.getSplitterTask(maxParallel, this.develSets.elementAt(workingDataNo), splitDevel));
+            }
+            tasks.add(this.getSplitterTask(maxParallel, this.evalSets.elementAt(workingDataNo), splitEval));
+
+            for (int i = 0; i < maxParallel; ++i){
+                tasks.add(new ComputationDescription(this.id, this.algorithm,
+                        splitTrain.elementAt(i),
+                        this.develSets != null ? splitDevel.elementAt(i) : null,
+                        splitEval.elementAt(i), inputFeats, outputFeats));
+            }
+
+            tasks.add(this.getMergerTask(splitTrain, this.trainSets.elementAt(workingDataNo)));
+            if (this.develSets != null){
+                tasks.add(this.getMergerTask(splitDevel, this.develSets.elementAt(workingDataNo)));
+            }
+            tasks.add(this.getMergerTask(splitEval, this.trainSets.elementAt(workingDataNo)));
+        }
+
+        return tasks;
+    }
+
+    /**
+     * Returns all the {@link TaskDescriptions} for the work needed to process this {@link Evaluation}
+     * {@link TaskSection} in parallel on the given working data set.
+     *
+     * <p>
+     * This respects the {@link Process.getMaxWorkers()} setting and the number of working data sets
+     * for this {@link TaskSection} in total, so that the maximum number of created {@link TaskDescriptions}
+     * in total is just the number of working data sets ({@link en_deep.mlprocess.manipulation.DataSplitter})
+     * + {@link Process.getMaxWorkers()} + number of working data sets again
+     * {@link en_deep.mlprocess.manipulation.DataMerger}.
+     * </p>
+     *
+     * @param workingDataNo the number of the data sets to use (in the data sets fields' order)
+     * @param inputFeats the input features (this.input converted to Vector<FeatureDescription>)
+     * @return
+     */
+    Vector<TaskDescription> getParallelizedEvaluation(int workingDataNo, Vector<FeatureDescription> inputFeats){
+
+        assert(this.type == TaskType.EVALUATION);
+
+        int maxParallel = (int) Math.ceil(Process.getInstance().getMaxWorkers() / (double)(this.dataSets.size()));
+        Vector<TaskDescription> tasks = new Vector<TaskDescription>(2 + maxParallel);
+
+        // no need to parallelize, there's enough working data sets to keep all Workers occupied
+        if (maxParallel == 1){
+
+            tasks.add(new EvaluationDescription(this.id, this.algorithm,
+                    this.dataSets.elementAt(workingDataNo),
+                    inputFeats, (FileDescription) this.output.elementAt(workingDataNo)));
+        }
+        // now we have to parallelize
+        else {
+
+            Vector<DataSourceDescription> splitData = new Vector<DataSourceDescription>();
+            Vector<DataSourceDescription> splitOutput = new Vector<DataSourceDescription>();
+
+            tasks.add(this.getSplitterTask(maxParallel, this.dataSets.elementAt(workingDataNo), splitData));
+            tasks.add(this.getSplitterTask(maxParallel, this.output.elementAt(workingDataNo), splitOutput));
+
+            for (int i = 0; i < maxParallel; ++i){
+                tasks.add(new EvaluationDescription(this.id, this.algorithm, (DataSetDescription) splitData.elementAt(i),
+                        inputFeats, (FileDescription) splitOutput.elementAt(i)));
+            }
+
+            tasks.add(this.getMergerTask(splitData, this.dataSets.elementAt(workingDataNo)));
+            tasks.add(this.getMergerTask(splitOutput, this.output.elementAt(workingDataNo)));
+        }
+
+        return tasks;
+    }
+
+    /**
+     * Creates the [@link en_deep.mlprocess.manipulation.DataSplitter} task in order to split the given
+     * data in the given number of parts.
+     *
+     * @param parts the number of data parts
+     * @param data the data to be split
+     * @param splitData the data parts' descriptions are added here
+     * @return the task that splits the data
+     */
+    ManipulationDescription getSplitterTask(int parts, DataSourceDescription data, Vector<DataSourceDescription> splitData){
+
+        // TODO
+    }
+
+
+    /**
+     * Creates the [@link en_deep.mlprocess.manipulation.DataMerger} task in order to merge the given
+     * data into one part.
+     *
+     * @param splitData the data parts' descriptions
+     * @param the resulting output data description
+     * @return the task that splits the data
+     */
+    ManipulationDescription getMergerTask(Vector<DataSourceDescription> splitData, DataSourceDescription outData){
+
+        // TODO problém se závislostmi, tady vlastně stejná DataSet vzniká podruhé, slepením
+        // zřejmě by mělo jít spíš o něco jako results-adder, který přidá vypočítané featury na částech do celého datasetu ?
     }
 
     /**
@@ -462,120 +542,4 @@ class TaskData {
         }
     }
 
-    /**
-     * Sets a dependency for this task (i.e\. marks this {@link TaskData} as depending
-     * on the parameter).
-     *
-     * @param source the governing {@link TaskData} that must be processed before this one.
-     */
-    void setDependency(TaskData source) {
-
-        if (this.iDependOn == null){
-            this.iDependOn = new Vector<TaskData>();
-        }
-        this.iDependOn.add(source);
-
-        if (source.dependOnMe == null){
-            source.dependOnMe = new Vector<TaskData>();
-        }
-        source.dependOnMe.add(this);
-    }
-
-
-    /**
-     * Splits a task by data sources, if it's to be performed on more of them. This serves
-     * for better parallelization of the whole process.
-     *
-     * @return An array of split tasks, which are to be performed on one data source only.
-     */
-    TaskData [] split (){
-
-        TaskData [] splitTasks = null;
-
-        if (this.type == TaskType.COMPUTATION){
-
-            splitTasks = new TaskData[this.trainSets.size()];
-
-            for (int i = 0; i < splitTasks.length; ++i){
-                splitTasks[i] = this.cloneWithoutDataSources();
-                splitTasks[i].input = this.input;
-                splitTasks[i].output = this.output;
-
-                splitTasks[i].trainSets = new Vector<DataSourceDescription>(1);
-                splitTasks[i].trainSets.add(this.trainSets.get(i));
-                if (this.develSets.size() > i){
-                    splitTasks[i].develSets = new Vector<DataSetDescription>(1);
-                    splitTasks[i].develSets.add(this.develSets.get(i));
-                }
-                if (this.evalSets.size() > i){
-                    splitTasks[i].evalSets = new Vector<DataSourceDescription>(1);
-                    splitTasks[i].evalSets.add(this.evalSets.get(i));
-                }
-                splitTasks[i].parallelizationRatio *= splitTasks.length;
-            }
-        }
-        else if (this.type == TaskType.EVALUATION){
-
-            splitTasks = new TaskData[this.dataSets.size()];
-
-            for (int i = 0; i < splitTasks.length; ++i){
-
-                // TODO vyřešit problém s počtem souborů - mělo by jich být stejně jako datasetů
-            }
-        }
-
-        return splitTasks;
-    }
-
-    /**
-     * Returns an ID for a generated task (in parallelization).
-     *
-     * @return a generated ID string
-     */
-    private static synchronized String generateId(){
-
-        String taskId;
-
-        lastId++;
-        taskId = GENERATED_TASK_PREFIX + lastId;
-
-        return taskId;
-    }
-
-    
-    /* INNER CLASSES */
-
-
-    /**
-     * This is used to store algoritm description of tasks.
-     * There are just members, all are public.
-     */
-    class AlgorithmDescription {
-
-        /* DATA */
-
-        /** The name of the Task class that should process the {@link Task} */
-        String className;
-        /** The parameters that should be used in the computation, the class parses them by itself */
-        String parameters;
-        /**
-         * This denotes if the algorithm may be parallelized - not applicable for {@link Maninpulation}
-         * type tasks.
-         */
-        boolean parallelizable;
-
-        /* METHODS */
-        
-        /**
-         * A constructor that just sets the values of all members
-         * @param className The name of the class that should process the @{link Task}
-         * @param parameters The processing parameters
-         * @param parallelizable The parallelizability setting
-         */
-        private AlgorithmDescription(String className, String parameters, boolean parallelizable) {
-            this.className = className;
-            this.parameters = parameters;
-            this.parallelizable = parallelizable;
-        }
-    }
 }
