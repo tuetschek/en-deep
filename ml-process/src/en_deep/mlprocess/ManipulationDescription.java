@@ -44,6 +44,11 @@ public class ManipulationDescription extends TaskDescription {
     /** All the output data sets or files */
     Vector<DataSourceDescription> output;
 
+    /** All the features that are needed to perform this manipulation task */
+    Vector<FeatureDescription> needed;
+    /** All the features that are created in this manipulation task (if the input and output data sets are the same) */
+    Vector<FeatureDescription> created;
+
 
     /* METHODS */
 
@@ -56,22 +61,55 @@ public class ManipulationDescription extends TaskDescription {
      * @param output description of the output data sets or files
      */
     public ManipulationDescription(String idPrefix, AlgorithmDescription algorithm,
-            Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
+            Vector<DataSourceDescription> input, Vector<DataSourceDescription> output,
+            Vector<FeatureDescription> needed, Vector<FeatureDescription> created) {
 
         super(TaskType.MANIPULATION, idPrefix, algorithm);
         this.input = input;
         this.output = output;
+        this.needed = needed;
+        this.created = created;
     }
     
 
     @Override
     public Vector<DataSourceDescription> getInputDataSources() {
-        return this.input;
+
+        Vector<DataSourceDescription> inputSources = new Vector<DataSourceDescription>();
+
+        // add all input data sources
+        inputSources.addAll(this.input);
+        
+        // add all required features
+        if (this.needed != null){
+            for (FeatureDescription fd : this.needed){
+                inputSources.add(fd);
+            }
+        }
+
+        return inputSources;
     }
 
     @Override
     public Vector<DataSourceDescription> getOutputDataSources() {
-        return this.output;
+
+        Vector<DataSourceDescription> outputSources = new Vector<DataSourceDescription>();
+
+        // add only newly created data sources - not the changed ones
+        for (DataSourceDescription dsd: this.output){
+            if (!this.input.contains(dsd)){
+                this.output.add(dsd);
+            }
+        }
+
+        // add all changes in the data sources
+        if (this.created != null){
+            for (FeatureDescription fd : this.created){
+                outputSources.add(fd);
+            }
+        }
+
+        return outputSources;
     }
 
 }

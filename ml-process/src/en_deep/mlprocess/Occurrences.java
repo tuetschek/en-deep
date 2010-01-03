@@ -14,13 +14,13 @@ class Occurrences {
 
     /* DATA */
     /** Count all {@link TaskSection}s where this data source shows up as the input */
-    Vector<TaskSection> asInput;
+    Vector<TaskDescription> asInput;
     /** The only one occurrence of {@link TaskSection} where this data source is produced as an output belongs here */
-    TaskSection asOutput;
+    TaskDescription asOutput;
 
     Occurrences() {
         super();
-        asInput = new Vector<TaskSection>();
+        asInput = new Vector<TaskDescription>();
     }
 
     /**
@@ -31,7 +31,7 @@ class Occurrences {
      * @param purpose the occurrences list specificiation
      * @throws DataException if the data source has more than one output occurrence
      */
-    void add(TaskSection task, DataSourcePurpose purpose) throws DataException {
+    void add(TaskDescription task, DataSourcePurpose purpose) throws DataException {
         if (purpose == DataSourcePurpose.INPUT) {
             asInput.add(task);
         } else if (this.asOutput == null) {

@@ -31,7 +31,7 @@ import en_deep.mlprocess.DataSourceDescription;
 import java.util.Vector;
 
 /**
- * This class splits the 
+ * This class merges several data sets into one.
  * @author Ondrej Dusek
  */
 public class DataMerger extends Manipulation {
@@ -41,9 +41,9 @@ public class DataMerger extends Manipulation {
     /* METHODS */
 
     /**
-     * This creates a new {@link DataMerger} task. The class takes no parameters, the number of
-     * resulting classes is given by the {@link output} parameter. Therefore, the number of input
-     * data sources should be divisible by the number of output data sources.
+     * This creates a new {@link DataMerger} task. It doesn't take any parameter except the
+     * input and output data sets' descriptions. Therefore, the number of output
+     * data sources must be divisible by the number of input data sources.
      *
      * @param params have no sense here
      * @param input the input data sets or files

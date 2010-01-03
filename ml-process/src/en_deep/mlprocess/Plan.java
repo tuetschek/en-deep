@@ -27,21 +27,12 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.DataSourceDescription.DataSourceType;
-import en_deep.mlprocess.Task.TaskType;
-import en_deep.mlprocess.TaskSection.DataSourcePurpose;
-import en_deep.mlprocess.TaskSection.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
-import en_deep.mlprocess.manipulation.DataSplitter;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
-import java.util.Hashtable;
 import java.util.Vector;
-import org.xml.sax.Attributes;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
@@ -232,7 +223,7 @@ public class Plan {
             if (oc.asOutput == null){
                 throw new DataException(DataException.ERR_DATA_SET_NEVER_PRODUCED);
             }
-            for (TaskSection dep : oc.asInput){
+            for (TaskDescription dep : oc.asInput){
                 dep.setDependency(oc.asOutput);
             }
         }
@@ -241,7 +232,7 @@ public class Plan {
             if (oc.asOutput == null){
                 continue;
             }
-            for (TaskSection dep : oc.asInput){
+            for (TaskDescription dep : oc.asInput){
                 dep.setDependency(oc.asOutput);
             }
         }
@@ -250,7 +241,7 @@ public class Plan {
             if (oc.asInput == null){
                 continue;
             }
-            for (TaskSection dep : oc.asInput){
+            for (TaskDescription dep : oc.asInput){
                 dep.setDependency(oc.asOutput);
             }
         }

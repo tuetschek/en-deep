@@ -25,18 +25,39 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.evaluation;
+package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.Task;
+import en_deep.mlprocess.DataSourceDescription;
+import java.util.Vector;
 
 /**
- * An evaluation {@link en_deep.mlprocess.Task}.
- * 
-     * Given the gold standard data and the computed prediction, returns the result(s)
- * of a metric.
- *
+ * This class merges several files into one by writing them sequentially one after another.
  * @author Ondrej Dusek
  */
-public abstract class Evaluation extends Task {
+public class FileMerger extends Manipulation {
+
+    /* DATA */
+
+    /* METHODS */
+
+    /**
+     * This creates a new {@link FileMerger} task. It doesn't take any parameter except the
+     * input and output files' descriptions. Therefore, the number of output
+     * data sources must be divisible by the number of input data sources.
+     *
+     * @param params have no sense here
+     * @param input the input data sets or files
+     * @param output the output data sets or files
+     */
+    public FileMerger(String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
+        super(params, input, output);
+    }
+
+
+    @Override
+    public void perform() {
+        // TODO WRITE FileMerger code
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
 }

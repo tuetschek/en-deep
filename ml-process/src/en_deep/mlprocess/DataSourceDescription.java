@@ -1,5 +1,7 @@
 package en_deep.mlprocess;
 
+import java.util.Vector;
+
 /**
  * A data-only class (with derivees) to describe the various data sources
  * that may be used within the {@link Process}. Only the derived classes
@@ -15,6 +17,9 @@ public abstract class DataSourceDescription {
     public enum DataSourceType {
         FILE, DATA_SET, FEATURE
     }
+
+    /** This is used to delimit ids of data source parts */
+    protected static final String PART_DELIMITER = "_##PART##";
 
     /* DATA */
 
@@ -32,4 +37,19 @@ public abstract class DataSourceDescription {
     protected DataSourceDescription(DataSourceType type) {
         this.type = type;
     }
+
+    @Override
+    public abstract boolean equals(Object other);
+
+    @Override
+    public abstract int hashCode();
+
+    /**
+     * Split the data source into given number of parts, giving it new identification.
+     *
+     * @param partsNo the desired number of parts
+     * @return the data source parts
+     */
+    public abstract Vector<DataSourceDescription> split(int partsNo);
+
 }

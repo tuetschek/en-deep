@@ -76,7 +76,7 @@ public class EvaluationDescription extends TaskDescription {
 
         // add all the features for the input data set
         for (FeatureDescription feat : this.input){
-            ids.add(new FeatureDescription(this.data.id + "::" + feat.id));
+            ids.add(new FeatureDescription(feat.id, this.data.id));
         }
         // add the working data set itself
         ids.add(this.data);

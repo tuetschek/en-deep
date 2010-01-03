@@ -65,6 +65,10 @@ public class DataException extends GeneralException {
     public static final int ERR_DUPLICATE_OUTPUT = 14;
     /** Exception code: "A used data set is never produced by a Task" - TODO add parameter */
     public static final int ERR_DATA_SET_NEVER_PRODUCED = 15;
+    /** Exception code: "Input and output data sets overlap" */
+    public static final int ERR_OVERLAPPING_INPUT_OUTPUT = 16;
+    /** Exception code: "Tasks that operate on files cannot be parallelized" */
+    public static final int ERR_CANNOT_PARALELIZE_ON_FILES = 17;
 
     /* METHODS */
 
@@ -112,6 +116,10 @@ public class DataException extends GeneralException {
                 return "A data source is marked as being produced by two or more Tasks";
             case ERR_DATA_SET_NEVER_PRODUCED:
                 return "A used data set is never produced by a Task";
+            case ERR_OVERLAPPING_INPUT_OUTPUT:
+                return "Input and output data sets overlap";
+            case ERR_CANNOT_PARALELIZE_ON_FILES:
+                return "Tasks that operate on files cannot be parallelized";
             default:
                 return "Unknown error";
         }

@@ -30,7 +30,9 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.DataSourceDescription.DataSourceType;
 import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.exception.DataException;
+import en_deep.mlprocess.manipulation.DataMerger;
 import en_deep.mlprocess.manipulation.DataSplitter;
+import en_deep.mlprocess.manipulation.FileMerger;
 import java.util.Vector;
 
 /**
@@ -43,7 +45,7 @@ class TaskSection {
 
     /** Possible types of a data sources sections within the task specification */
     enum DataSourcesSection {
-        NONE, TRAIN, DEVEL, EVAL, INPUT, OUTPUT, DATA
+        NONE, TRAIN, DEVEL, EVAL, INPUT, OUTPUT, DATA, CREATED, NEEDED
     }
 
     /** Possible usage of data sources in terms of {@link Task} dependencies (see {@link Plan.Occurrences}) */
@@ -80,6 +82,11 @@ class TaskSection {
     private Vector<DataSourceDescription> input;
     /** The output of this task (may contain files, data sets or features) */
     private Vector<DataSourceDescription> output;
+
+    /** Needed features vector (only for {@link Manipulation} tasks) */
+    private Vector<FeatureDescription> needed;
+    /** Created features vector (only for {@link Manipulation} tasks) */
+    private Vector<FeatureDescription> created;
 
     /** The data sources section that is currently open */
     private DataSourcesSection open;
@@ -166,6 +173,9 @@ class TaskSection {
         if (this.input == null || this.output == null){
             throw new DataException(DataException.ERR_NO_IN_OR_OUT);
         }
+        if (this.open != DataSourcesSection.NONE){
+            throw new DataException(DataException.ERR_OPEN_DATA_SECTION);
+        }
 
         if (this.type == TaskType.EVALUATION && this.dataSets == null){
             throw new DataException(DataException.ERR_NO_DATA_SET);
@@ -182,8 +192,33 @@ class TaskSection {
                 throw new DataException(DataException.ERR_NO_MATCHING_DATA_NUMBERS);
             }
         }
-        if (this.open != DataSourcesSection.NONE){
-            throw new DataException(DataException.ERR_OPEN_DATA_SECTION);
+        if (this.type == TaskType.MANIPULATION){
+            for (DataSourceDescription dsd: this.output){
+                // check overlapping input and output data sets - allowed for data sets only & must have
+                // some output feature
+                if (this.input.contains(dsd)){
+
+                    String dsId;
+                    boolean foundFeat = false;
+
+                    // one file as input and output not allowed
+                    if (dsd.type != DataSourceType.DATA_SET){ // TODO possibly allow also features on files ?
+                        throw new DataException(DataException.ERR_OVERLAPPING_INPUT_OUTPUT);
+                    }
+                    dsId = ((DataSetDescription) dsd).id;
+
+                    // check for output features in input & output data sets !
+                    for (FeatureDescription fd : this.created){
+                        if (dsId.equals(fd.dataSetId)){
+                            foundFeat = true;
+                            break;
+                        }
+                    }
+                    if (!foundFeat){
+                        throw new DataException(DataException.ERR_OVERLAPPING_INPUT_OUTPUT);
+                    }
+                }
+            }
         }
     }
 
@@ -234,7 +269,8 @@ class TaskSection {
                 break;
 
             case MANIPULATION: // manipulation tasks are not parallelizable / no multiple data sources may be used
-                tasks.add(new ManipulationDescription(this.id, this.algorithm, this.input, this.output));
+                tasks.add(new ManipulationDescription(this.id, this.algorithm, this.input, this.output,
+                        this.needed, this.created));
                 break;
 
             case EVALUATION:
@@ -253,7 +289,6 @@ class TaskSection {
                     }
                     // parallelize the task
                     else {
-                        // TODO rozdělit do parallelized computation x evaluation
                         tasks.addAll(this.getParallelizedEvaluation(i, inputFeats));
                     }
                 }
@@ -280,16 +315,22 @@ class TaskSection {
      * @param workingDataNo the number of the data sets to use (in the data sets fields' order)
      * @param inputFeats the input features (this.input converted to Vector<FeatureDescription>)
      * @param outputFeats the output features (this.output converted to Vector<FeatureDescription>), null for {@link Evaluation} tasks
+     * @throws DataException if the parallelization is to be processed on files, which is not allowed
      * @return
      */
     Vector<TaskDescription> getParallelizedComputation(int workingDataNo, Vector<FeatureDescription> inputFeats,
-            Vector<FeatureDescription> outputFeats){
+            Vector<FeatureDescription> outputFeats) throws DataException {
 
         assert(this.type == TaskType.COMPUTATION);
 
         int maxParallel = (int) Math.ceil(Process.getInstance().getMaxWorkers() /
                 (double)(this.trainSets.size()));
         Vector<TaskDescription> tasks = new Vector<TaskDescription>(6 + maxParallel);
+
+        if (this.trainSets.elementAt(workingDataNo).type != DataSourceType.DATA_SET
+                || this.evalSets.elementAt(workingDataNo).type != DataSourceType.DATA_SET){
+            throw new DataException(DataException.ERR_CANNOT_PARALELIZE_ON_FILES);
+        }
 
         // no need to parallelize, there's enough working data sets to keep all Workers occupied
         if (maxParallel == 1){
@@ -305,17 +346,17 @@ class TaskSection {
             Vector<DataSourceDescription> splitDevel = new Vector<DataSourceDescription>();
             Vector<DataSourceDescription> splitEval = new Vector<DataSourceDescription>();
 
-            tasks.add(this.getSplitterTask(maxParallel, this.trainSets.elementAt(workingDataNo), splitTrain));
+            tasks.add(this.getSplitterTask(maxParallel, (DataSetDescription) this.trainSets.elementAt(workingDataNo), splitTrain));
             if (this.develSets != null){
                 tasks.add(this.getSplitterTask(maxParallel, this.develSets.elementAt(workingDataNo), splitDevel));
             }
-            tasks.add(this.getSplitterTask(maxParallel, this.evalSets.elementAt(workingDataNo), splitEval));
+            tasks.add(this.getSplitterTask(maxParallel, (DataSetDescription) this.evalSets.elementAt(workingDataNo), splitEval));
 
             for (int i = 0; i < maxParallel; ++i){
                 tasks.add(new ComputationDescription(this.id, this.algorithm,
                         splitTrain.elementAt(i),
                         this.develSets != null ? splitDevel.elementAt(i) : null,
-                        splitEval.elementAt(i), inputFeats, outputFeats));
+                        splitEval.elementAt(i), inputFeats, outputFeats)); // the feats are ok this way, the data set id is added to them later
             }
 
             tasks.add(this.getMergerTask(splitTrain, this.trainSets.elementAt(workingDataNo)));
@@ -344,7 +385,8 @@ class TaskSection {
      * @param inputFeats the input features (this.input converted to Vector<FeatureDescription>)
      * @return
      */
-    Vector<TaskDescription> getParallelizedEvaluation(int workingDataNo, Vector<FeatureDescription> inputFeats){
+    Vector<TaskDescription> getParallelizedEvaluation(int workingDataNo, Vector<FeatureDescription> inputFeats)
+        throws DataException {
 
         assert(this.type == TaskType.EVALUATION);
 
@@ -362,17 +404,15 @@ class TaskSection {
         else {
 
             Vector<DataSourceDescription> splitData = new Vector<DataSourceDescription>();
-            Vector<DataSourceDescription> splitOutput = new Vector<DataSourceDescription>();
+            Vector<DataSourceDescription> splitOutput = this.output.elementAt(workingDataNo).split(maxParallel);
 
             tasks.add(this.getSplitterTask(maxParallel, this.dataSets.elementAt(workingDataNo), splitData));
-            tasks.add(this.getSplitterTask(maxParallel, this.output.elementAt(workingDataNo), splitOutput));
 
             for (int i = 0; i < maxParallel; ++i){
                 tasks.add(new EvaluationDescription(this.id, this.algorithm, (DataSetDescription) splitData.elementAt(i),
                         inputFeats, (FileDescription) splitOutput.elementAt(i)));
             }
 
-            tasks.add(this.getMergerTask(splitData, this.dataSets.elementAt(workingDataNo)));
             tasks.add(this.getMergerTask(splitOutput, this.output.elementAt(workingDataNo)));
         }
 
@@ -380,7 +420,7 @@ class TaskSection {
     }
 
     /**
-     * Creates the [@link en_deep.mlprocess.manipulation.DataSplitter} task in order to split the given
+     * Creates the {@link en_deep.mlprocess.manipulation.DataSplitter} task in order to split the given
      * data in the given number of parts.
      *
      * @param parts the number of data parts
@@ -388,24 +428,68 @@ class TaskSection {
      * @param splitData the data parts' descriptions are added here
      * @return the task that splits the data
      */
-    ManipulationDescription getSplitterTask(int parts, DataSourceDescription data, Vector<DataSourceDescription> splitData){
+    ManipulationDescription getSplitterTask(int parts, DataSetDescription data, Vector<DataSourceDescription> splitData){
 
-        // TODO
+        Vector<DataSourceDescription> allData = new Vector<DataSourceDescription>(1); // just formally create a vector for the input data set
+        Vector<FeatureDescription> neededFeats = new Vector<FeatureDescription>();
+        Vector<FeatureDescription> createdFeats = new Vector<FeatureDescription>();
+
+        allData.add(data);
+        splitData.addAll(data.split(parts));
+
+        for (DataSourceDescription dsd : this.input){
+            FeatureDescription fd = (FeatureDescription) dsd;
+            neededFeats.add(new FeatureDescription(fd.id, data.id));
+            for (DataSourceDescription part : splitData){
+                createdFeats.add(new FeatureDescription(fd.id, ((DataSetDescription) part).id));
+            }
+        }
+
+        return new ManipulationDescription(this.id,
+                new AlgorithmDescription(DataSplitter.class.getCanonicalName(), ""),
+                allData, splitData, neededFeats,  createdFeats);
     }
 
 
     /**
-     * Creates the [@link en_deep.mlprocess.manipulation.DataMerger} task in order to merge the given
-     * data into one part.
+     * Creates the {@link en_deep.mlprocess.manipulation.DataMerger} task in order to merge the given
+     * data into one part. May be used with split data sets or files: in each case this creates a different
+     * class.
      *
      * @param splitData the data parts' descriptions
      * @param the resulting output data description
+     * @throws DataException if the input and output data source types don't match
      * @return the task that splits the data
      */
-    ManipulationDescription getMergerTask(Vector<DataSourceDescription> splitData, DataSourceDescription outData){
+    ManipulationDescription getMergerTask(Vector<DataSourceDescription> splitData, DataSourceDescription outData)
+        throws DataException{
 
-        // TODO problém se závislostmi, tady vlastně stejná DataSet vzniká podruhé, slepením
-        // zřejmě by mělo jít spíš o něco jako results-adder, který přidá vypočítané featury na částech do celého datasetu ?
+        boolean fileMode = (outData.type == DataSourceType.FILE);
+        Vector<DataSourceDescription> allData = new Vector<DataSourceDescription>(1); // formally creating vector for output data
+        Vector<FeatureDescription> createdFeats = new Vector<FeatureDescription>();
+        Vector<FeatureDescription> neededFeats = new Vector<FeatureDescription>();
+
+        for (DataSourceDescription dsd: splitData){ // this is probably not needed, just an assertion
+            if ((fileMode && dsd.type != DataSourceType.FILE) || (dsd.type != DataSourceType.DATA_SET)){
+                throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
+            }
+        }
+        allData.add(outData);
+
+        // add needed & created features, if operating on data sets (for computation tasks only,
+        // the evaluation tasks operate on files only!)
+        if (!fileMode){
+            for (DataSourceDescription dsd : this.output){
+                createdFeats.add(new FeatureDescription(((FeatureDescription) dsd).id, ((DataSetDescription)outData).id));
+                for (DataSourceDescription part : splitData){
+                    neededFeats.add(new FeatureDescription(((FeatureDescription) dsd).id, ((DataSetDescription)part).id));
+                }
+            }
+        }
+
+        return new ManipulationDescription(this.id,
+                new AlgorithmDescription(fileMode ? FileMerger.class.getCanonicalName() : DataMerger.class.getCanonicalName(), ""),
+                splitData, allData, neededFeats, createdFeats);
     }
 
     /**
@@ -461,6 +545,18 @@ class TaskSection {
                 }
                 this.trainSets = new Vector<DataSourceDescription>();
                 break;
+            case CREATED:
+                if (this.type != TaskType.MANIPULATION){
+                    throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
+                }
+                this.created = new Vector<FeatureDescription>();
+                break;
+            case NEEDED:
+                if (this.type != TaskType.MANIPULATION){
+                    throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
+                }
+                this.needed = new Vector<FeatureDescription>();
+                break;
         }
     }
 
@@ -512,16 +608,16 @@ class TaskSection {
                 break;
 
             case INPUT:
-                if ((this.type == TaskType.COMPUTATION && desc.type != DataSourceType.FEATURE)
+                if ((this.type == TaskType.COMPUTATION && (desc.type != DataSourceType.FEATURE || ((FeatureDescription)desc).dataSetId != null))
                         || (this.type == TaskType.MANIPULATION && (desc.type != DataSourceType.DATA_SET || desc.type != DataSourceType.FILE))
-                        || (this.type == TaskType.EVALUATION && desc.type != DataSourceType.FEATURE)){
+                        || (this.type == TaskType.EVALUATION && (desc.type != DataSourceType.FEATURE || ((FeatureDescription)desc).dataSetId != null))){
                     throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
                 }
                 this.input.add(desc);
                 break;
 
-            case OUTPUT:
-                if ((this.type == TaskType.COMPUTATION && desc.type != DataSourceType.FEATURE)
+            case OUTPUT: // TODO really allow only one file in Evaluation tasks ?
+                if ((this.type == TaskType.COMPUTATION && (desc.type != DataSourceType.FEATURE || ((FeatureDescription)desc).dataSetId != null))
                         || (this.type == TaskType.MANIPULATION && (desc.type != DataSourceType.DATA_SET || desc.type != DataSourceType.FILE))
                         || (this.type == TaskType.EVALUATION && (desc.type != DataSourceType.FILE || this.output.size() > 0))){
                     throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
@@ -536,6 +632,21 @@ class TaskSection {
                 }
                 this.trainSets.add(desc);
                 break;
+
+            case CREATED:
+                if (desc.type != DataSourceType.FEATURE && ((FeatureDescription) desc).dataSetId == null){
+                    throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
+                }
+                this.created.add((FeatureDescription)desc);
+                break;
+
+            case NEEDED:
+                if (desc.type != DataSourceType.FEATURE && ((FeatureDescription) desc).dataSetId == null){
+                    throw new DataException(DataException.ERR_INVALID_DATA_TYPE);
+                }
+                this.needed.add((FeatureDescription)desc);
+                break;
+
 
             default:
                 throw new DataException(DataException.ERR_INVALID_DATA_TYPE);

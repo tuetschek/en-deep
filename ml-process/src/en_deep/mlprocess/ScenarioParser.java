@@ -5,6 +5,7 @@ import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.TaskSection.DataSourcePurpose;
 import en_deep.mlprocess.TaskSection.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Vector;
 import org.xml.sax.Attributes;
@@ -42,6 +43,8 @@ class ScenarioParser implements ContentHandler {
     /** All occurrences of features */
     Hashtable<String,Occurrences> featureOccurrences;
 
+    /** All ID occurrences */
+    HashSet<String> idOccurrences;
 
 
     /* METHODS */
@@ -58,6 +61,7 @@ class ScenarioParser implements ContentHandler {
         this.fileOccurrences = new Hashtable<String, Occurrences>();
         this.featureOccurrences = new Hashtable<String, Occurrences>();
         this.dataSetOccurrences = new Hashtable<String, Occurrences>();
+        this.idOccurrences = new HashSet<String>();
     }
 
     /**
@@ -85,7 +89,7 @@ class ScenarioParser implements ContentHandler {
                 dsd = new DataSetDescription(id);
                 break;
             case FEATURE:
-                dsd = new FeatureDescription(id);
+                dsd = new FeatureDescription(id, null);
                 break;
             case FILE:
                 dsd = new FileDescription(id);
@@ -102,10 +106,16 @@ class ScenarioParser implements ContentHandler {
      * @param purpose the purpose ({@link TaskSection.DataSourcePurpose}) of the given data sources ({@link dss}, i.e\. input or output)
      * @throws DataException if there are multiple tasks that output the same data source
      */
-    private void markDataSources(Vector<DataSourceDescription> dss, DataSourcePurpose purpose) throws DataException {
+    private void markDataSources(TaskDescription task, DataSourcePurpose purpose) throws DataException {
+
+        Vector<DataSourceDescription> dss =
+                purpose == DataSourcePurpose.INPUT ? task.getInputDataSources() : task.getOutputDataSources();
         Occurrences oc;
+
         for (DataSourceDescription ds : dss) {
+
             switch (ds.type) {
+
                 case DATA_SET:
                     DataSetDescription dsd = (DataSetDescription) ds;
                     oc = this.dataSetOccurrences.get(dsd.id);
@@ -113,24 +123,30 @@ class ScenarioParser implements ContentHandler {
                         oc = new Occurrences();
                         this.dataSetOccurrences.put(dsd.id, oc);
                     }
-                    oc.add(this.current, purpose);
+                    oc.add(task, purpose);
                     break;
+
                 case FEATURE:
+
                     FeatureDescription fed = (FeatureDescription) ds;
                     oc = this.featureOccurrences.get(fed.id);
                     if (oc == null) {
                         oc = new Occurrences();
                         this.featureOccurrences.put(fed.id, oc);
                     }
-                    oc.add(this.current, purpose);
+                    oc.add(task, purpose);
+                    break;
+
                 case FILE:
+
                     FileDescription fid = (FileDescription) ds;
                     oc = this.fileOccurrences.get(fid.fileName);
                     if (oc == null) {
                         oc = new Occurrences();
                         this.fileOccurrences.put(fid.fileName, oc);
                     }
-                    oc.add(this.current, purpose);
+                    oc.add(task, purpose);
+                    break;
             }
         }
     }
@@ -207,18 +223,17 @@ class ScenarioParser implements ContentHandler {
             catch (DataException ex) {
                 throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
             }
-            // checks for unique id
-            // TODO nejaka hash-empty na idcka, at se nepletou, bude jen kontrola v souboru
-            for (TaskDescription td : this.tasks) { 
-                if (td.getIdPrefix().equals(this.current.getId())) {
-                    throw new SAXException("Duplicate task id at " + this.getLocationInfo());
-                }
+            // checks for unique id and saves the current one
+            if (this.idOccurrences.contains(this.current.getId())){
+                throw new SAXException("Duplicate task id at " + this.getLocationInfo());
             }
+            this.idOccurrences.add(this.current.getId());
             return;
         }
         // opens a new data sources section
         if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
-                || localName.equals("data") || localName.equals("input") || localName.equals("output")) {
+                || localName.equals("data") || localName.equals("input") || localName.equals("output")
+                || localName.equals("needed") || localName.equals("created")) {
 
             try {
                 this.current.openDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
@@ -279,8 +294,8 @@ class ScenarioParser implements ContentHandler {
                 Vector<TaskDescription> newTasks = this.current.getDescriptions();
 
                 for (TaskDescription task : newTasks) {
-                    this.markDataSources(task.getInputDataSources(), DataSourcePurpose.INPUT);
-                    this.markDataSources(task.getOutputDataSources(), DataSourcePurpose.OUTPUT);
+                    this.markDataSources(task, DataSourcePurpose.INPUT);
+                    this.markDataSources(task, DataSourcePurpose.OUTPUT);
                 }
 
                 this.tasks.addAll(newTasks);
@@ -291,7 +306,8 @@ class ScenarioParser implements ContentHandler {
             this.current = null;
         }
         else if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
-                || localName.equals("data") || localName.equals("input") || localName.equals("output")) {
+                || localName.equals("data") || localName.equals("input") || localName.equals("output")
+                || localName.equals("created") || localName.equals("needed")) {
 
             try {
                 this.current.closeDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));

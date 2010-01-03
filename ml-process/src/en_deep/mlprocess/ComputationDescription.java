@@ -96,7 +96,7 @@ public class ComputationDescription extends TaskDescription {
                     continue;
                 }
                 DataSetDescription ds = (DataSetDescription) dsdDS;
-                ids.add(new FeatureDescription(ds.id + "::" + feat.id));
+                ids.add(new FeatureDescription(feat.id, ds.id));
             }
         }
 
@@ -113,7 +113,7 @@ public class ComputationDescription extends TaskDescription {
                     continue;
                 }
                 DataSetDescription ds = (DataSetDescription) dsdDS;
-                ids.add(new FeatureDescription(ds.id + "::" + feat.id));
+                ids.add(new FeatureDescription(feat.id, ds.id));
             }
         }
 
@@ -138,7 +138,7 @@ public class ComputationDescription extends TaskDescription {
 
             for (FeatureDescription feat : this.output){
                 DataSetDescription ds = (DataSetDescription) this.eval;
-                ods.add(new FeatureDescription(ds.id + "::" + feat.id));
+                ods.add(new FeatureDescription(feat.id, ds.id));
             }
         }
         // add the output file

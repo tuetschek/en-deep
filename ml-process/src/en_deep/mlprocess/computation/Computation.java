@@ -37,6 +37,6 @@ import en_deep.mlprocess.*;
  *
  * @author Ondrej Dusek
  */
-public class Computation extends Task {
+public abstract class Computation extends Task {
 
 }

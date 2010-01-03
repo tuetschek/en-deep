@@ -37,9 +37,6 @@ import java.util.Vector;
 public abstract class TaskDescription {
 
     /* CONSTANTS */
-
-    /** Prefix for id's of tasks that are system-generated (in parallelization) */
-    private static final String GENERATED_TASK_PREFIX = "##GENERATED##";
     
     
     /* DATA */
@@ -58,6 +55,7 @@ public abstract class TaskDescription {
 
     /** This serves for generating tasks id in parallelization */
     private static int lastId = 0;
+
 
     /* METHODS */
 
@@ -106,6 +104,7 @@ public abstract class TaskDescription {
         }
         source.dependOnMe.add(this);
     }
+
 
     /**
      * Returns the unique ID for this task, composed of the name for the task
