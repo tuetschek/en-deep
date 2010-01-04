@@ -27,14 +27,16 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.Task.TaskStatus;
 import en_deep.mlprocess.Task.TaskType;
+import java.io.Serializable;
 import java.util.Vector;
 
 /**
  *
  * @author Ondrej Dusek
  */
-public abstract class TaskDescription {
+public abstract class TaskDescription implements Serializable {
 
     /* CONSTANTS */
     
@@ -47,6 +49,11 @@ public abstract class TaskDescription {
     private String id;
     /** The algorithm used for this task */
     private AlgorithmDescription algorithm;
+    /** The current task status */
+    private TaskStatus status;
+
+    /** Topological order of the task (-1 if not sorted) */
+    private int topolOrder;
 
     /** All the Tasks that this Task depends on */
     private Vector<TaskDescription> iDependOn;
@@ -71,6 +78,8 @@ public abstract class TaskDescription {
         this.type = type;
         this.id = TaskDescription.generateId(id);
         this.algorithm = algorithm;
+        this.status = TaskStatus.PENDING; // no dependencies, yet
+        this.topolOrder = -1; // not yet sorted
     }
 
     /**
@@ -88,21 +97,68 @@ public abstract class TaskDescription {
 
     /**
      * Sets a dependency for this task (i.e\. marks this {@link TaskDescription} as depending
-     * on the parameter).
+     * on the parameter). Checks for duplicate dependencies, i.e. a dependency from task A to
+     * task B is stored only once, even if it is enforced multiple times. Sets the task status
+     * to waiting - the dependent task needs to be processed first.
      *
      * @param source the governing {@link TaskDescription} that must be processed before this one.
      */
     void setDependency(TaskDescription source) {
 
+        // if we have a dependency, we need to wait for it to finish
+        this.status = TaskStatus.WAITING;
+
         if (this.iDependOn == null){
             this.iDependOn = new Vector<TaskDescription>();
         }
-        this.iDependOn.add(source);
+        if (!this.iDependOn.contains(source)){
+            this.iDependOn.add(source);
+        }
 
         if (source.dependOnMe == null){
             source.dependOnMe = new Vector<TaskDescription>();
         }
-        source.dependOnMe.add(this);
+        if (!source.dependOnMe.contains(this)){
+            source.dependOnMe.add(this);
+        }
+    }
+
+    /**
+     * Returns the current task progress status.
+     * @return the current task status
+     */
+    public TaskStatus getStatus(){
+        return this.status;
+    }
+
+    /**
+     * Returns the task topological order (zero-based), or -1 if not yet sorted.
+     * @return the topological order of the task
+     */
+    public int getOrder(){
+        return this.topolOrder;
+    }
+
+    /**
+     * Sets the task's topological order (as done in task topological sorting in
+     * {@link Plan.sortPlan(Vector<TaskDescription> Plan)}).
+     *
+     * @param order the topological order for the task
+     */
+    void setOrder(int order){
+        this.topolOrder = order;
+    }
+
+    /**
+     * Returns a list of all dependent tasks, or null if there are none.
+     * @return a list of all tasks depending on this one
+     */
+    Vector<TaskDescription> getDependent(){
+
+        if (this.dependOnMe == null){
+            return null;
+        }
+        return (Vector<TaskDescription>) this.dependOnMe.clone();
     }
 
 
@@ -120,6 +176,51 @@ public abstract class TaskDescription {
         taskId = prefix + lastId;
 
         return taskId;
+    }
+
+    /**
+     * Returns true if all the tasks on which this task depends are already topologically
+     * sorted, i.e. their {@link topolOrder} is >= 0. If we have no prerequisities, "all of
+     * them are sorted".
+     *
+     * @return the sorting status of the prerequisities tasks
+     */
+    boolean allPrerequisitiesSorted() {
+
+        if (this.iDependOn == null){ // if there are none, they're all sorted.
+            return true;
+        }
+        for (TaskDescription prerequisity : this.iDependOn){
+            if (prerequisity.getOrder() < 0){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the task's {@link AlgorithmDescription}.
+     * @return the description of the algorithm for this task
+     */
+    AlgorithmDescription getAlgorithm() {
+        return this.algorithm;
+    }
+
+    /**
+     * Returns the ID of this task.
+     * @return the task's id.
+     */
+    String getId(){
+        return this.id;
+    }
+
+    /**
+     * Returns the type of this task (according to {@link Task.TaskType}.
+     *
+     * @return the task type
+     */
+    TaskType getType() {
+        return this.type;
     }
 
 }

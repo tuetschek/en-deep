@@ -39,7 +39,15 @@ public class TaskException extends GeneralException {
     public static final int ERR_WRONG_NUM_OUTPUTS = 1;
     /** Error message: "Wrong number of inputs." */
     public static final int ERR_WRONG_NUM_INPUTS = 2;
+    /** Error message: "Task class not found." */
+    public static final int ERR_TASK_CLASS_NOT_FOUND = 3;
+    /** Error message: "The Task class does not conform to specifications." */
+    public static final int ERR_TASK_CLASS_INCORRECT = 4;
 
+    /* DATA */
+
+    /** Id of the task that triggered the exception */
+    String taskId;
 
     /* METHODS */
 
@@ -47,10 +55,12 @@ public class TaskException extends GeneralException {
      * Creates a new {@link Task} exception with the given code, according
      * to the in-class constants.
      *
+     * @param taskId  the id of the {@link Task} that triggered the exception
      * @param code the exception code
      */
-    public TaskException(int code){
+    public TaskException(int code, String taskId){
         super(code);
+        this.taskId = taskId;
     }
 
     /**
@@ -62,11 +72,15 @@ public class TaskException extends GeneralException {
 
         switch(this.code){
             case ERR_OK:
-                return "No error.";
+                return this.taskId + ": No error.";
             case ERR_WRONG_NUM_OUTPUTS:
-                return "Wrong number of outputs.";
+                return this.taskId + ": Wrong number of outputs.";
             case ERR_WRONG_NUM_INPUTS:
-                return "Wrong number of inputs.";
+                return this.taskId + ": Wrong number of inputs.";
+            case ERR_TASK_CLASS_NOT_FOUND:
+                return this.taskId + ": Task class not found.";
+            case ERR_TASK_CLASS_INCORRECT:
+                return this.taskId + ": The Task class does not conform to specifications.";
             default:
                 return "Unknown error.";
         }

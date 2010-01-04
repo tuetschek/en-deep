@@ -44,9 +44,12 @@ public abstract class Manipulation extends Task {
     /* DATA */
 
     /** All the input data sources descriptions */
-    private final Vector<DataSourceDescription> input;
+    protected final Vector<DataSourceDescription> input;
     /** All the output data sources descriptions */
-    private final Vector<DataSourceDescription> output;
+    protected final Vector<DataSourceDescription> output;
+
+    /** The unique ID of the {@link Task} (mainly for {@link TaskException}s) */
+    protected String id;
     
     /* METHODS */
 
@@ -55,13 +58,16 @@ public abstract class Manipulation extends Task {
      * and output variables.
      * This is the form of the constructor that all Manipulation classes should have.
      *
+     * @param id the id of the task
      * @param params parameters given to the class
      * @param input the input data sources
      * @param output the output data sources
      */
-    protected Manipulation(String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output){
+    protected Manipulation(String id, String params,
+            Vector<DataSourceDescription> input, Vector<DataSourceDescription> output){
 
         this.input = input;
         this.output = output;
+        this.id = id;
     }
 }

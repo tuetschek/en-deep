@@ -69,6 +69,8 @@ public class DataException extends GeneralException {
     public static final int ERR_OVERLAPPING_INPUT_OUTPUT = 16;
     /** Exception code: "Tasks that operate on files cannot be parallelized" */
     public static final int ERR_CANNOT_PARALELIZE_ON_FILES = 17;
+    /** Exception code: "There are loops in tasks dependencies - cannot sort" */
+    public static final int ERR_LOOP_DEPENDENCY = 18;
 
     /* METHODS */
 
@@ -120,6 +122,8 @@ public class DataException extends GeneralException {
                 return "Input and output data sets overlap";
             case ERR_CANNOT_PARALELIZE_ON_FILES:
                 return "Tasks that operate on files cannot be parallelized";
+            case ERR_LOOP_DEPENDENCY:
+                return "There are loops in tasks dependencies - cannot sort";
             default:
                 return "Unknown error";
         }

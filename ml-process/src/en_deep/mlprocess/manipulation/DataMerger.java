@@ -45,12 +45,13 @@ public class DataMerger extends Manipulation {
      * input and output data sets' descriptions. Therefore, the number of output
      * data sources must be divisible by the number of input data sources.
      *
+     * @param id the task id
      * @param params have no sense here
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public DataMerger(String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
-        super(params, input, output);
+    public DataMerger(String id, String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
+        super(id, params, input, output);
     }
 
 

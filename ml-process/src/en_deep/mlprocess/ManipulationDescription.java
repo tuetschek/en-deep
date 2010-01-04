@@ -112,4 +112,20 @@ public class ManipulationDescription extends TaskDescription {
         return outputSources;
     }
 
+    /**
+     * Returns all input data sets or files.
+     * @return a copy of this.input
+     */
+    public Vector<DataSourceDescription> getInput(){
+        return (Vector<DataSourceDescription>) this.input.clone();
+    }
+
+    /**
+     * Returns all output data sets or files.
+     * @return a copy of this.output
+     */
+    public Vector<DataSourceDescription> getOutput(){
+        return (Vector<DataSourceDescription>) this.output.clone();
+    }
+
 }

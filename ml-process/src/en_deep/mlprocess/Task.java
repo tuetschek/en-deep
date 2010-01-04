@@ -27,8 +27,13 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.DataSourceDescription;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A general task to be computed or performed ~ specialized into {@link computation.Computation},
@@ -45,32 +50,78 @@ public abstract class Task implements Serializable {
         COMPUTATION, MANIPULATION, EVALUATION
     }
 
-    /** The possible progress statuses of a {@link Task} */
+    /**
+     * The possible progress statuses of a {@link Task}.
+     * <ul>
+     * <li>WAITING = waiting for another {@link Task}(s) to finish</li>
+     * <li>PENDING = ready to be processed</li>
+     * <li>IN_PROGRESS = currently being processed</li>
+     * <li>DONE = successfully finished</li>
+     * <li>FAILED = finished with an error, this stops the processing of dependant tasks</li>
+     * </ul>
+     *
+     * TODO move TaskStatus to TaskDescription ?
+     */
     public enum TaskStatus {
-        PENDING, IN_PROGRESS, DONE, FAILED
+        WAITING, PENDING, IN_PROGRESS, DONE, FAILED
     }
-
 
 
     /* DATA */
 
-    /** The task's status */ 
-    private TaskStatus status = TaskStatus.PENDING;
+
 
     /* METHODS */
-
-    /** 
-     * Checks the task's status.
-     * 
-     * @return  true if the task is done
-     */
-    public TaskStatus getStatus(){
-        return this.status;
-    }
 
     /**
      * Performs the given task.
      */
     public abstract void perform() throws TaskException;
-    
+
+
+    /**
+     * This creates a {@link Task} object of the specified class for the given
+     * {@link TaskDescription}.
+     *
+     * TODO possibly add default package for classes ?
+     *
+     * @param desc the description of the class, containing all the necessary parameters
+     * @return the {@link Task} object that may be processed by the {@link Worker}s
+     */
+    static Task createTask(TaskDescription desc) throws TaskException {
+
+        Task res = null;
+        Class taskClass = null;
+        Constructor taskConstructor = null;
+
+        // retrieve the task class
+        try {
+            taskClass = Class.forName(desc.getAlgorithm().className);
+        }
+        catch (ClassNotFoundException ex) {
+            throw new TaskException(TaskException.ERR_TASK_CLASS_NOT_FOUND, desc.getId());
+        }
+
+        // try to call a constructor with the given parameters
+        try {
+            switch (desc.getType()){
+                case COMPUTATION:
+                    // TODO constructor creation for Computation tasks
+                    break;
+                case MANIPULATION:
+                    taskConstructor = taskClass.getConstructor(String.class, String.class, Vector.class, Vector.class);
+                    res = (Task) taskConstructor.newInstance(desc.getId(), desc.getAlgorithm().parameters,
+                            ((ManipulationDescription) desc).getInput(), ((ManipulationDescription) desc).getOutput());
+                    break;
+                case EVALUATION:
+                    // TODO constructor creation for Evaluation tasks
+                    break;
+            }
+        }
+        catch(Exception ex){
+            throw new TaskException(TaskException.ERR_TASK_CLASS_INCORRECT, desc.getId());
+        }
+
+        return res;
+    }
 }
