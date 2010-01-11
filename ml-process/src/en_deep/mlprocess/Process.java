@@ -100,6 +100,9 @@ public class Process {
     /** Instances the number of instances that are to be run in total */
     private int threads;
 
+    /** All the working threads of this process */
+    private Worker [] workers;
+
     /* METHODS */
     /**
      * Returns the only instance of the process, but never creates one.
@@ -149,10 +152,12 @@ public class Process {
             // checking the number of parameters for one input scenario file
             if (getter.getOptind() > args.length - 1) {
                 throw new ParamException(ParamException.ERR_MISSING, "input XML scenario file name");
-            } else if (getter.getOptind() < args.length - 1) {
+            }
+            else if (getter.getOptind() < args.length - 1) {
                 throw new ParamException(ParamException.ERR_TOO_MANY);
             }
-        } catch (ParamException e) {
+        }
+        catch (ParamException e) {
             Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
             System.exit(1);
         }
@@ -224,10 +229,20 @@ public class Process {
      * {@link Worker}(s) is/are launched to perform all the prescribed {@link Task}s. They use
      * the {@link Plan} singleton to obtain the {@link Task}s. The first call  to
      * {@link Plan.getNextPendingTask()} among all instances of the {@link Process} results
-     * in creation of the to-do file, other just mark the individual {@Task}s in it as done.
+     * in creation of the to-do file, other just obtain next {@Task}s and mark their progress.
      */
     private void run() {
-        // TODO create {@link Worker}s and run them
+
+        this.workers = new Worker [this.instances];
+
+        // create all the
+        for (int i = 0; i < this.instances; ++i){
+            
+            this.workers[i] = new Worker(i);
+            this.workers[i].run();
+        }
+
+        // TODO wait for them to finish ?
     }
 
 

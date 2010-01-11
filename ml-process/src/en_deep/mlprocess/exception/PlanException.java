@@ -25,33 +25,50 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.evaluation;
-
-import en_deep.mlprocess.Task;
+package en_deep.mlprocess.exception;
 
 /**
- * An evaluation {@link en_deep.mlprocess.Task}.
- * 
-     * Given the gold standard data and the computed prediction, returns the result(s)
- * of a metric.
- *
+ * An exception that is thrown if there's something wrong with the Task plan.
  * @author Ondrej Dusek
  */
-public abstract class Evaluation extends Task {
+public class PlanException extends GeneralException {
+
+    /* CONSTANTS */
+
+    /** Exception code: Something's wrong in the scenario XML file. */
+    public static final int ERR_INVALID_SCENARIO = 1;
+    /** Exception code: Cannot access the scenario or plan file. */
+    public static final int ERR_IO_ERROR = 2;
+    /** Exception code: Something's wrong with the plan file */
+    public static final int ERR_INVALID_PLAN = 3;
+    /** Exception code: All tasks have dependencies in progress */
+    public static final int ERR_ALL_IN_PROGRESS = 4;
 
     /* METHODS */
 
     /**
-     * A constructor to be used with derived classes, just setting the input and output
-     * data descriptions. This is the form of the constructor that all {@link Evaluation}
-     * derived classes should have.
-     *
-     * @param id the id of this {@link Task}
-     * @param params the class parameters
+     * Creates a new {@link DataException}, given the exception code.
+     * @param code
      */
-    protected Evaluation(String id, String params){
-        super(id, params);
-
-        // TODO add input and output to Evaluation constructor
+    public PlanException(int code){
+        super(code);
     }
+
+
+    @Override
+    public String getErrorMessage() {
+        switch(this.code){
+            case ERR_IO_ERROR:
+                return "Cannot access the scenario or plan file";
+            case ERR_INVALID_SCENARIO:
+                return "Something's wrong in the scenario XML file";
+            case ERR_INVALID_PLAN:
+                return "Something's wrong with the plan file";
+            case ERR_ALL_IN_PROGRESS:
+                return "All tasks have dependencies in progress";
+            default:
+                return "Unknown error";
+        }
+    }
+
 }

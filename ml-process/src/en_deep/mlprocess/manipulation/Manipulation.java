@@ -47,9 +47,6 @@ public abstract class Manipulation extends Task {
     protected final Vector<DataSourceDescription> input;
     /** All the output data sources descriptions */
     protected final Vector<DataSourceDescription> output;
-
-    /** The unique ID of the {@link Task} (mainly for {@link TaskException}s) */
-    protected String id;
     
     /* METHODS */
 
@@ -66,8 +63,8 @@ public abstract class Manipulation extends Task {
     protected Manipulation(String id, String params,
             Vector<DataSourceDescription> input, Vector<DataSourceDescription> output){
 
+        super(id, params);
         this.input = input;
         this.output = output;
-        this.id = id;
     }
 }

@@ -27,13 +27,10 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.DataSourceDescription;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.util.Vector;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A general task to be computed or performed ~ specialized into {@link computation.Computation},
@@ -69,9 +66,25 @@ public abstract class Task implements Serializable {
 
     /* DATA */
 
+    /** The unique ID of the {@link Task} (for {@link TaskException}s and {@link TaskStatus} progress update) */
+    protected String id;
+
+    /** The class parameters for this {@link Task} */
+    protected String params;
 
 
     /* METHODS */
+
+    /**
+     * Constructor to be used with derived classes only, here just setting the
+     * Task ID and class parameters.
+     * @param id the ID of the new task
+     * @param params the class execution parameters
+     */
+    protected Task(String id, String params){
+        this.id = id;
+        this.params = params;
+    }
 
     /**
      * Performs the given task.
@@ -123,5 +136,14 @@ public abstract class Task implements Serializable {
         }
 
         return res;
+    }
+
+
+    /**
+     * Returns the ID of this {@link Task}
+     * @return the Task ID
+     */
+    public String getId(){
+        return this.id;
     }
 }

@@ -223,4 +223,15 @@ public abstract class TaskDescription implements Serializable {
         return this.type;
     }
 
+    /**
+     * Sets new task status, updating all the statuses of the dependent tasks.
+     * @param taskStatus the new task status
+     */
+    void setStatus(TaskStatus status) {
+        this.status = status;
+        switch (status){
+            // TODO recursive task update status
+        }
+    }
+
 }

@@ -39,4 +39,19 @@ import en_deep.mlprocess.*;
  */
 public abstract class Computation extends Task {
 
+    /* METHODS */
+    
+    /**
+     * A constructor to be used with derived classes, just setting the input and output
+     * data descriptions. This is the form of the constructor that all {@link Computation}
+     * derived classes should have.
+     *
+     * @param id the id of this {@link Task}
+     * @param params the class parameters
+     */
+    protected Computation(String id, String params){
+        super(id, params);
+
+        // TODO add input and output to Computation constructor
+    }
 }

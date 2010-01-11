@@ -29,6 +29,7 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.Task.TaskStatus;
 import en_deep.mlprocess.exception.DataException;
+import en_deep.mlprocess.exception.PlanException;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -91,7 +92,7 @@ public class Plan {
      *
      * @return the only instance of {@link Plan}
      */
-    public Plan getInstance(){
+    public static Plan getInstance(){
 
         if (Plan.instance == null){
             Plan.instance = new Plan();
@@ -107,14 +108,14 @@ public class Plan {
      * to avoid concurrent access from within several instances. If the to-do file does
      * not exist or is empty, creates it and fills it with a planFile.
      * </p><p>
-     * Returns null in case of an error or nothing else to do. All errors are logged with
-     * the highest importance setting.
+     * Returns null in case of nothing else to do. If an error occurs, it is logged with
+     * the highest importance setting and an exception is thrown.
      * <p>
      *
-     * @return the next pending task to be done, or null if there are no tasks to be done (or an
-     *         error occurred)
+     * @return the next pending task to be done, or null if there are no tasks to be done
+     * @throws PlanException if an exception occurs when working with the scenario or plan file
      */
-    public synchronized Task getNextPendingTask() {
+    public synchronized Task getNextPendingTask() throws PlanException {
 
         FileLock lock = null;
         Task nextPending = null;
@@ -132,26 +133,26 @@ public class Plan {
         }
         catch(IOException ex){
             Logger.getInstance().message("I/O error - " + ex.getMessage(), Logger.V_IMPORTANT);
-            return null;
+            throw new PlanException(PlanException.ERR_IO_ERROR);
         }
         catch(SAXException ex){
             Logger.getInstance().message("XML error - " + ex.getMessage(), Logger.V_IMPORTANT);
-            return null;
+            throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
         catch(DataException ex){
             Logger.getInstance().message("Data error - " + ex.getMessage(), Logger.V_IMPORTANT);
-            return null;
+            throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
         catch(ClassNotFoundException ex){
             Logger.getInstance().message("Incorrect plan file - " + ex.getMessage(), Logger.V_IMPORTANT);
-            return null;
+            throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
         catch(TaskException ex){
             Logger.getInstance().message("Task error - " + ex.getMessage(), Logger.V_IMPORTANT);
-            return null;
+            throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
 
-        // always releas the lock on the to-do file
+        // always release the lock on the to-do file
         finally {
             if (lock != null && lock.isValid()){
                 try {
@@ -159,7 +160,7 @@ public class Plan {
                 }
                 catch(IOException ex){
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
-                    return null;
+                    throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
             }
         }
@@ -207,7 +208,7 @@ public class Plan {
 
     /**
      * Reads the to-do file structure and retrieves the next pending {@link Task}, updating its
-     * progress status.
+     * progress status in the plan file.
      *
      * @param planFileIO the to-do file, locked and opened for writing
      * @return the next pending task from the .todo file
@@ -217,15 +218,22 @@ public class Plan {
         Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
         TaskDescription pendingDesc = null;
 
-        for (TaskDescription task : plan){ // we are operating in the topological order
+        // obtaining the task to be done: we are operating in the topological order
+        // TODO add PlanException.ERR_ALL_IN_PROGRESS
+        for (TaskDescription task : plan){ 
             if (task.getStatus() == TaskStatus.PENDING){
                 pendingDesc = task;
                 break;
             }
         }
-        if (pendingDesc == null){ // there are no pending
+        // there are no pending tasks - nothing to be done -> return
+        if (pendingDesc == null){ 
              return null;
         }
+        // mark the task as "in progress"
+        pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
+        // update the plan file
+        this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
 
         return Task.createTask(pendingDesc);
     }
@@ -346,4 +354,80 @@ public class Plan {
 
         return plan;
     }
+
+    /**
+     * Updates the status of this task (all the dependent tasks, accordingly).
+     * @param id the id of the updated task
+     * @param status the new task status
+     */
+    public synchronized void updateTaskStatus(String id, TaskStatus status) throws PlanException {
+
+        FileLock lock = null;
+
+        try {
+            // lock the plan file
+            RandomAccessFile planFileIO = new RandomAccessFile(this.planFile, "rw");
+            lock = planFileIO.getChannel().lock();
+
+            // obtain the plan
+            Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
+
+            // update the statuses
+            this.updateTaskStatus(plan, id, status);
+            
+            // write the plan back
+            this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
+        }
+        catch (ClassNotFoundException ex){
+            Logger.getInstance().message("Plan file error - " + ex.getMessage(), Logger.V_IMPORTANT);
+            throw new PlanException(PlanException.ERR_INVALID_PLAN);
+        }
+        catch (IOException ex){
+            Logger.getInstance().message("I/O error - " + ex.getMessage(), Logger.V_IMPORTANT);
+            throw new PlanException(PlanException.ERR_IO_ERROR);
+        }
+        finally {
+            // release lock
+            if (lock != null && lock.isValid()){
+                try {
+                    lock.release();
+                }
+                catch(IOException ex){
+                    Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                    throw new PlanException(PlanException.ERR_IO_ERROR);
+                }
+            }
+        }
+
+    }
+
+    /**
+     * This finds the given task and updates its status and the statuses of all depending tasks. Throws an exception
+     * if the Task cannot be found in the plan.
+     *
+     * @param plan the process plan
+     * @param id the id of the task to be updated
+     * @param taskStatus the new task status
+     * @throws PlanException if the task of the given id cannot be found
+     */
+    private void updateTaskStatus(Vector<TaskDescription> plan, String id, TaskStatus taskStatus) throws PlanException {
+        
+        TaskDescription updatedTask = null;
+
+        // find the task
+        for (TaskDescription td : plan){
+
+            if (td.getId().equals(id)){
+                updatedTask = td;
+                break;
+            }
+        }
+        if (updatedTask == null){
+            throw new PlanException(PlanException.ERR_INVALID_PLAN);
+        }
+
+        // update the task
+        updatedTask.setStatus(taskStatus);
+    }
+
 }

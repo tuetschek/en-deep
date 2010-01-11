@@ -27,6 +27,13 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.Task.TaskStatus;
+import en_deep.mlprocess.exception.PlanException;
+import en_deep.mlprocess.exception.TaskException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+
 /**
  * One of the parallel threads, which keeps obtaining tasks from the process plan and
  * executing them.
@@ -37,9 +44,68 @@ package en_deep.mlprocess;
  */
 public class Worker implements Runnable {
 
+    /* DATA */
+    
+    /** The task currently in progress */
+    private Task currentTask;
+    
+    /** {@link Worker} thread identification string */
+    private String id;
+
+
+    /* METHODS */
+
+    /**
+     * Creating a new {@link Worker} - just set the thread identification.
+     * @param number the number of the worker on the current machine
+     */
+    public Worker(int number){
+
+        try {
+            this.id = number + "@" + InetAddress.getLocalHost().getHostName();
+        }
+        catch (UnknownHostException ex) {
+            this.id = number + "@unknown";
+        }
+    }
+
+
+    /**
+     * The main {@link Worker} method - tries to get next pending tasks as long as there is something
+     * to be done (and no critical error occurs), processing them and updating their status in
+     * the {@link Plan}.
+     */
     public void run() {
-        // TODO
-        throw new UnsupportedOperationException("Not supported yet.");
+
+        Logger.getInstance().message("Worker thread " + this.id + "started.", Logger.V_INFO);
+
+        try {
+            // TODO add PlanException.ERR_ALL_IN_PROGRESS
+            while ((this.currentTask = Plan.getInstance().getNextPendingTask()) != null){
+
+                Logger.getInstance().message("Worker thread " + this.id + "working on task " + this.currentTask.getId(),
+                        Logger.V_INFO);
+
+                try {
+                    this.currentTask.perform();
+                }
+                catch(TaskException ex){
+                    Logger.getInstance().message(ex.getErrorMessage(), Logger.V_IMPORTANT);
+                    Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.FAILED);
+                    continue;
+                }
+
+                Logger.getInstance().message("task " + this.currentTask.getId() + " finished.", Logger.V_INFO);
+                Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.DONE);
+            }
+        }
+        catch(PlanException ex){
+            // plan file related errors are critical - they result in Worker stopping
+            Logger.getInstance().message("Plan access in worker thread #" + this.id + ":" + ex.getErrorMessage(),
+                    Logger.V_IMPORTANT);
+        }
+
+        Logger.getInstance().message("Worker thread #" + this.id + "finished - nothing else to do.", Logger.V_INFO);
     }
 
 }
