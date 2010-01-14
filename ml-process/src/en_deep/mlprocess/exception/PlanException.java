@@ -41,8 +41,6 @@ public class PlanException extends GeneralException {
     public static final int ERR_IO_ERROR = 2;
     /** Exception code: Something's wrong with the plan file */
     public static final int ERR_INVALID_PLAN = 3;
-    /** Exception code: All tasks have dependencies in progress */
-    public static final int ERR_ALL_IN_PROGRESS = 4;
 
     /* METHODS */
 
@@ -56,7 +54,7 @@ public class PlanException extends GeneralException {
 
 
     @Override
-    public String getErrorMessage() {
+    public String getMessage() {
         switch(this.code){
             case ERR_IO_ERROR:
                 return "Cannot access the scenario or plan file";
@@ -64,8 +62,6 @@ public class PlanException extends GeneralException {
                 return "Something's wrong in the scenario XML file";
             case ERR_INVALID_PLAN:
                 return "Something's wrong with the plan file";
-            case ERR_ALL_IN_PROGRESS:
-                return "All tasks have dependencies in progress";
             default:
                 return "Unknown error";
         }

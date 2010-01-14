@@ -28,61 +28,35 @@
 package en_deep.mlprocess.exception;
 
 /**
- * The exception class for all run-time task errors.
+ * An exception that is thrown if there are scheduling problems and we need to wait for
+ * some tasks to complete.
  * @author Ondrej Dusek
  */
-public class TaskException extends GeneralException {
+public class SchedulingException extends GeneralException {
 
     /* CONSTANTS */
 
-    /** Error message: "Wrong number of outputs." */
-    public static final int ERR_WRONG_NUM_OUTPUTS = 1;
-    /** Error message: "Wrong number of inputs." */
-    public static final int ERR_WRONG_NUM_INPUTS = 2;
-    /** Error message: "Task class not found." */
-    public static final int ERR_TASK_CLASS_NOT_FOUND = 3;
-    /** Error message: "The Task class does not conform to specifications." */
-    public static final int ERR_TASK_CLASS_INCORRECT = 4;
-
-    /* DATA */
-
-    /** Id of the task that triggered the exception */
-    String taskId;
+    /** Exception code: All tasks have dependencies in progress */
+    public static final int ERR_ALL_IN_PROGRESS = 1;
 
     /* METHODS */
 
     /**
-     * Creates a new {@link Task} exception with the given code, according
-     * to the in-class constants.
-     *
-     * @param taskId  the id of the {@link Task} that triggered the exception
-     * @param code the exception code
+     * Creates a new {@link SchedulingException}, given the exception code.
+     * @param code
      */
-    public TaskException(int code, String taskId){
+    public SchedulingException(int code){
         super(code);
-        this.taskId = taskId;
     }
 
-    /**
-     * Returns the error message according to the error code.
-     * @return the appropriate error message
-     */
+
     @Override
     public String getMessage() {
-
         switch(this.code){
-            case ERR_OK:
-                return this.taskId + ": No error.";
-            case ERR_WRONG_NUM_OUTPUTS:
-                return this.taskId + ": Wrong number of outputs.";
-            case ERR_WRONG_NUM_INPUTS:
-                return this.taskId + ": Wrong number of inputs.";
-            case ERR_TASK_CLASS_NOT_FOUND:
-                return this.taskId + ": Task class not found.";
-            case ERR_TASK_CLASS_INCORRECT:
-                return this.taskId + ": The Task class does not conform to specifications.";
+            case ERR_ALL_IN_PROGRESS:
+                return "All tasks have dependencies in progress";
             default:
-                return "Unknown error.";
+                return "Unknown error";
         }
     }
 

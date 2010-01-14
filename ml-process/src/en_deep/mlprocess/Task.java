@@ -100,6 +100,7 @@ public abstract class Task implements Serializable {
      *
      * @param desc the description of the class, containing all the necessary parameters
      * @return the {@link Task} object that may be processed by the {@link Worker}s
+     * @throws TaskException if the task processing class was not found or has not the right parameters
      */
     static Task createTask(TaskDescription desc) throws TaskException {
 

@@ -29,6 +29,7 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.Task.TaskStatus;
 import en_deep.mlprocess.exception.PlanException;
+import en_deep.mlprocess.exception.SchedulingException;
 import en_deep.mlprocess.exception.TaskException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -43,6 +44,15 @@ import java.net.UnknownHostException;
  * @author Ondrej Dusek
  */
 public class Worker implements Runnable {
+
+    /* CONSTANTS */
+
+    /** Base time to suspend the {@link Worker} for when there are no pending {@link Task}s */
+    private static final int SUSPEND_TIME = 300000;
+
+    /** Random time that is added to base suspend time */
+    private static final int SUSPEND_RANDOM = 10000;
+
 
     /* DATA */
     
@@ -80,8 +90,7 @@ public class Worker implements Runnable {
         Logger.getInstance().message("Worker thread " + this.id + "started.", Logger.V_INFO);
 
         try {
-            // TODO add PlanException.ERR_ALL_IN_PROGRESS
-            while ((this.currentTask = Plan.getInstance().getNextPendingTask()) != null){
+            while (this.waitForNextTask()){
 
                 Logger.getInstance().message("Worker thread " + this.id + "working on task " + this.currentTask.getId(),
                         Logger.V_INFO);
@@ -90,7 +99,7 @@ public class Worker implements Runnable {
                     this.currentTask.perform();
                 }
                 catch(TaskException ex){
-                    Logger.getInstance().message(ex.getErrorMessage(), Logger.V_IMPORTANT);
+                    Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
                     Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.FAILED);
                     continue;
                 }
@@ -101,11 +110,39 @@ public class Worker implements Runnable {
         }
         catch(PlanException ex){
             // plan file related errors are critical - they result in Worker stopping
-            Logger.getInstance().message("Plan access in worker thread #" + this.id + ":" + ex.getErrorMessage(),
+            Logger.getInstance().message("Plan access in worker thread #" + this.id + ":" + ex.getMessage(),
                     Logger.V_IMPORTANT);
         }
 
         Logger.getInstance().message("Worker thread #" + this.id + "finished - nothing else to do.", Logger.V_INFO);
+    }
+
+    /**
+     * Tries to get the next pending task from the {@link Plan}, waits if there are dependent
+     * {@link Task}s waiting to be done and all {@link Workers} are busy.
+     *
+     * If {@link Plan.getNextPendingTask()} ends with a {@link SchedulingException}, tries to wait
+     * and repeat the call. Stores the next task to be processed in the {@link currentTask} member.
+     * @return true if there is a task to process
+     * @throws PlanException if there's something wrong with the plan
+     */
+    private boolean waitForNextTask() throws PlanException {
+
+        try {
+            // try to get the next pending task to process
+            this.currentTask = Plan.getInstance().getNextPendingTask();
+        }
+        catch(SchedulingException ex){
+            // wait, if there's nothing to be processed
+            try {
+                Thread.sleep(SUSPEND_TIME + (int) (Math.random() * SUSPEND_RANDOM));
+            }
+            catch (InterruptedException ex1) {
+            }
+            // and try again after a while
+            return waitForNextTask();
+        }
+        return currentTask != null;
     }
 
 }

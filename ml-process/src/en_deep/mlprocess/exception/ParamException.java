@@ -77,7 +77,7 @@ public class ParamException extends GeneralException {
 
 
     @Override
-    public String getErrorMessage() {
+    public String getMessage() {
 
         switch(this.code){
             case ERR_OK:

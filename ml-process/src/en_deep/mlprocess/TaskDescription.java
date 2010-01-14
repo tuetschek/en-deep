@@ -224,13 +224,35 @@ public abstract class TaskDescription implements Serializable {
     }
 
     /**
-     * Sets new task status, updating all the statuses of the dependent tasks.
+     * Sets new task status, updating all the statuses of the dependent tasks (if the
+     * new status is {@link TaskStatus.DONE}.
      * @param taskStatus the new task status
      */
     void setStatus(TaskStatus status) {
+
         this.status = status;
-        switch (status){
-            // TODO recursive task update status
+        
+        // if we're done, update the depending tasks (if there are no other tasks
+        // they've been waiting for, set their status to pending)
+        if (status == TaskStatus.DONE){
+            for (TaskDescription dependentTask : this.dependOnMe){
+
+                if (dependentTask.status == TaskStatus.WAITING){
+
+                    boolean otherPrerequisityNotDone = false;
+
+                    for (TaskDescription prerequisity : dependentTask.iDependOn){
+                        if (prerequisity.status != TaskStatus.DONE){
+                            otherPrerequisityNotDone = true;
+                            break;
+                        }
+                    }
+
+                    if (!otherPrerequisityNotDone){
+                        dependentTask.status = TaskStatus.PENDING;
+                    }
+                }
+            }
         }
     }
 

@@ -221,7 +221,7 @@ class ScenarioParser implements ContentHandler {
                 this.current = new TaskSection(TaskType.valueOf(localName.toUpperCase()), atts.getValue("id"));
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
             // checks for unique id and saves the current one
             if (this.idOccurrences.contains(this.current.getId())){
@@ -239,7 +239,7 @@ class ScenarioParser implements ContentHandler {
                 this.current.openDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
             return;
         }
@@ -251,7 +251,7 @@ class ScenarioParser implements ContentHandler {
                         localName.equals("file") ? atts.getValue("name") : atts.getValue("id"));
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
         }
         // adds an algorithm description
@@ -261,7 +261,7 @@ class ScenarioParser implements ContentHandler {
                         atts.getValue("class"), atts.getValue("parameters"), atts.getValue("parallelizable").equals("true"));
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
         }
         else {
@@ -301,7 +301,7 @@ class ScenarioParser implements ContentHandler {
                 this.tasks.addAll(newTasks);
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
             this.current = null;
         }
@@ -313,7 +313,7 @@ class ScenarioParser implements ContentHandler {
                 this.current.closeDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
             }
             catch (DataException ex) {
-                throw new SAXException(ex.getErrorMessage() + " at " + this.getLocationInfo());
+                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
             }
         }
         else if (!localName.equals("dataSet") && !localName.equals("file") && !localName.equals("feature")

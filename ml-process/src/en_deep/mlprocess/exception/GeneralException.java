@@ -68,6 +68,7 @@ public abstract class GeneralException extends Exception {
      * Returns the error message of this exception.
      * @return the error message
      */
-    public abstract String getErrorMessage();
+    @Override
+    public abstract String getMessage();
 
 }

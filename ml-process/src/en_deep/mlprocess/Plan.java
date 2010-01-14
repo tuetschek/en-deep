@@ -30,6 +30,7 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.Task.TaskStatus;
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.PlanException;
+import en_deep.mlprocess.exception.SchedulingException;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -114,8 +115,9 @@ public class Plan {
      *
      * @return the next pending task to be done, or null if there are no tasks to be done
      * @throws PlanException if an exception occurs when working with the scenario or plan file
+     * @throws SchedulingException if there are no tasks to process and we have to wait for them
      */
-    public synchronized Task getNextPendingTask() throws PlanException {
+    public synchronized Task getNextPendingTask() throws PlanException, SchedulingException {
 
         FileLock lock = null;
         Task nextPending = null;
@@ -212,23 +214,39 @@ public class Plan {
      *
      * @param planFileIO the to-do file, locked and opened for writing
      * @return the next pending task from the .todo file
+     * @throws IOException if there are I/O problems with the plan file access
+     * @throws ClassNotFoundException if there are problems with the plan file contents
+     * @throws TaskException if there are problems with the task classes' descriptions
+     * @throws SchedulingException if there are tasks waiting or in progress, but no pending ones
      */
-    private Task getNextPendingTask(RandomAccessFile planFileIO) throws IOException, ClassNotFoundException, TaskException {
+    private Task getNextPendingTask(RandomAccessFile planFileIO) 
+            throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
         Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
         TaskDescription pendingDesc = null;
+        boolean inProgress = false, waiting = false; // are there waiting tasks & tasks in progress ?
 
         // obtaining the task to be done: we are operating in the topological order
-        // TODO add PlanException.ERR_ALL_IN_PROGRESS
-        for (TaskDescription task : plan){ 
-            if (task.getStatus() == TaskStatus.PENDING){
+        for (TaskDescription task : plan){
+            if (task.getStatus() == TaskStatus.IN_PROGRESS){
+                waiting = true;
+            }
+            else if (task.getStatus() == TaskStatus.IN_PROGRESS){
+                inProgress = true;
+            }
+            else if (task.getStatus() == TaskStatus.PENDING){
                 pendingDesc = task;
                 break;
             }
         }
-        // there are no pending tasks - nothing to be done -> return
-        if (pendingDesc == null){ 
-             return null;
+        
+        if (pendingDesc == null){
+            // some tasks are in progress and some are waiting -> we have wait
+            if (inProgress && waiting){
+                throw new SchedulingException(SchedulingException.ERR_ALL_IN_PROGRESS);
+            }
+            // there are no pending tasks & no in progress or waiting - nothing to be done -> return
+            return null;
         }
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);

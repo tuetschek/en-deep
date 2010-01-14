@@ -237,7 +237,6 @@ class TaskSection {
 
         this.checkDataSets();
 
-        // TODO vytvoreni dependenci rovnou ?? asi ne
         switch (this.type){
             case COMPUTATION:
 
@@ -296,7 +295,6 @@ class TaskSection {
         }
         return tasks;
 
-        // TODO jak závislosti ?
     }
 
 
