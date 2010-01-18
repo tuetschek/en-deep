@@ -63,8 +63,8 @@ public class DataException extends GeneralException {
     public static final int ERR_INVALID_ALGORITHM_TYPE = 13;
     /** Exception code: "A data source is marked as being produced by two or more Tasks" */
     public static final int ERR_DUPLICATE_OUTPUT = 14;
-    /** Exception code: "A used data set is never produced by a Task" - TODO add parameter to certain types of DataException ? */
-    public static final int ERR_DATA_SET_NEVER_PRODUCED = 15;
+    /** Exception code: "A used data set is never produced by a Task" */
+    public static final int ERR_DATA_SET_NEVER_PRODUCED = 15; //TODO add parameter to certain types of DataException ?
     /** Exception code: "Input and output data sets overlap" */
     public static final int ERR_OVERLAPPING_INPUT_OUTPUT = 16;
     /** Exception code: "Tasks that operate on files cannot be parallelized" */

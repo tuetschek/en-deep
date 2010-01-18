@@ -28,6 +28,7 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.*;
+import java.util.Vector;
 
 /**
  * A computation (i.e\. learning &amp; classification) {@link en_deep.mlprocess.Task}.
@@ -39,6 +40,20 @@ import en_deep.mlprocess.*;
  */
 public abstract class Computation extends Task {
 
+    /* DATA */
+
+    /** The description of the training data set (or file to load the input from) */
+    private DataSourceDescription train;
+    /** The description of the evaluation data set (may be null) */
+    private DataSourceDescription eval;
+    /** The description of the testing data set (or file to save the output to) */
+    private DataSourceDescription test;
+
+    /** List of all input features */
+    private Vector<FeatureDescription> input;
+    /** List of all output features */
+    private Vector<FeatureDescription> output;
+
     /* METHODS */
     
     /**
@@ -49,9 +64,16 @@ public abstract class Computation extends Task {
      * @param id the id of this {@link Task}
      * @param params the class parameters
      */
-    protected Computation(String id, String params){
+    protected Computation(String id, String params,
+            DataSourceDescription train, DataSourceDescription eval, DataSourceDescription test,
+            Vector<FeatureDescription> input, Vector<FeatureDescription> output){
+
         super(id, params);
 
-        // TODO add input and output to Computation constructor
+        this.input = input;
+        this.output = output;
+        this.train = train;
+        this.eval = eval;
+        this.test = test;
     }
 }

@@ -28,7 +28,9 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.DataSourceDescription;
+import en_deep.mlprocess.exception.TaskException;
 import java.util.Vector;
+
 
 /**
  * This class merges several data sets into one.
@@ -55,10 +57,23 @@ public class DataMerger extends Manipulation {
     }
 
 
+    /**
+     * Tries to merge the input sources to the output sources.
+     * Checks if the number of inputs is divisible by the number of outputs, then tries to read all the
+     * inputs and write the outputs.
+     * @throws TaskException
+     */
     @Override
-    public void perform() {
-        // TODO WRITE DataMerger code
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void perform() throws TaskException {
+        // TODO write DataMerger code
+        // use weka.core.Instances to read ARFF files, create support for more - using the DataSet class (internally: Instances,
+        // with I/O support for csv ?) + I/O support for my input data format
+        //
+        // refactoring: Somehow distinguish b/t FileDescription & DataSetDescription x FeatureDescription
+        // - find out where it's used (stored) and how could this be done -- totally split / create inter-class ?
+        // - the only problem is probably the TaskSection class (possibly dependency descriptions?)
+        //
+        // or: create method DataSourceDescription.createDataSet() which throws an exception if called on feats (not so nice)?
     }
 
 }

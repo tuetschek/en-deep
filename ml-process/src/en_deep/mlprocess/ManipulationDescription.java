@@ -39,15 +39,15 @@ public class ManipulationDescription extends TaskDescription {
     /* DATA */
     
     /** All the input data sets or files */
-    Vector<DataSourceDescription> input;
+    private Vector<DataSourceDescription> input;
     
     /** All the output data sets or files */
-    Vector<DataSourceDescription> output;
+    private Vector<DataSourceDescription> output;
 
     /** All the features that are needed to perform this manipulation task */
-    Vector<FeatureDescription> needed;
+    private Vector<FeatureDescription> needed;
     /** All the features that are created in this manipulation task (if the input and output data sets are the same) */
-    Vector<FeatureDescription> created;
+    private Vector<FeatureDescription> created;
 
 
     /* METHODS */

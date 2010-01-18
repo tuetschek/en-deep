@@ -28,6 +28,7 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.ParamException;
 import gnu.getopt.*;
+import java.io.File;
 
 /**
  * The main executable class, responsible for the whole process.
@@ -79,16 +80,22 @@ public class Process {
     private static final String OPTL_INSTANCES = "instances";
     /** The --verbosity option long name */
     private static final String OPTL_VERBOSITY = "verbosity";
+    /** The --workdir option long name */
+    private static final String OPTL_WORK_DIR = "workdir";
+
     /** The --threads option short name */
     private static final char OPTS_THREADS = 't';
     /** The --threads option short name */
     private static final char OPTS_INSTANCES = 'i';
     /** The --verbosity option short name */
     private static final char OPTS_VERBOSITY = 'v';
+    /** The --workdir option short name */
+    private static final char OPTS_WORK_DIR = 'd';
+
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process";
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "i:t:v:";
+    private static final String OPTSTRING = "i:t:v:d:";
 
     /* DATA */
     /** The only instance of Process */
@@ -120,6 +127,7 @@ public class Process {
         int threads = 1; // default values to parameters
         int instances = 1;
         int verbosity = Logger.V_NOTHING;
+        String workDir = null;
 
         try {
             // parsing the options
@@ -143,7 +151,9 @@ public class Process {
                     case OPTS_VERBOSITY:
                         verbosity = Process.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg());
                         break;
-
+                    case OPTS_WORK_DIR:
+                        workDir = getter.getOptarg();
+                        break;
                     case '?':
                         throw new ParamException(ParamException.ERR_INVPAR, "" + getter.getOptopt());
                 }
@@ -156,6 +166,18 @@ public class Process {
             else if (getter.getOptind() < args.length - 1) {
                 throw new ParamException(ParamException.ERR_TOO_MANY);
             }
+
+            // check the validity of the input file and working directory (if applicable)
+            if (workDir == null){
+                workDir = args[args.length - 1];
+                workDir = workDir.substring(0, workDir.lastIndexOf(System.getProperty("file.separator")));
+            }
+            if (!(new File(workDir)).isDirectory()){ // TODO possibly check working directory and input file access rights ?
+                throw new ParamException(ParamException.ERR_DIR_NOT_FOUND);
+            }
+            if (!(new File(args[args.length -1])).exists()){
+                throw new ParamException(ParamException.ERR_FILE_NOT_FOUND);
+            }
         }
         catch (ParamException e) {
             Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
@@ -167,13 +189,16 @@ public class Process {
 
         // if the parameters are correct and everything is set up, create the actual process
         // and launch it
-        Process p = new Process(args[args.length - 1], threads, instances);
+        Process p = new Process(args[args.length - 1], threads, instances, workDir);
         p.run();
     }
 
     /**
      * Converts a numeric value of the argument parameter to its integer representation,
      * throws an exception upon error.
+     *
+     * @param argName  the argument name (just for exceptions)
+     * @param parValue  the value of the parameter
      * @return the numeric value of the argument parameter
      * @throws ParamException if the value is not numeric
      */
@@ -189,14 +214,16 @@ public class Process {
     }
 
     /**
-     * The creation of the main process. Just initializes the values, all the actual work
-     * is done in {@link run()}.
+     * The creation of the main process. 
+     * 
+     * Just initializes the values, all the actual work is done in {@link run()}.
      *
      * @param inputFile the input process XML scenario file
      * @param threads the number of threads this instance should launch
      * @param instances the number of instances that are to be run in total
+     * @param workDir the working directory (if different from where the input file is)
      */
-    private Process(String inputFile, int threads, int instances) {
+    private Process(String inputFile, int threads, int instances, String workDir) {
 
         this.inputFile = inputFile;
         this.threads = threads;

@@ -92,4 +92,28 @@ public class EvaluationDescription extends TaskDescription {
         return ods;
     }
 
+    /**
+     * Returns the description of the used data set.
+     * @return the description of the task data set
+     */
+    public DataSetDescription getData(){
+        return this.data;
+    }
+
+    /**
+     * Returns the list of all used features.
+     * @return list of all input features
+     */
+    public Vector<FeatureDescription> getInput(){
+        return this.input;
+    }
+
+    /**
+     * Returns the description of the output file for this task.
+     * @return the description of the output file
+     */
+    public FileDescription getOutput(){
+        return this.output;
+    }
+
 }

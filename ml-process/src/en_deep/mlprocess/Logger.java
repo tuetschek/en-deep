@@ -52,8 +52,8 @@ public class Logger {
 
     /* DATA */
 
-    /** The verbosity setting, set to 0 at startup. */
-    private int verbosity = 0;
+    /** The verbosity setting, set to 1 at startup (for the startup errors to be seen). */
+    private int verbosity = 1;
 
     /** The only {@link Logger} instance */
     private static final Logger instance = new Logger();

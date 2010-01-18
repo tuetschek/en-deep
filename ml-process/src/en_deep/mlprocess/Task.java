@@ -51,7 +51,7 @@ public abstract class Task implements Serializable {
      * The possible progress statuses of a {@link Task}.
      * <ul>
      * <li>WAITING = waiting for another {@link Task}(s) to finish</li>
-     * <li>PENDING = ready to be processed</li>
+     * <li>PeNDING = ready to be processed</li>
      * <li>IN_PROGRESS = currently being processed</li>
      * <li>DONE = successfully finished</li>
      * <li>FAILED = finished with an error, this stops the processing of dependant tasks</li>
@@ -120,7 +120,13 @@ public abstract class Task implements Serializable {
         try {
             switch (desc.getType()){
                 case COMPUTATION:
-                    // TODO constructor creation for Computation tasks
+                    taskConstructor = taskClass.getConstructor(String.class, String.class,
+                            DataSourceDescription.class, DataSourceDescription.class, DataSourceDescription.class,
+                            Vector.class, Vector.class);
+                    res = (Task) taskConstructor.newInstance(desc.getId(), desc.getAlgorithm().parameters,
+                            ((ComputationDescription) desc).getTrain(), ((ComputationDescription) desc).getDevel(),
+                            ((ComputationDescription) desc).getEval(), ((ComputationDescription) desc).getInput(),
+                            ((ComputationDescription) desc).getOutput());
                     break;
                 case MANIPULATION:
                     taskConstructor = taskClass.getConstructor(String.class, String.class, Vector.class, Vector.class);
@@ -128,7 +134,11 @@ public abstract class Task implements Serializable {
                             ((ManipulationDescription) desc).getInput(), ((ManipulationDescription) desc).getOutput());
                     break;
                 case EVALUATION:
-                    // TODO constructor creation for Evaluation tasks
+                    taskConstructor = taskClass.getConstructor(String.class, String.class, DataSetDescription.class,
+                            Vector.class, FileDescription.class);
+                    res = (Task) taskConstructor.newInstance(desc.getId(), desc.getAlgorithm().parameters,
+                            ((EvaluationDescription) desc).getData(), ((EvaluationDescription) desc).getInput(),
+                            ((EvaluationDescription) desc).getOutput());
                     break;
             }
         }

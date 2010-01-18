@@ -27,7 +27,11 @@
 
 package en_deep.mlprocess.evaluation;
 
+import en_deep.mlprocess.DataSetDescription;
+import en_deep.mlprocess.FeatureDescription;
+import en_deep.mlprocess.FileDescription;
 import en_deep.mlprocess.Task;
+import java.util.Vector;
 
 /**
  * An evaluation {@link en_deep.mlprocess.Task}.
@@ -39,6 +43,13 @@ import en_deep.mlprocess.Task;
  */
 public abstract class Evaluation extends Task {
 
+    /** The used data set description */
+    private DataSetDescription data;
+    /* List of all input features */
+    private Vector<FeatureDescription> input;
+    /** The output file */
+    private FileDescription output;
+
     /* METHODS */
 
     /**
@@ -49,9 +60,23 @@ public abstract class Evaluation extends Task {
      * @param id the id of this {@link Task}
      * @param params the class parameters
      */
-    protected Evaluation(String id, String params){
+    protected Evaluation(String id, String params,
+            DataSetDescription data, Vector<FeatureDescription> input, FileDescription output){
         super(id, params);
 
-        // TODO add input and output to Evaluation constructor
+        this.input = input;
+        this.output = output;
+        this.data = data;
+    }
+
+
+    /**
+     * Writes a textual output of the Evaluation into a file.
+     *
+     * @param append append or rewrite the file ?
+     * @param output the output to be written
+     */
+    private void writeOutputToFile(boolean append, String output){
+        //TODO write output to file code
     }
 }

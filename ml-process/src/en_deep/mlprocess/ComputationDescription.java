@@ -149,4 +149,43 @@ public class ComputationDescription extends TaskDescription {
         return ods;
     }
 
+    /**
+     * Returns the description of the training set or input file for this task.
+     * @return the training data description
+     */
+    public DataSourceDescription getTrain(){
+        return this.train;
+    }
+
+    /**
+     * Returns the description of the development set for this task (may be null)
+     * @return the development data description
+     */
+    public DataSourceDescription getDevel(){
+        return this.eval;
+    }
+
+    /**
+     * Returns the description of the evaluation set or output file for this task.
+     * @return the evaluation data description
+     */
+    public DataSourceDescription getEval(){
+        return this.eval;
+    }
+
+    /**
+     * Returns the list of all input features for this task.
+     * @return list of all input features
+     */
+    public Vector<FeatureDescription> getInput(){
+        return this.input;
+    }
+
+    /**
+     * Returns the list of all output features for this task.
+     * @return list of all output features
+     */
+    public Vector<FeatureDescription> getOutput(){
+        return this.output;
+    }
 }

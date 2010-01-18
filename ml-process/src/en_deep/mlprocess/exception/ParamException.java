@@ -45,6 +45,10 @@ public class ParamException extends GeneralException {
     public static final int ERR_MISSING = 4;
     /** Error code: too many arguments (argument name not needed) */
     public static final int ERR_TOO_MANY = 5;
+    /** Error code: The input file cannot be found. */
+    public static final int ERR_FILE_NOT_FOUND = 6;
+    /** Error code: The working directory cannot be found */
+    public static final int ERR_DIR_NOT_FOUND = 7;
 
     /* DATA */
 
@@ -92,6 +96,10 @@ public class ParamException extends GeneralException {
                 return "Missing command parameter:" + this.parName;
             case ERR_TOO_MANY:
                 return "Too many arugments.";
+            case ERR_FILE_NOT_FOUND:
+                return "The input file cannot be found.";
+            case ERR_DIR_NOT_FOUND:
+                return "The working directory cannot be found";
             default:
                 return "Unknown error.";
         }
