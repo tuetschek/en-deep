@@ -7,8 +7,12 @@ import java.util.Vector;
  */
 public class FileDescription extends DataSourceDescription {
 
+    /* DATA */
+
     /** The name of the input/output file */
-    String fileName;
+    public String fileName;
+
+    /* METHODS */
 
     public FileDescription(String fileName) {
         super(DataSourceDescription.DataSourceType.FILE);

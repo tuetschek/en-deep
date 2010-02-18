@@ -30,7 +30,11 @@ package en_deep.mlprocess.evaluation;
 import en_deep.mlprocess.DataSetDescription;
 import en_deep.mlprocess.FeatureDescription;
 import en_deep.mlprocess.FileDescription;
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 import java.util.Vector;
 
 /**
@@ -74,9 +78,40 @@ public abstract class Evaluation extends Task {
      * Writes a textual output of the Evaluation into a file.
      *
      * @param append append or rewrite the file ?
-     * @param output the output to be written
+     * @param text the output to be written
      */
-    private void writeOutputToFile(boolean append, String output){
-        //TODO write output to file code
+    private void writeOutputToFile(boolean append, String text){
+
+        FileLock lock = null;
+
+        try {
+            RandomAccessFile outputIO = new RandomAccessFile(this.output.fileName, "rw");
+            lock = outputIO.getChannel().lock();
+
+            if (append){
+                outputIO.seek(outputIO.length());
+            }
+            else {
+                outputIO.setLength(0);
+            }
+            outputIO.write(text.getBytes());
+        }
+        // something went wrong
+        catch(IOException ex){
+            Logger.getInstance().message("I/O error in output to file " + this.output.fileName
+                    + " - " + ex.getMessage(), Logger.V_IMPORTANT);
+        }
+        // always release the lock on the output file
+        finally {
+            if (lock != null && lock.isValid()){
+                try {
+                    lock.release();
+                }
+                catch(IOException ex){
+                    Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                }
+            }
+        }
+
     }
 }
