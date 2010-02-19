@@ -1,7 +1,8 @@
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.TaskSection.DataSourcePurpose;
 import en_deep.mlprocess.exception.DataException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -24,6 +25,13 @@ class ScenarioParser {
     private String fileName;
     /** The current line */
     private int line;
+    /** The open input file */
+    private RandomAccessFile input = null;
+    /** The size of the open input file */
+    private long fileSize = -1;
+    /** Some left read data to be parsed with the next section */
+    private StringBuffer readData;
+
 
 
     /* METHODS */
@@ -38,6 +46,7 @@ class ScenarioParser {
         this.fileName = fileName;
         this.tasks = new Vector<TaskDescription>();
         this.fileOccurrences = new Hashtable<String, Occurrences>();
+        this.readData = new StringBuffer();
     }
 
 
@@ -273,8 +282,71 @@ class ScenarioParser {
      * to spaces.
      * @return the next task description section
      */
-    private String getNextSection() {
-        // TODO write getNextSection
+    private String getNextSection() throws IOException {
+
+        // open the file, if it's not already open
+        if (this.input == null){
+            this.input = new RandomAccessFile(this.fileName, "r");
+            this.fileSize = this.input.length();
+        }
+
+        // TODO write getNextSection, using readClause !
     }
+
+    /**
+     * Reads one semicolon-separated clause line from the input file. Finds an unquoted semicolon and reads
+     * everything up to it, then makes a string out of it. Counts lines.
+     * @return the next line from the open file
+     */
+    private String readClause() throws IOException, DataException {
+
+        long pos1 = this.input.getFilePointer();
+        long curPos; // we need to prevent from reaching the end-of-file, for the
+                     // damn thing would freeze otherwise
+        long pos2;
+        int c = this.input.read();
+        int lastC = -1;
+        byte [] rawLine;
+        boolean quoted = false;
+
+        curPos = this.input.getFilePointer();
+        if (curPos == this.fileSize){ // EOF check
+            return null;
+        }
+
+        while(curPos < this.fileSize && (c != ';' || quoted)){
+
+            // line counting: ignore two subsequent windows new-line characters
+            if (c == '\n' && lastC == '\r'){
+                
+            }
+            // line counting: count all else
+            else if (c == '\n' || c == '\r'){
+                this.line++;
+            }
+            // heed the quote characters
+            else if (c == '"'){
+                quoted = !quoted;
+            }
+            c = this.input.read();
+            curPos++;
+            lastC = c;
+        }
+        pos2 = this.input.getFilePointer();
+
+        if (curPos == this.fileSize && quoted){
+            throw new DataException(DataException.ERR_UNEXPECTED_EOF, this.fileName, this.line);
+        }
+
+        // since we know if we're at the end of the clause, we don't need curPos anymore
+        rawLine = new byte [(int)(pos2 - pos1)];
+        this.input.seek(pos1);
+        this.input.read(rawLine);
+
+        return (new String(rawLine)).trim();
+    }
+
+
+
 
 }

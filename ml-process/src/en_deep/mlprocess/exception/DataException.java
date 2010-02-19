@@ -51,6 +51,8 @@ public class DataException extends GeneralException {
     public static final int ERR_INVALID_CHAR_IN_FILE_NAME = 7;
     /** Error code: "Invalid character in parameters description" */
     public static final int ERR_INVALID_CHAR_IN_PARAMETER = 8;
+    /** Error code: "Unexpected end of file" */
+    public static final int ERR_UNEXPECTED_EOF = 9;
 
     /* DATA */
 
@@ -104,6 +106,9 @@ public class DataException extends GeneralException {
                 break;
             case ERR_INVALID_CHAR_IN_PARAMETER:
                 errMsg = "Invalid character in parameters description";
+                break;
+            case ERR_UNEXPECTED_EOF:
+                errMsg = "Unexpected end of file";
                 break;
             default:
                 errMsg = "Unknown error";
