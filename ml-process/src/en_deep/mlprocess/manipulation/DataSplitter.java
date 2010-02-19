@@ -27,14 +27,15 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.DataSourceDescription;
+import en_deep.mlprocess.Task;
+import java.util.Hashtable;
 import java.util.Vector;
 
 /**
  * This class splits the data into equal pieces by lines.
  * @author Ondrej Dusek
  */
-public class DataSplitter extends Manipulation {
+public class DataSplitter extends Task {
 
     /* DATA */
 
@@ -46,14 +47,14 @@ public class DataSplitter extends Manipulation {
      * data sources should be divisible by the number of input data sources.
      *
      * @param id the task id
-     * @param params have no sense here
+     * @param parameters have no sense here
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public DataSplitter(String id, String params,
-            Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
+    public DataSplitter(String id, Hashtable<String, String> parameters,
+            Vector<String> input, Vector<String> output) {
         
-        super(id, params, input, output);
+        super(id, parameters, input, output);
     }
 
 

@@ -1,17 +1,9 @@
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.DataSourceDescription.DataSourceType;
-import en_deep.mlprocess.Task.TaskType;
 import en_deep.mlprocess.TaskSection.DataSourcePurpose;
-import en_deep.mlprocess.TaskSection.DataSourcesSection;
 import en_deep.mlprocess.exception.DataException;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Vector;
-import org.xml.sax.Attributes;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.Locator;
-import org.xml.sax.SAXException;
 
 /**
  * This creates the process plan from the input scenario XML file. It parses the XML file and
@@ -19,32 +11,19 @@ import org.xml.sax.SAXException;
  * that have the correct dependencies set. All the {@link Task}s corresponding to the {@link TaskSection}
  * items are marked as undone.
  */
-class ScenarioParser implements ContentHandler {
+class ScenarioParser {
 
     /* DATA */
 
     /** The ready process plan */
-    Vector<TaskDescription> tasks;
-    
-    /** Document {@link Locator} for procesing error messages */
-    Locator locator;
-    /** The name of the currently processed file */
-    String fileName;
-    /** The currently processed {@link TaskSection} element */
-    TaskSection current;
-    /** Is the root element opened? */
-    boolean open;
-    /** Has the root element been closed? */
-    boolean closed;
+    private Vector<TaskDescription> tasks;
     /** All occurrences of files */
-    Hashtable<String,Occurrences> fileOccurrences;
-    /** All occurrences of data sets */
-    Hashtable<String,Occurrences> dataSetOccurrences;
-    /** All occurrences of features */
-    Hashtable<String,Occurrences> featureOccurrences;
-
-    /** All ID occurrences */
-    HashSet<String> idOccurrences;
+    private Hashtable<String,Occurrences> fileOccurrences;
+    
+    /** The name of the processed file */
+    private String fileName;
+    /** The current line */
+    private int line;
 
 
     /* METHODS */
@@ -59,292 +38,243 @@ class ScenarioParser implements ContentHandler {
         this.fileName = fileName;
         this.tasks = new Vector<TaskDescription>();
         this.fileOccurrences = new Hashtable<String, Occurrences>();
-        this.featureOccurrences = new Hashtable<String, Occurrences>();
-        this.dataSetOccurrences = new Hashtable<String, Occurrences>();
-        this.idOccurrences = new HashSet<String>();
     }
 
-    /**
-     * Using the {@link locator} item, creates a String representation of the current
-     * file processing location for displaying error messages.
-     * The format is: file: "XX.xml", line: X, column: X.
-     *
-     * @return a String representation of the current file location
-     */
-    private String getLocationInfo() {
-        return "file: \"" + this.fileName + "\", line: " + this.locator.getLineNumber() + ", column: " + this.locator.getColumnNumber();
-    }
+
 
     /**
-     * Adds a data source to the current {@link TaskSection}.
+     * Performs the actual parsing of the input file. Reads all the Task descriptions and stores
+     * them for later retrieval. Marks all file occurrences, too.
      *
-     * @param type type of the data source to add
-     * @param id the data source identifier, i.e\. file name or feature / data set id
-     * @throws DataException if the data source is not added properly
+     * @throws DataException if there is a syntax error in the input file
      */
-    private void addDataSource(DataSourceType type, String id) throws DataException {
-        DataSourceDescription dsd = null;
-        switch (type) {
-            case DATA_SET:
-                dsd = new DataSetDescription(id);
-                break;
-            case FEATURE:
-                dsd = new FeatureDescription(id, null);
-                break;
-            case FILE:
-                dsd = new FileDescription(id);
-                break;
+    void parse() throws DataException {
+    
+        String taskSection;
+        
+        // get all task descriptions and sort them out
+        while ((taskSection = this.getNextSection()) != null){
+
+            TaskDescription task = null;
+            String taskName = null;
+            String taskAlgorithm = null;
+            Vector<String> taskInput = null;
+            Vector<String> taskOutput = null;
+            Hashtable<String, String> taskParameters = null;
+
+            // split into clauses: task name, input, output, algorithm, parameters, end.
+            String [] clauses = taskSection.split(";", 6);
+            for (int i = 0; i < clauses.length; ++i){
+                clauses[i] = clauses[i].trim();
+            }
+            // check for correct section ending
+            if (!clauses[clauses.length -1].equals("end")){
+                throw new DataException(DataException.ERR_END_EXPECTED, this.fileName, this.line);
+            }
+            // check for correct section beginning
+            if (!clauses[0].startsWith("task ")){
+                throw new DataException(DataException.ERR_TASK_EXPECTED, this.fileName, this.line);
+            }
+            taskName = clauses[0].split("\\s+", 2)[1]; // set the task name
+            
+            // handle all the section contents
+            for (int i = 1; i < clauses.length - 1; ++i){
+
+                String [] clause = clauses[i].split("\\s+", 2);
+
+                if (clause[0].equals("in:")){
+                    if (taskInput != null){
+                        throw new DataException(DataException.ERR_DUPLICATE_CLAUSE, this.fileName, this.line);
+                    }
+                    taskInput = this.getFileList(clause[1]);
+                }
+                else if (clause[0].equals("out:")){
+                    if (taskOutput != null){
+                        throw new DataException(DataException.ERR_DUPLICATE_CLAUSE, this.fileName, this.line);
+                    }
+                    taskOutput = this.getFileList(clause[1]);
+                }
+                else if (clause[0].equals("algorithm:")){
+                    if (taskAlgorithm != null){
+                        throw new DataException(DataException.ERR_DUPLICATE_CLAUSE, this.fileName, this.line);
+                    }
+                    taskAlgorithm = clause[1];
+                }
+                else if (clause[0].equals("params:")){
+                    if (taskParameters != null){
+                        throw new DataException(DataException.ERR_DUPLICATE_CLAUSE, this.fileName, this.line);
+                    }
+                    taskParameters = this.getParameters(clause[1]);
+                }
+                else {
+                    throw new DataException(DataException.ERR_UNKNOWN_CLAUSE, this.fileName, this.line);
+                }
+            }
+
+            // check if the task description is complete
+            if (taskInput == null || taskOutput == null || taskParameters  == null || taskAlgorithm == null){
+                throw new DataException(DataException.ERR_MISSING_CLAUSE, this.fileName, this.line);
+            }
+
+            // build the actual task
+            task = new TaskDescription(taskName, taskAlgorithm, taskParameters, taskInput, taskOutput);
+
+            // mark all file occurences
+            this.markFileUsages(task);
+
+            // store the task
+            this.tasks.add(task);
         }
-        this.current.addDataSource(dsd);
     }
 
     /**
-     * Marks all the given data sources of the current {@link TaskSection} to their respective
-     * {@link Occurrences} tables.
+     * Marks all the given data sources of the current Task to the {@link Occurrences} table.
      *
-     * @param dss the input or output data sources of the current {@link TaskSection}
-     * @param purpose the purpose ({@link TaskSection.DataSourcePurpose}) of the given data sources ({@link dss}, i.e\. input or output)
+     * @param task the task to be recorded
      * @throws DataException if there are multiple tasks that output the same data source
      */
-    private void markDataSources(TaskDescription task, DataSourcePurpose purpose) throws DataException {
+    private void markFileUsages(TaskDescription task) throws DataException {
 
-        Vector<DataSourceDescription> dss =
-                purpose == DataSourcePurpose.INPUT ? task.getInputDataSources() : task.getOutputDataSources();
-        Occurrences oc;
-
-        for (DataSourceDescription ds : dss) {
-
-            switch (ds.type) {
-
-                case DATA_SET:
-                    DataSetDescription dsd = (DataSetDescription) ds;
-                    oc = this.dataSetOccurrences.get(dsd.id);
-                    if (oc == null) {
-                        oc = new Occurrences();
-                        this.dataSetOccurrences.put(dsd.id, oc);
-                    }
-                    oc.add(task, purpose);
-                    break;
-
-                case FEATURE:
-
-                    FeatureDescription fed = (FeatureDescription) ds;
-                    oc = this.featureOccurrences.get(fed.id);
-                    if (oc == null) {
-                        oc = new Occurrences();
-                        this.featureOccurrences.put(fed.id, oc);
-                    }
-                    oc.add(task, purpose);
-                    break;
-
-                case FILE:
-
-                    FileDescription fid = (FileDescription) ds;
-                    oc = this.fileOccurrences.get(fid.fileName);
-                    if (oc == null) {
-                        oc = new Occurrences();
-                        this.fileOccurrences.put(fid.fileName, oc);
-                    }
-                    oc.add(task, purpose);
-                    break;
-            }
+        for (String file : task.getInput()){
+            this.markFileUsage(file, task, Occurrences.Purpose.INPUT);
         }
-    }
-
-    /* INTERFACE ContentHandler */
-
-    /**
-     * This sets the document {@link Locator}, used to process error messages.
-     * @param locator
-     */
-    public void setDocumentLocator(Locator locator) {
-        this.locator = locator;
-    }
-
-    /**
-     * Document start - empty
-     * @throws SAXException
-     */
-    public void startDocument() throws SAXException {
-    }
-
-    /**
-     * Document end - empty
-     * @throws SAXException
-     */
-    public void endDocument() throws SAXException {
-    }
-
-    /**
-     * XML prefix mapping start - empty
-     * @param prefix
-     * @param uri
-     * @throws SAXException
-     */
-    public void startPrefixMapping(String prefix, String uri) throws SAXException {
-    }
-
-    /**
-     * XML prefix mapping end - empty
-     * @param prefix
-     * @param uri
-     * @throws SAXException
-     */
-    public void endPrefixMapping(String prefix) throws SAXException {
-    }
-
-    /**
-     * Starts an element - tries to add new data to the element currently processed.
-     */
-    public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException {
-
-        if (this.closed) {
-            throw new SAXException("Elements past the end of input at " + this.getLocationInfo());
-        }
-        if (localName.equals("process")) {
-            if (!this.open) {
-                this.open = true;
-                return;
-            }
-            throw new SAXException("Only one <process> is allowed in the file at " + this.getLocationInfo());
-        }
-        if (!this.open) {
-            throw new SAXException("The root element must be opened first at " + this.getLocationInfo());
-        }
-        // start new tasks of different types
-        if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")) {
-
-            if (this.current != null) {
-                throw new SAXException("Cannot nest tasks at " + this.getLocationInfo());
-            }
-            try {
-                this.current = new TaskSection(TaskType.valueOf(localName.toUpperCase()), atts.getValue("id"));
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-            // checks for unique id and saves the current one
-            if (this.idOccurrences.contains(this.current.getId())){
-                throw new SAXException("Duplicate task id at " + this.getLocationInfo());
-            }
-            this.idOccurrences.add(this.current.getId());
-            return;
-        }
-        // opens a new data sources section
-        if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
-                || localName.equals("data") || localName.equals("input") || localName.equals("output")
-                || localName.equals("needed") || localName.equals("created")) {
-
-            try {
-                this.current.openDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-            return;
-        }
-        // adds data sources specifications
-        if (localName.equals("dataSet") || localName.equals("feature") || localName.equals("file")) {
-
-            try {
-                this.addDataSource(DataSourceDescription.DataSourceType.valueOf(localName.toUpperCase()),
-                        localName.equals("file") ? atts.getValue("name") : atts.getValue("id"));
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-        }
-        // adds an algorithm description
-        if (localName.equals("algorithm") || localName.equals("filter") || localName.equals("metric")) {
-            try {
-                this.current.setAlgorithm(TaskSection.AlgorithmType.valueOf(localName.toUpperCase()),
-                        atts.getValue("class"), atts.getValue("parameters"), atts.getValue("parallelizable").equals("true"));
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-        }
-        else {
-            throw new SAXException("Unknown element at " + this.getLocationInfo());
+        for (String file: task.getOutput()){
+            this.markFileUsage(file, task, Occurrences.Purpose.OUTPUT);
         }
     }
 
     /**
-     * End of an element - checks for completeness and issues an error, if there are any problems.
-     * This also tries to parallelize and find out all dependencies.
+     * Marks one usage of a file, given the task it's used in and a purpose it's used for.
+     *
+     * @param file the file name
+     * @param task the task the file is used in
+     * @param purpose the purpose of the file (input / output)
+     * @throws DataException
      */
-    public void endElement(String uri, String localName, String qName) throws SAXException {
-        // this ends the main element
-        if (localName.equals("process")) {
-            if (this.current != null) {
-                throw new SAXException("Cannot close <process> if a task description has not finished at " + this.getLocationInfo());
-            }
-            this.closed = true;
+    private void markFileUsage(String file, TaskDescription task, Occurrences.Purpose purpose) throws DataException {
+
+        Occurrences oc = this.fileOccurrences.get(file);
+        if (oc == null) {
+            oc = new Occurrences();
+            this.fileOccurrences.put(file, oc);
         }
-        else if (localName.equals("computation") || localName.equals("evaluation") || localName.equals("manipulation")) {
-
-            if (this.current.getType() != TaskType.valueOf(localName.toUpperCase())) {
-                throw new SAXException("Opening and closing type of Tasks don't match at " + this.getLocationInfo());
-            }
-            if (this.current.getAlgorithm() == null) {
-                throw new SAXException("No algortithm has been set for Task at " + this.getLocationInfo());
-            }
-            try {
-
-                Vector<TaskDescription> newTasks = this.current.getDescriptions();
-
-                for (TaskDescription task : newTasks) {
-                    this.markDataSources(task, DataSourcePurpose.INPUT);
-                    this.markDataSources(task, DataSourcePurpose.OUTPUT);
-                }
-
-                this.tasks.addAll(newTasks);
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-            this.current = null;
-        }
-        else if (localName.equals("train") || localName.equals("devel") || localName.equals("eval")
-                || localName.equals("data") || localName.equals("input") || localName.equals("output")
-                || localName.equals("created") || localName.equals("needed")) {
-
-            try {
-                this.current.closeDataSection(DataSourcesSection.valueOf(localName.toUpperCase()));
-            }
-            catch (DataException ex) {
-                throw new SAXException(ex.getMessage() + " at " + this.getLocationInfo());
-            }
-        }
-        else if (!localName.equals("dataSet") && !localName.equals("file") && !localName.equals("feature")
-                && !localName.equals("metric") && !localName.equals("algorithm") && !localName.equals("filter")) {
-
-            throw new SAXException("Unknown element at " + this.getLocationInfo());
-        }
+        oc.add(task, purpose, this.fileName, this.line);
     }
 
     /**
-     * Some loose characters encountered - throws an exception instantly.
+     * Parse a list of files within a clause.
+     * @param clause the clause string to be parsed
+     * @return a list of file names
+     * @throws DataException if there are invalid characters in the file names
      */
-    public void characters(char[] ch, int start, int length) throws SAXException {
-        throw new SAXException("Trailing characters at " + this.getLocationInfo());
+    private Vector<String> getFileList(String clause) throws DataException {
+
+        Vector<String> list = this.parseCSV(clause); // raw parsing
+
+        // remove quotes & spaces
+        for(int i = 0; i < list.size(); ++i){
+
+            String s = list.elementAt(i).trim();
+
+            if (s.startsWith("\"") && s.endsWith("\"")){
+                s = this.unquote(s);
+            }
+            else if (s.contains("\"") || s.matches("\\s")){
+                throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
+            }
+            list.setElementAt(s, i);
+        }
+        
+        // return the result
+        return list;
     }
 
     /**
-     * Whitespace - ignored
+     * Unquotes a quoted string, i.e\. removes quotes from the beginning and the end and
+     * converts double quotes to single. Throws an exception for a single quote within the string.
+     * @param string the quoted string to be processed
+     * @return the string, unquoted
      */
-    public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
+    private String unquote(String string) throws DataException {
+
+        string = string.substring(1, string.length()-1);
+        if (string.matches("[^\"]\"[^\"]")){
+            throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
+        }
+        return string.replaceAll("\"\"", "\"");
     }
 
     /**
-     * Processing instructions are being ignored
+     * Split a comma-separated string that may contain quotes, ignore quoted commas and
+     * heed the unquoted ones.
+     * @param string the string to be split
+     * @return the list of values that were separated by unquoted commas
      */
-    public void processingInstruction(String target, String data) throws SAXException {
+    private Vector<String> parseCSV(String string) {
+
+        Vector<String> list = new Vector<String>();
+        boolean quoted = false;
+        int st = 0;
+
+        for (int cur = 0; cur < string.length(); ++cur){
+            if (string.charAt(cur) == '"'){
+                quoted = !quoted;
+            }
+            else if (string.charAt(cur) == ',' && !quoted){
+                list.add(string.substring(st, cur));
+                st = cur + 1;
+            }
+        }
+        if (st < string.length() - 1){
+            list.add(string.substring(st));
+        }
+        return list;
     }
 
     /**
-     * Skipped entities are being ignored
+     * Parse a string that contains comma-separated name = value pairs, values
+     * may be enclosed in quotes. Parameter names must be unique.
+     *
+     * @param string the string to be parsed
+     * @return the resulting name - value list
+     * @throws DataException if there are duplicate parameters or illegal characters
      */
-    public void skippedEntity(String name) throws SAXException {
+    private Hashtable<String, String> getParameters(String string) throws DataException {
+
+        Hashtable<String, String> parameters = new Hashtable<String, String>();
+
+        // remove quotes & spaces, split names and values
+        for(String listMember : this.parseCSV(string)){
+
+            String [] nameVal = listMember.split("=", 2);
+
+            nameVal[0].trim();
+            nameVal[1].trim();
+
+            if (nameVal[0].matches("[^a-zA-Z0-9_\\.-]")){
+                throw new DataException(DataException.ERR_INVALID_CHAR_IN_PARAMETER, this.fileName, this.line);
+            }
+            if (nameVal[1].startsWith("\"") && nameVal[1].endsWith("\"")){
+                nameVal[1] = this.unquote(nameVal[1]);
+            }
+            else if (nameVal[1].contains("\"") || nameVal[1].matches("\\s")){
+                throw new DataException(DataException.ERR_INVALID_CHAR_IN_PARAMETER, this.fileName, this.line);
+            }
+
+            parameters.put(nameVal[0], nameVal[1]);
+        }
+
+        // return the result
+        return parameters;
     }
+
+    /**
+     * Parses the input file with respect to the individual task descriptions. Changes new-line characters
+     * to spaces.
+     * @return the next task description section
+     */
+    private String getNextSection() {
+        // TODO write getNextSection
+    }
+
 }

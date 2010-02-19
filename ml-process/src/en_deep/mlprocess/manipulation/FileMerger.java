@@ -27,14 +27,15 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.DataSourceDescription;
+import en_deep.mlprocess.Task;
+import java.util.Hashtable;
 import java.util.Vector;
 
 /**
  * This class merges several files into one by writing them sequentially one after another.
  * @author Ondrej Dusek
  */
-public class FileMerger extends Manipulation {
+public class FileMerger extends Task {
 
     /* DATA */
 
@@ -46,12 +47,12 @@ public class FileMerger extends Manipulation {
      * data sources must be divisible by the number of input data sources.
      *
      * @param id the task id
-     * @param params have no sense here
-     * @param input the input data sets or files
-     * @param output the output data sets or files
+     * @param parameters have no sense here
+     * @param input the input files
+     * @param output the output files
      */
-    public FileMerger(String id, String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
-        super(id, params, input, output);
+    public FileMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) {
+        super(id, parameters, input, output);
     }
 
 

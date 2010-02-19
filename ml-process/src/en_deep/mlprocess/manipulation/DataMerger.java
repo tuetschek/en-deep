@@ -27,16 +27,16 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.DataSourceDescription;
+import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import java.util.Vector;
-
+import java.util.Hashtable;
 
 /**
  * This class merges several data sets into one.
  * @author Ondrej Dusek
  */
-public class DataMerger extends Manipulation {
+public class DataMerger extends Task {
 
     /* DATA */
 
@@ -48,12 +48,12 @@ public class DataMerger extends Manipulation {
      * data sources must be divisible by the number of input data sources.
      *
      * @param id the task id
-     * @param params have no sense here
+     * @param parameters have no sense here
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public DataMerger(String id, String params, Vector<DataSourceDescription> input, Vector<DataSourceDescription> output) {
-        super(id, params, input, output);
+    public DataMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) {
+        super(id, parameters, input, output);
     }
 
 

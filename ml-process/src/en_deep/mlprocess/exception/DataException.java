@@ -28,49 +28,36 @@
 package en_deep.mlprocess.exception;
 
 /**
- * An exception that is thrown for invalid data in the input XML file.
+ * An exception that is thrown for invalid data in the input scenario file.
  * @author Ondrej Dusek
  */
 public class DataException extends GeneralException {
 
     /* CONSTANTS */
 
-    /** Exception code: Invalid ID of a {@link Task} in the scenario XML file */
-    public static final int ERR_INVALID_ID = 1;
-    /** Exception code: {@link Mainpulation} {@link Task}s cannot be parallelized */
-    public static final int ERR_CANNOT_PARALELIZE_MANIPULATION = 2;
-    /** Exception code: Duplicate algorithm setting */
-    public static final int ERR_ALGORITHM_ALREADY_SET = 3;
-    /** Exception code: "There are no training data set for Computation task" */
-    public static final int ERR_NO_TRAIN_SET = 4;
-    /** Exception code: "Input or output has not been set for Task" */
-    public static final int ERR_NO_IN_OR_OUT = 5;
-    /** Exception code: "Working Data Set has not been set for Evaluation task" */
-    public static final int ERR_NO_DATA_SET = 6;
-    /** Exception code: "There is no output file and no eval data set for Computation task" */
-    public static final int ERR_NO_EVAL_SET = 7;
-    /** Exception code: "The numbers of training, evaluation and development data sets don't match" */
-    public static final int ERR_NO_MATCHING_DATA_NUMBERS = 8;
-    /** Exception code: "Cannot open a data sources section within an another one" */
-    public static final int ERR_NESTED_DATA_SECTIONS = 9;
-    /** Exception code: "An invalid section or data type has been encountered" */
-    public static final int ERR_INVALID_DATA_TYPE = 10;
-    /** Exception code: "Cannot end Task within an open data sources section" */
-    public static final int ERR_OPEN_DATA_SECTION = 11;
-    /** Exception code: "Cannot close this type of data sources section here" */
-    public static final int ERR_INVALID_DATA_SECTION_CLOSE = 12;
-    /** Exception code: "The algorithm type does not match the task type" */
-    public static final int ERR_INVALID_ALGORITHM_TYPE = 13;
-    /** Exception code: "A data source is marked as being produced by two or more Tasks" */
-    public static final int ERR_DUPLICATE_OUTPUT = 14;
-    /** Exception code: "A used data set is never produced by a Task" */
-    public static final int ERR_DATA_SET_NEVER_PRODUCED = 15; //TODO add parameter to certain types of DataException ?
-    /** Exception code: "Input and output data sets overlap" */
-    public static final int ERR_OVERLAPPING_INPUT_OUTPUT = 16;
-    /** Exception code: "Tasks that operate on files cannot be parallelized" */
-    public static final int ERR_CANNOT_PARALELIZE_ON_FILES = 17;
-    /** Exception code: "There are loops in tasks dependencies - cannot sort" */
-    public static final int ERR_LOOP_DEPENDENCY = 18;
+    /** Error code: "Task end expected" */
+    public static final int ERR_END_EXPECTED = 1;
+    /** Error code: "Beginning of a task description expected" */
+    public static final int ERR_TASK_EXPECTED = 2;
+    /** Error code: "Invalid clause in a task description" */
+    public static final int ERR_UNKNOWN_CLAUSE = 3;
+    /** Error code: "Duplicate clause in a task description" */
+    public static final int ERR_DUPLICATE_CLAUSE = 4;
+    /** Error code: "Missing clause in a task description" */
+    public static final int ERR_MISSING_CLAUSE = 5;
+    /** Error code: "Duplicate usage of a file as an output" */
+    public static final int ERR_DUPLICATE_OUTPUT = 6;
+    /** Error code: "Invalid character in a file name" */
+    public static final int ERR_INVALID_CHAR_IN_FILE_NAME = 7;
+    /** Error code: "Invalid character in parameters description" */
+    public static final int ERR_INVALID_CHAR_IN_PARAMETER = 8;
+
+    /* DATA */
+
+    /** The file in which the error occured */
+    private String fileName;
+    /** Line at which the error occurred */
+    private int line;
 
     /* METHODS */
 
@@ -78,55 +65,51 @@ public class DataException extends GeneralException {
      * Creates a new {@link DataException}, given the exception code.
      * @param code
      */
-    public DataException(int code){
+    public DataException(int code, String fileName, int line){
         super(code);
+        this.fileName = fileName;
+        this.line = line;
     }
 
 
     @Override
     public String getMessage() {
+
+        String errMsg = null;
+
         switch(this.code){
-            case ERR_INVALID_ID:
-                return "Invalid ID of a task in the scenario XML file";
             case ERR_OK:
-                return "No error";
-            case ERR_ALGORITHM_ALREADY_SET:
-                return "Duplicate algorithm specification";
-            case ERR_CANNOT_PARALELIZE_MANIPULATION:
-                return "Manipulation tasks cannot be parallelized";
-            case ERR_NO_TRAIN_SET:
-                return "There are no training data set for Computation task";
-            case ERR_NO_IN_OR_OUT:
-                return "Input or output has not been set for Task";
-            case ERR_NO_DATA_SET:
-                return "Working Data Set has not been set for Evaluation task";
-            case ERR_NO_EVAL_SET:
-                return "There are no eval data set for Computation task";
-            case ERR_NO_MATCHING_DATA_NUMBERS:
-                return "The numbers of training, evaluation and development data sets don't match";
-            case ERR_NESTED_DATA_SECTIONS:
-                return "Cannot open a data sources section within an another one";
-            case ERR_INVALID_DATA_TYPE:
-                return "An invalid section or data type has been encountered";
-            case ERR_OPEN_DATA_SECTION:
-                return "Cannot end Task within an open data sources section";
-            case ERR_INVALID_DATA_SECTION_CLOSE:
-                return "Cannot close this type of data sources section here";
-            case ERR_INVALID_ALGORITHM_TYPE:
-                return "The algorithm type does not match the task type";
+                errMsg = "No error";
+                break;
+            case ERR_END_EXPECTED:
+                errMsg = "Task end expected";
+                break;
+            case ERR_TASK_EXPECTED:
+                errMsg = "Beginning of a task description expected";
+                break;
+            case ERR_UNKNOWN_CLAUSE:
+                errMsg = "Invalid clause in a task description";
+                break;
+            case ERR_DUPLICATE_CLAUSE:
+                errMsg = "Duplicate clause in a task description";
+                break;
+            case ERR_MISSING_CLAUSE:
+                errMsg = "Missing clause in a task description";
+                break;
             case ERR_DUPLICATE_OUTPUT:
-                return "A data source is marked as being produced by two or more Tasks";
-            case ERR_DATA_SET_NEVER_PRODUCED:
-                return "A used data set is never produced by a Task";
-            case ERR_OVERLAPPING_INPUT_OUTPUT:
-                return "Input and output data sets overlap";
-            case ERR_CANNOT_PARALELIZE_ON_FILES:
-                return "Tasks that operate on files cannot be parallelized";
-            case ERR_LOOP_DEPENDENCY:
-                return "There are loops in tasks dependencies - cannot sort";
+                errMsg = "Duplicate usage of a file as an output";
+                break;
+            case ERR_INVALID_CHAR_IN_FILE_NAME:
+                errMsg = "Invalid character in a file name";
+                break;
+            case ERR_INVALID_CHAR_IN_PARAMETER:
+                errMsg = "Invalid character in parameters description";
+                break;
             default:
-                return "Unknown error";
+                errMsg = "Unknown error";
+                break;
         }
+        return errMsg + " in " + this.fileName + ", line " + this.line + ".";
     }
 
 }
