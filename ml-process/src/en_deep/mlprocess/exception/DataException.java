@@ -53,6 +53,8 @@ public class DataException extends GeneralException {
     public static final int ERR_INVALID_CHAR_IN_PARAMETER = 8;
     /** Error code: "Unexpected end of file" */
     public static final int ERR_UNEXPECTED_EOF = 9;
+    /** Error code: "Loop task dependency" */
+    public static final int ERR_LOOP_DEPENDENCY = 10;
 
     /* DATA */
 
@@ -65,12 +67,23 @@ public class DataException extends GeneralException {
 
     /**
      * Creates a new {@link DataException}, given the exception code.
-     * @param code
+     * @param code the exception code
+     * @param fileName the file where the exception happened
+     * @param line the line where the exception happened
      */
     public DataException(int code, String fileName, int line){
         super(code);
         this.fileName = fileName;
         this.line = line;
+    }
+
+    /**
+     * Create a new {@link DataException} with no line specification.
+     * @param code the exception code
+     * @param fileName the file where the exception happened
+     */
+    public DataException(int code, String fileName){
+        this(code, fileName, 0);
     }
 
 
@@ -110,11 +123,14 @@ public class DataException extends GeneralException {
             case ERR_UNEXPECTED_EOF:
                 errMsg = "Unexpected end of file";
                 break;
+            case ERR_LOOP_DEPENDENCY:
+                errMsg = "Loop task dependency";
+                break;
             default:
                 errMsg = "Unknown error";
                 break;
         }
-        return errMsg + " in " + this.fileName + ", line " + this.line + ".";
+        return errMsg + " in " + this.fileName + (this.line > 0 ? ", line " + this.line + ".": ".");
     }
 
 }

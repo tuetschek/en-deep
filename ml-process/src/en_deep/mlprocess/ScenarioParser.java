@@ -3,16 +3,21 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.exception.DataException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 
 /**
- * This creates the process plan from the input scenario XML file. It parses the XML file and
- * determines the dependencies between the tasks. The output is a {@link Vector} of {@link TaskSection}s
- * that have the correct dependencies set. All the {@link Task}s corresponding to the {@link TaskSection}
- * items are marked as undone.
+ * This creates the process plan from the input scenario file. It {@link ScenarioParse#parse() parses} the file and
+ * determines the dependencies between the tasks. The output is a {@link Vector} of {@link TaskDescription}s, which is
+ * to be retrieved and examined.
  */
 class ScenarioParser {
+
+    /* CONSTANTS */
+    
+    /** Maximum number of clauses in one task description: opening & ending, algorithm, parameters, input, output */
+    private static final int MAX_CLAUSES = 6;
 
     /* DATA */
 
@@ -29,9 +34,6 @@ class ScenarioParser {
     private RandomAccessFile input = null;
     /** The size of the open input file */
     private long fileSize = -1;
-    /** Some left read data to be parsed with the next section */
-    private StringBuffer readData;
-
 
 
     /* METHODS */
@@ -46,18 +48,18 @@ class ScenarioParser {
         this.fileName = fileName;
         this.tasks = new Vector<TaskDescription>();
         this.fileOccurrences = new Hashtable<String, Occurrences>();
-        this.readData = new StringBuffer();
     }
 
 
 
     /**
      * Performs the actual parsing of the input file. Reads all the Task descriptions and stores
-     * them for later retrieval. Marks all file occurrences, too.
+     * them for later retrieval. Marks all file occurrences and sets up the dependencies for the
+     * tasks according to them.
      *
      * @throws DataException if there is a syntax error in the input file
      */
-    void parse() throws DataException {
+    void parse() throws DataException, IOException {
     
         String taskSection;
         
@@ -121,8 +123,12 @@ class ScenarioParser {
             }
 
             // check if the task description is complete
-            if (taskInput == null || taskOutput == null || taskParameters  == null || taskAlgorithm == null){
+            if (taskInput == null || taskOutput == null || taskAlgorithm == null){
                 throw new DataException(DataException.ERR_MISSING_CLAUSE, this.fileName, this.line);
+            }
+            // parameters section is not compulsory - create empty parameters clause if needed
+            if (taskParameters == null){
+                taskParameters = new Hashtable<String, String>();
             }
 
             // build the actual task
@@ -134,7 +140,20 @@ class ScenarioParser {
             // store the task
             this.tasks.add(task);
         }
+
+        // set the task dependencies
+        this.setDependencies();
     }
+
+
+    /**
+     * Returns the parsing results -- descriptions of all tasks.
+     * @return descriptions of all tasks
+     */
+     Vector<TaskDescription> getTasks(){
+         return this.tasks;
+     }
+
 
     /**
      * Marks all the given data sources of the current Task to the {@link Occurrences} table.
@@ -278,11 +297,18 @@ class ScenarioParser {
     }
 
     /**
-     * Parses the input file with respect to the individual task descriptions. Changes new-line characters
-     * to spaces.
+     * Parses the input file with respect to the individual task descriptions. Reads up to
+     * MAX_CLAUSES sections - or stops at the first "end" section. Returns null if there is
+     * nothing more than whitespace in the input file.
+     * 
      * @return the next task description section
      */
-    private String getNextSection() throws IOException {
+    private String getNextSection() throws IOException, DataException {
+
+        StringBuffer buf = new StringBuffer();
+        int clausesRead = 0;
+        String currentClause = ";";
+        String retVal;
 
         // open the file, if it's not already open
         if (this.input == null){
@@ -290,7 +316,22 @@ class ScenarioParser {
             this.fileSize = this.input.length();
         }
 
-        // TODO write getNextSection, using readClause !
+        // read the desired number of clauses, if there is enough of them (or until the end-clause)
+        while (clausesRead < MAX_CLAUSES && currentClause!= null
+                && currentClause.endsWith(";") && !currentClause.startsWith("end")){
+
+            currentClause = this.readClause();
+            clausesRead++;
+            if (currentClause != null){
+                buf.append(currentClause);
+            }
+        }
+
+        retVal = buf.toString().trim();
+        if (retVal.equals("")){
+            return null;
+        }
+        return retVal;
     }
 
     /**
@@ -347,6 +388,32 @@ class ScenarioParser {
     }
 
 
+    /**
+     * Set the dependencies according to file usages in the data and check them.
+     * <p>
+     * All the files that are not written as output are assumed to exist before the {@link Process}
+     * begins.
+     * </p>
+     *
+     */
+    private void setDependencies() {
 
+        Enumeration<String> files = this.fileOccurrences.keys();
+
+        while (files.hasMoreElements()){
+
+            String file = files.nextElement();
+            Occurrences oc = this.fileOccurrences.get(file);
+
+            if (oc.asOutput == null){ // file must exist before the process begins
+                Logger.getInstance().message("The file: " + file + " must be provided as input to the process.",
+                        Logger.V_INFO);
+                continue;
+            }
+            for (TaskDescription dep : oc.asInput){
+                dep.setDependency(oc.asOutput);
+            }
+        }
+    }
 
 }

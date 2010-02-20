@@ -43,8 +43,6 @@ import java.nio.channels.FileLock;
 import java.util.ArrayDeque;
 import java.util.Vector;
 import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
 
 
 /**
@@ -64,8 +62,6 @@ public class Plan {
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
 
-    /** The tasks and their features and pending statuses */
-    private Vector<TaskSection> tasks;
 
     /* METHODS */
 
@@ -187,21 +183,14 @@ public class Plan {
     private void createPlan(RandomAccessFile planFileIO) throws SAXException, IOException, DataException {
 
         Process process = Process.getInstance();
-        XMLReader parser;
-        ScenarioParser dataCollector = new ScenarioParser(process.getInputFile());
+        ScenarioParser parser = new ScenarioParser(process.getInputFile());
         Vector<TaskDescription> plan;
 
         // parse the input file
-        parser = XMLReaderFactory.createXMLReader();
-        parser.setContentHandler(dataCollector);
-        parser.parse(process.getInputFile());
+        parser.parse();
         
-        // set up the dependencies according to the inputs and outputs of data sets/features
-        // which are stored in dataCollector
-        this.setDependencies(dataCollector);
-
         // topologically sort the plan
-        plan = dataCollector.tasks;
+        plan = parser.getTasks();
         this.sortPlan(plan);
 
         // write the plan into the plan file
@@ -256,48 +245,6 @@ public class Plan {
         return Task.createTask(pendingDesc);
     }
 
-    /**
-     * Set the dependencies according to features and data sets in the data itself and check them.
-     * <p>
-     * Check if all the data sets are correctly loaded or created in a {@link Manipulation} task.
-     * All the features that are not computed are assumed to be contained in the input data sets.
-     * All the files that are not written as output are assumed to exist before the {@link Process}
-     * begins.
-     * </p>
-     *
-     * @param plan the {@link TaskSection} as given by the {@link ScenarioParser}
-     * @param parserOutput the {@link ScenarioParser} object <i>after</i> the parsing is finished
-     */
-    private void setDependencies(ScenarioParser parserOutput) throws DataException {
-
-        // set the data set dependencies (check for non-created data sets)
-        for (Occurrences oc : parserOutput.dataSetOccurrences.values()){
-            if (oc.asOutput == null){
-                throw new DataException(DataException.ERR_DATA_SET_NEVER_PRODUCED);
-            }
-            for (TaskDescription dep : oc.asInput){
-                dep.setDependency(oc.asOutput);
-            }
-        }
-        // set-up the file dependencies (no checks)
-        for (Occurrences oc : parserOutput.fileOccurrences.values()){
-            if (oc.asOutput == null){
-                continue;
-            }
-            for (TaskDescription dep : oc.asInput){
-                dep.setDependency(oc.asOutput);
-            }
-        }
-        // set-up the feature-level dependencies (no checks)
-        for (Occurrences oc : parserOutput.featureOccurrences.values()){
-            if (oc.asInput == null){
-                continue;
-            }
-            for (TaskDescription dep : oc.asInput){
-                dep.setDependency(oc.asOutput);
-            }
-        }
-    }
 
     /**
      * Writes the current plan status into the plan file, using serialization. Closes the output stream.
@@ -348,7 +295,7 @@ public class Plan {
         // check if we found all tasks - if not, the plan has loops, which is prohibited
         for (TaskDescription task : sorted){
             if (task.getOrder() < 0){
-                throw new DataException(DataException.ERR_LOOP_DEPENDENCY);
+                throw new DataException(DataException.ERR_LOOP_DEPENDENCY, Process.getInstance().getInputFile());
             }
         }
 
