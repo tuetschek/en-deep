@@ -28,6 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.exception.TaskException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -57,7 +58,7 @@ public class FileMerger extends Task {
 
 
     @Override
-    public void perform() {
+    public void perform() throws TaskException {
         // TODO WRITE FileMerger code
         throw new UnsupportedOperationException("Not supported yet.");
     }

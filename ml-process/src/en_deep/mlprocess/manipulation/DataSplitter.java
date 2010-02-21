@@ -28,6 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.exception.TaskException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -59,8 +60,8 @@ public class DataSplitter extends Task {
 
 
     @Override
-    public void perform() {
-        // TODO WRITE DataSplitter code
+    public void perform() throws TaskException {
+        // TODO WRITE DataSplitter code, using new Instances(Instances, int, int)
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

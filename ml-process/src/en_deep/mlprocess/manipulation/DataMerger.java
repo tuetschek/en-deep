@@ -27,10 +27,16 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.List;
 import java.util.Vector;
 import java.util.Hashtable;
+import weka.core.Instances;
 
 /**
  * This class merges several data sets into one.
@@ -54,6 +60,10 @@ public class DataMerger extends Task {
      */
     public DataMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) {
         super(id, parameters, input, output);
+
+        if (parameters.size() > 0){
+            Logger.getInstance().message("DataMerger parameters are ignored", Logger.V_WARNING);
+        }
     }
 
 
@@ -65,15 +75,75 @@ public class DataMerger extends Task {
      */
     @Override
     public void perform() throws TaskException {
+
+        int ratio = this.input.size() / this.output.size();
         // TODO write DataMerger code
         // use weka.core.Instances to read ARFF files, create support for more - using the DataSet class (internally: Instances,
         // with I/O support for csv ?) + I/O support for my input data format
-        //
-        // refactoring: Somehow distinguish b/t FileDescription & DataSetDescription x FeatureDescription
-        // - find out where it's used (stored) and how could this be done -- totally split / create inter-class ?
-        // - the only problem is probably the TaskSection class (possibly dependency descriptions?)
-        //
-        // or: create method DataSourceDescription.createDataSet() which throws an exception if called on feats (not so nice)?
+        if (this.input.size() % this.output.size() !=  0){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+
+        for (int j = 0; j < this.output.size(); ++j){
+
+            try {
+                this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
+            }
+            catch(IOException e){
+                Logger.getInstance().message("I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            }
+        }
     }
+
+    /**
+     * Tries to merge several input files into one output, using WEKA code.
+     * @param in
+     * @param out
+     */
+    private void mergeData(List<String> in, String out) throws IOException {
+
+        File temp1 = File.createTempFile(this.id, "");
+        File temp2 = File.createTempFile(this.id, "");
+        PrintStream ps;
+        PrintStream origOut = System.out; // remember original output stream
+
+        String [] args = new String[3];
+        args[0] = "append";
+
+
+        // merge first two files
+        args[1] = in.get(0);
+        args[2] = in.get(1);
+
+        System.setOut(ps = new PrintStream(temp1));
+        Instances.main(args);
+        ps.close();
+
+        // append more files, one at a time (swapping usage of temp files)
+        for (int i = 2; i < in.size(); ++i){
+
+            args[1] = i % 2 == 0 ? temp1.getCanonicalPath() : temp2.getCanonicalPath();
+            args[2] = in.get(i);
+
+            System.setOut(ps = (i % 2 == 0 ? new PrintStream(temp2) : new PrintStream(temp1)));
+            Instances.main(args);
+            ps.close();
+        }
+
+        // move the last temp file to the file destination and delete the other
+        if (in.size() % 2 == 0){
+            temp1.renameTo(new File(out));
+            temp2.delete();
+        }
+        else {
+            temp2.renameTo(new File(out));
+            temp1.delete();
+        }
+
+        // restore the original output stream
+        System.setOut(origOut);
+    }
+
 
 }

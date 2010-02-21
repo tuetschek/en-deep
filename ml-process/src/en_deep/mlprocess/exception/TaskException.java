@@ -43,6 +43,8 @@ public class TaskException extends GeneralException {
     public static final int ERR_TASK_CLASS_NOT_FOUND = 3;
     /** Error message: "The Task class does not conform to specifications." */
     public static final int ERR_TASK_CLASS_INCORRECT = 4;
+    /** Error message: "I/O error during task operation." */
+    public static final int ERR_IO_ERROR = 5;
 
     /* DATA */
 
@@ -81,6 +83,8 @@ public class TaskException extends GeneralException {
                 return this.taskId + ": Task class not found.";
             case ERR_TASK_CLASS_INCORRECT:
                 return this.taskId + ": The Task class does not conform to specifications.";
+            case ERR_IO_ERROR:
+                return this.taskId + ": I/O error during task operation.";
             default:
                 return "Unknown error.";
         }
