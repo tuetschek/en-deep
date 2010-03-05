@@ -90,7 +90,7 @@ public class DataMerger extends Task {
                 this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
             }
             catch(IOException e){
-                Logger.getInstance().message("I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
+                Logger.getInstance().message(this.id + ": I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
                 throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
             }
         }
@@ -116,6 +116,8 @@ public class DataMerger extends Task {
         args[1] = in.get(0);
         args[2] = in.get(1);
 
+        Logger.getInstance().message(this.id + ": merge " + args[1] + " + " + args[2], Logger.V_DEBUG);
+
         System.setOut(ps = new PrintStream(temp1));
         Instances.main(args);
         ps.close();
@@ -126,10 +128,14 @@ public class DataMerger extends Task {
             args[1] = i % 2 == 0 ? temp1.getCanonicalPath() : temp2.getCanonicalPath();
             args[2] = in.get(i);
 
+            Logger.getInstance().message(this.id + ": adding " + args[2] + " to merged data file.", Logger.V_DEBUG);
+
             System.setOut(ps = (i % 2 == 0 ? new PrintStream(temp2) : new PrintStream(temp1)));
             Instances.main(args);
             ps.close();
         }
+
+        Logger.getInstance().message(this.id + ": moving tempfile to its final destination.", Logger.V_DEBUG);
 
         // move the last temp file to the file destination and delete the other
         if (in.size() % 2 == 0){

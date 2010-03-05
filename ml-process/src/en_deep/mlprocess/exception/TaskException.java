@@ -45,6 +45,10 @@ public class TaskException extends GeneralException {
     public static final int ERR_TASK_CLASS_INCORRECT = 4;
     /** Error message: "I/O error during task operation." */
     public static final int ERR_IO_ERROR = 5;
+    /** Error message: "Invalid task parameters were specified." */
+    public static final int ERR_INVALID_PARAMS = 6;
+    /** Error message: "The expansion patterns in output file names are not specified correctly." */
+    public static final int ERR_OUTPUT_PATTERNS = 7;
 
     /* DATA */
 
@@ -85,6 +89,10 @@ public class TaskException extends GeneralException {
                 return this.taskId + ": The Task class does not conform to specifications.";
             case ERR_IO_ERROR:
                 return this.taskId + ": I/O error during task operation.";
+            case ERR_INVALID_PARAMS:
+                return this.taskId + ": Invalid task parameters were specified.";
+            case ERR_OUTPUT_PATTERNS:
+                return this.taskId + ": The expansion patterns in output file names are not specified correctly.";
             default:
                 return "Unknown error.";
         }

@@ -39,7 +39,7 @@ import java.util.Hashtable;
 public class TaskDescription implements Serializable {
 
     /* CONSTANTS */
-    
+
     
     /* DATA */
 

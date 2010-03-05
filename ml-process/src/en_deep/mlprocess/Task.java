@@ -83,7 +83,10 @@ public abstract class Task implements Serializable {
      * @param output list of output files
      */
     protected Task(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output){
-
+        this.id = id;
+        this.parameters = parameters;
+        this.input = input;
+        this.output = output;
     }
 
     /**

@@ -237,6 +237,9 @@ public class Plan {
             // there are no pending tasks & no in progress or waiting - nothing to be done -> return
             return null;
         }
+
+        // TODO expand the task here !!!!
+        
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
         // update the plan file

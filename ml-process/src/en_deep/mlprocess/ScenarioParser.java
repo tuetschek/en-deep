@@ -349,24 +349,36 @@ class ScenarioParser {
         int lastC = -1;
         byte [] rawLine;
         boolean quoted = false;
+        boolean commented = false;
+        // starts and ends of comments, relative to pos1
+        Vector<Pair<Integer, Integer>> comments = new Vector<Pair<Integer, Integer>>();
 
         curPos = this.input.getFilePointer();
         if (curPos == this.fileSize){ // EOF check
             return null;
         }
 
-        while(curPos < this.fileSize && (c != ';' || quoted)){
+        while(curPos < this.fileSize && (c != ';' || quoted || commented)){
 
             // line counting: ignore two subsequent windows new-line characters
             if (c == '\n' && lastC == '\r'){
                 
             }
-            // line counting: count all else
+            // line counting: count all else; new-line ends comments
             else if (c == '\n' || c == '\r'){
                 this.line++;
+                if (commented){
+                    comments.lastElement().second = (int) (curPos - pos1);
+                }
+                commented = false;
             }
-            // heed the quote characters
-            else if (c == '"'){
+            // begin comments (unquoted hash-char)
+            else if (!quoted && c == '#'){
+                commented = true;
+                comments.add(new Pair<Integer, Integer>((int)(curPos - pos1)));
+            }
+            // heed the quote characters, if not in comments
+            else if (!commented && c == '"'){
                 quoted = !quoted;
             }
             c = this.input.read();
@@ -384,7 +396,7 @@ class ScenarioParser {
         this.input.seek(pos1);
         this.input.read(rawLine);
 
-        return (new String(rawLine)).trim();
+        return this.stripComments(rawLine, comments);
     }
 
 
@@ -405,8 +417,8 @@ class ScenarioParser {
             String file = files.nextElement();
             Occurrences oc = this.fileOccurrences.get(file);
 
-            if (oc.asOutput == null){ // file must exist before the process begins
-                Logger.getInstance().message("The file: " + file + " must be provided as input to the process.",
+            if (oc.asOutput == null){ // file(s) must exist before the process begins
+                Logger.getInstance().message("File(s): " + file + " must be provided as input to the process.",
                         Logger.V_INFO);
                 continue;
             }
@@ -415,5 +427,32 @@ class ScenarioParser {
             }
         }
     }
+
+    /**
+     * Strips all comments sections from the raw input clause and returns it as a string, trimmed.
+     * @param rawLine the original raw input clause, as it appears in the data
+     * @param comments the previously found comments sections
+     * @return the input clause, comments-free and trimmed
+     */
+    private String stripComments(byte[] rawLine, Vector<Pair<Integer, Integer>> comments) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (comments.size() == 0){
+            sb.append(new String(rawLine));
+        }
+        else {
+            sb.append(new String(rawLine, 0, comments.firstElement().first));
+            for (int i = 1; i < comments.size(); ++i){
+                sb.append(new String(rawLine, comments.get(i-1).second,
+                        comments.get(i).first - comments.get(i-1).second));
+            }
+            sb.append(new String(rawLine, comments.lastElement().second, 
+                    rawLine.length - comments.lastElement().second + 1));
+        }
+
+        return sb.toString().trim();
+    }
+
 
 }
