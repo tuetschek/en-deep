@@ -49,6 +49,8 @@ public class TaskException extends GeneralException {
     public static final int ERR_INVALID_PARAMS = 6;
     /** Error message: "The expansion patterns in output file names are not specified correctly." */
     public static final int ERR_OUTPUT_PATTERNS = 7;
+    /** Error code: "Wrong pattern specifications" */
+    public static final int ERR_PATTERN_SPECS = 8;
 
     /* DATA */
 
@@ -93,7 +95,9 @@ public class TaskException extends GeneralException {
                 return this.taskId + ": Invalid task parameters were specified.";
             case ERR_OUTPUT_PATTERNS:
                 return this.taskId + ": The expansion patterns in output file names are not specified correctly.";
-            default:
+            case ERR_PATTERN_SPECS:
+                return this.taskId + ": Wrong pattern specifications";
+        default:
                 return "Unknown error.";
         }
     }

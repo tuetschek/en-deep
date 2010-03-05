@@ -89,6 +89,26 @@ public class TaskDescription implements Serializable {
         this.topolOrder = -1; // not yet sorted
     }
 
+    /**
+     * Creates a copy of the given task description with a given id suffix.
+     * All the members except algorithm are cloned, i.e. not just their references copied.
+     *
+     * @param other the object to be copied
+     * @param idSuffix a suffix to be pasted at the end of the original id in order to distinguish the two
+     */
+    private TaskDescription(TaskDescription other, String idSuffix){
+
+        this.id = other.id + '#' + idSuffix;
+        this.algorithm = other.algorithm;
+        this.parameters = (Hashtable<String,String>) other.parameters.clone();
+        this.input = (Vector<String>) other.input.clone();
+        this.output = (Vector<String>) other.output.clone();
+        this.status = other.status;
+        this.topolOrder = other.topolOrder;
+        this.dependOnMe = (Vector<TaskDescription>) other.dependOnMe.clone();
+        this.iDependOn = (Vector<TaskDescription>) other.iDependOn.clone();
+    }
+
 
     /**
      * Sets a dependency for this task (i.e\. marks this {@link TaskDescription} as depending
@@ -263,6 +283,87 @@ public class TaskDescription implements Serializable {
                     if (!otherPrerequisityNotDone){
                         dependentTask.status = TaskStatus.PENDING;
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a copy of this task with input file patterns "*" expanded for
+     * the given string. All the other parameters, including dependencies, are preserved.
+     *
+     * @param expPat the pattern expansion to be used
+     * @return
+     */
+    public TaskDescription expand(String expPat) {
+        
+        TaskDescription copy = new TaskDescription(this, expPat);
+
+        for (int i = 0; i < copy.input.size(); ++i){
+
+            String elem = copy.input.get(i);
+            int pos = elem.indexOf("*");
+            if (pos != -1 && pos == elem.lastIndexOf("*")){
+                elem = elem.substring(0, pos) + expPat
+                        + (elem.length() < pos - 1 ? elem.substring(pos + 1) : "");
+            }
+            copy.input.set(i, elem);
+        }
+
+        return copy;
+    }
+
+
+    /**
+     * Creates a copy of this task the input file pattern "***" at the given position expanded for
+     * the given string. All the other parameters, including dependencies, are preserved.
+     * If there's no "***" at the given position in the inputs, just a copy is returned.
+     *
+     * @param expPat the pattern expansion to be used
+     * @return
+     */
+    public TaskDescription expand(String expPat, int inputNo){
+
+        TaskDescription copy = new TaskDescription(this, expPat);
+        String elem = copy.input.get(inputNo);
+        int pos = elem.indexOf("***");
+
+        if (pos != -1 && pos == elem.lastIndexOf("***")){
+            elem = elem.substring(0, pos) + expPat
+                    + (elem.length() < pos - 1 ? elem.substring(pos + 1) : "");
+        }
+        copy.input.set(inputNo, elem);
+
+        return copy;
+    }
+
+
+    /**
+     * Looses dependencies to all tasks whose ids match the given prefix.
+     * @param idPrefix the prefix to drop dependency to
+     */
+    public void looseDeps(String idPrefix) {
+
+        if (idPrefix == null){ // null parameter -- remove all dependencies
+            idPrefix = "";
+        }
+
+        if (this.iDependOn != null){
+            for(int i = this.iDependOn.size() - 1; i <= 0; ++i){
+
+                if (this.iDependOn.get(i).getId().startsWith(idPrefix)){
+
+                    TaskDescription dep = this.iDependOn.remove(i);
+                    dep.dependOnMe.remove(this);
+                }
+            }
+        }
+        if (this.dependOnMe != null){
+            for (int i = this.dependOnMe.size() - 1; i <= 0; ++i){
+                if (this.dependOnMe.get(i).getId().startsWith(idPrefix)){
+
+                    TaskDescription dep = this.dependOnMe.remove(i);
+                    dep.dependOnMe.remove(this);
                 }
             }
         }

@@ -45,6 +45,7 @@ import java.util.Vector;
 import org.xml.sax.SAXException;
 
 
+
 /**
  * This component is responsible for building the planFile of the whole computation,
  * according to the input scenario.
@@ -197,6 +198,7 @@ public class Plan {
         this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
     }
 
+
     /**
      * Reads the to-do file structure and retrieves the next pending {@link Task}, updating its
      * progress status in the plan file.
@@ -214,6 +216,7 @@ public class Plan {
         Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
         TaskDescription pendingDesc = null;
         boolean inProgress = false, waiting = false; // are there waiting tasks & tasks in progress ?
+        int pos;
 
         // obtaining the task to be done: we are operating in the topological order
         for (TaskDescription task : plan){
@@ -238,7 +241,13 @@ public class Plan {
             return null;
         }
 
-        // TODO expand the task here !!!!
+        // expand the task (and possibly dependent tasks) accoring to "*"'s in input / output file names
+        TaskExpander te = new TaskExpander(pendingDesc);
+        te.expand();
+        plan.addAll(pos = plan.indexOf(pendingDesc), plan); // these well may be empty
+        plan.removeAll(te.getTasksToRemove());
+
+        pendingDesc = plan.get(pos); // the first expanded task
         
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
@@ -397,5 +406,6 @@ public class Plan {
         // update the task
         updatedTask.setStatus(taskStatus);
     }
+
 
 }
