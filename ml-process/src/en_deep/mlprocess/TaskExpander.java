@@ -148,6 +148,11 @@ public class TaskExpander {
         // expand outputs and dependent tasks using the expanded task name, select tasks for removal
         this.expandOutputsAndDeps(this.add);
 
+        // remove dependencies of all tasks selected for removal
+        for (TaskDescription t : this.remove){
+            t.looseAllDeps();
+        }
+
     }
 
 

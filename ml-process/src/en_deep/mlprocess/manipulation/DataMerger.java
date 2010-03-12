@@ -71,15 +71,15 @@ public class DataMerger extends Task {
      * Tries to merge the input sources to the output sources.
      * Checks if the number of inputs is divisible by the number of outputs, then tries to read all the
      * inputs and write the outputs.
-     * @throws TaskException
+     *
+     * TODO I/O support for my own input format ?
+     * @throws TaskException for wrong number of inputs, or if an I/O error occurs
      */
     @Override
     public void perform() throws TaskException {
 
         int ratio = this.input.size() / this.output.size();
-        // TODO write DataMerger code
-        // use weka.core.Instances to read ARFF files, create support for more - using the DataSet class (internally: Instances,
-        // with I/O support for csv ?) + I/O support for my input data format
+
         if (this.input.size() % this.output.size() !=  0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }

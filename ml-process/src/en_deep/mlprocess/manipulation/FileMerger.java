@@ -28,8 +28,13 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.FileOutputStream;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 
 /**
@@ -37,6 +42,11 @@ import java.util.Vector;
  * @author Ondrej Dusek
  */
 public class FileMerger extends Task {
+
+    /* CONSTANTS */
+
+    /** Buffer for file rewrites */
+    private static final int BUFFER_SIZE = 1048576;
 
     /* DATA */
 
@@ -54,13 +64,65 @@ public class FileMerger extends Task {
      */
     public FileMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) {
         super(id, parameters, input, output);
+
+        if (parameters.size() > 0){
+            Logger.getInstance().message("FileMerger parameters are ignored", Logger.V_WARNING);
+        }
     }
 
 
+    /**
+     * Tries to merge the input sources to the output sources.
+     * Checks if the number of inputs is divisible by the number of outputs, then tries to read all the
+     * inputs and write the outputs.
+     *
+     * @throws TaskException for wrong number of inputs, or if an I/O error occurs
+     */
     @Override
     public void perform() throws TaskException {
-        // TODO WRITE FileMerger code
-        throw new UnsupportedOperationException("Not supported yet.");
+
+        int ratio = this.input.size() / this.output.size();
+
+        if (this.input.size() % this.output.size() !=  0){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+
+        for (int j = 0; j < this.output.size(); ++j){
+
+            try {
+                this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
+            }
+            catch(IOException e){
+                Logger.getInstance().message(this.id + ": I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            }
+        }
+    }
+
+    /**
+     * Merges the given list of files into the given output file.
+     *
+     * @param in the list of input file names
+     * @param out the output file name
+     */
+    private void mergeData(List<String> in, String out) throws IOException {
+
+        FileOutputStream os = new FileOutputStream(out);
+        byte [] buffer = new byte [BUFFER_SIZE];
+
+        for (String file : in){
+
+            FileInputStream is = new FileInputStream(file);
+
+            while (is.read(buffer) >= 0){
+                os.write(buffer);
+            }
+
+            is.close();
+            os.flush();
+        }
+
+        os.close();
     }
 
 }

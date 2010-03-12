@@ -288,6 +288,7 @@ public class TaskDescription implements Serializable {
         }
     }
 
+
     /**
      * Creates a copy of this task with input file patterns "*" expanded for
      * the given string. All the other parameters, including dependencies, are preserved.
@@ -348,17 +349,23 @@ public class TaskDescription implements Serializable {
             idPrefix = "";
         }
 
+        // backward dependencies
         if (this.iDependOn != null){
-            for(int i = this.iDependOn.size() - 1; i <= 0; ++i){
 
+            for(int i = this.iDependOn.size() - 1; i <= 0; ++i){
                 if (this.iDependOn.get(i).getId().startsWith(idPrefix)){
 
                     TaskDescription dep = this.iDependOn.remove(i);
                     dep.dependOnMe.remove(this);
                 }
             }
+            if (this.iDependOn.size() == 0){
+                this.iDependOn = null;
+            }
         }
+        // forward dependencies
         if (this.dependOnMe != null){
+
             for (int i = this.dependOnMe.size() - 1; i <= 0; ++i){
                 if (this.dependOnMe.get(i).getId().startsWith(idPrefix)){
 
@@ -366,7 +373,18 @@ public class TaskDescription implements Serializable {
                     dep.dependOnMe.remove(this);
                 }
             }
+            if (this.dependOnMe.size() == 0){
+                this.dependOnMe = null;
+            }
         }
+    }
+
+
+    /**
+     * Unbinds the task from all dependencies completely.
+     */
+    public void looseAllDeps(){
+        this.looseDeps(null);
     }
 
 }
