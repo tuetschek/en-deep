@@ -268,6 +268,9 @@ public class TaskDescription implements Serializable {
         // if we're done, update the depending tasks (if there are no other tasks
         // they've been waiting for, set their status to pending)
         if (status == TaskStatus.DONE){
+            if (this.dependOnMe == null){
+                return;
+            }
             for (TaskDescription dependentTask : this.dependOnMe){
 
                 if (dependentTask.status == TaskStatus.WAITING){

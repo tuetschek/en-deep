@@ -35,7 +35,7 @@ public class PlanException extends GeneralException {
 
     /* CONSTANTS */
 
-    /** Exception code: Something's wrong in the scenario XML file. */
+    /** Exception code: Something's wrong in the scenario file. */
     public static final int ERR_INVALID_SCENARIO = 1;
     /** Exception code: Cannot access the scenario or plan file. */
     public static final int ERR_IO_ERROR = 2;
@@ -59,7 +59,7 @@ public class PlanException extends GeneralException {
             case ERR_IO_ERROR:
                 return "Cannot access the scenario or plan file";
             case ERR_INVALID_SCENARIO:
-                return "Something's wrong in the scenario XML file";
+                return "Something's wrong in the scenario file";
             case ERR_INVALID_PLAN:
                 return "Something's wrong with the plan file";
             default:

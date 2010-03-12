@@ -50,6 +50,9 @@ public class Logger {
     /** Verbosity setting: all messages, including debug, shall be displayed */
     public static final int V_DEBUG = 4;
 
+    /** Default verbosity setting */
+    public static final int DEFAULT_VERBOSITY = V_WARNING;
+
     /* DATA */
 
     /** The verbosity setting, set to 1 at startup (for the startup errors to be seen). */

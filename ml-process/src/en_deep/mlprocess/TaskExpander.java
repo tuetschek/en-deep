@@ -241,9 +241,9 @@ public class TaskExpander {
         // split directory and file name pattern, since findPattern recognizes only such
         // patterns that have just one or more subsequent stars in the file name, the dirName
         // must be always a valid path name, not a pattern, and the filePattern must not be empty
-        if (pattern.indexOf(File.pathSeparator) != -1){
-            dirName = pattern.substring(0, pattern.lastIndexOf(File.pathSeparator));
-            filePattern = pattern.substring(pattern.lastIndexOf(File.pathSeparator) + 1);
+        if (pattern.indexOf(File.separator) != -1){
+            dirName = pattern.substring(0, pattern.lastIndexOf(File.separator));
+            filePattern = pattern.substring(pattern.lastIndexOf(File.separator) + 1);
         }
         else {
             dirName = ".";
@@ -262,12 +262,12 @@ public class TaskExpander {
 
             String expansion;
 
-            if ((expansion = this.matches(filePattern, file)) != null){
+            if ((expansion = this.matches(filePattern, file)) != null && new File(dirName + File.separator + file).isFile()){
                 if (justExpansions){
                     ret.add(expansion);
                 }
                 else {
-                    ret.add(file);
+                    ret.add(dirName + File.separator + file);
                 }
             }
         }
@@ -291,7 +291,7 @@ public class TaskExpander {
             String elem = field.get(i);
             // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
             if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)
-                    && (elem.indexOf(File.pathSeparator) == -1 || elem.lastIndexOf(File.pathSeparator) < elem.lastIndexOf(pattern))){
+                    && (elem.indexOf(File.separator) == -1 || elem.lastIndexOf(File.separator) < elem.lastIndexOf(pattern))){
                 if (ret == null){
                     ret = new Vector<Integer>();
                 }

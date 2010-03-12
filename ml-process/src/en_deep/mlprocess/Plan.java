@@ -32,9 +32,9 @@ import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.PlanException;
 import en_deep.mlprocess.exception.SchedulingException;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -118,25 +118,22 @@ public class Plan {
 
         FileLock lock = null;
         Task nextPending = null;
+        RandomAccessFile planFileIO = null;
         
         // try to acquire lock on the to-do file and get a planned task
         try {
-            RandomAccessFile planFileIO = new RandomAccessFile(this.planFile, "rw");
+            planFileIO = new RandomAccessFile(this.planFile, "rw");
             lock = planFileIO.getChannel().lock();
 
             if (planFileIO.length() == 0){ // the planFile file - the planFile has not yet been created
                 this.createPlan(planFileIO);
             }
-
+           
             nextPending = this.getNextPendingTask(planFileIO);
         }
         catch(IOException ex){
             Logger.getInstance().message("I/O error - " + ex.getMessage(), Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_IO_ERROR);
-        }
-        catch(SAXException ex){
-            Logger.getInstance().message("XML error - " + ex.getMessage(), Logger.V_IMPORTANT);
-            throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
         catch(DataException ex){
             Logger.getInstance().message("Data error - " + ex.getMessage(), Logger.V_IMPORTANT);
@@ -162,6 +159,14 @@ public class Plan {
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
             }
+            // close the to-do file
+            try {
+                planFileIO.close();
+            }
+            catch(IOException ex){
+                Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                throw new PlanException(PlanException.ERR_IO_ERROR);
+            }
         }
 
         return nextPending;
@@ -170,18 +175,17 @@ public class Plan {
     /**
      * Creates the process planFile, so that {@link Worker}s may retrieve pending {@link Task}s
      * later.
-     * Tries to read the process description XML file and create the to-do file according to
+     * Tries to read the process description file and create the to-do file according to
      * it, using DAG and parallelizations (up to the specified number of {@Worker}s for all
      * instances of the {@link Process}.
      *
      * TODO possibly check conformity of Task classes upon plan creation ?
      *
      * @param planFileIO the to-do file, locked and opened for writing
-     * @throws SAXException if the input XML file is invalid
      * @throws IOException if there are some I/O problems with the file
      * @throws DataException if there are some illogical event dependencies
      */
-    private void createPlan(RandomAccessFile planFileIO) throws SAXException, IOException, DataException {
+    private void createPlan(RandomAccessFile planFileIO) throws IOException, DataException {
 
         Process process = Process.getInstance();
         ScenarioParser parser = new ScenarioParser(process.getInputFile());
@@ -195,7 +199,7 @@ public class Plan {
         this.sortPlan(plan);
 
         // write the plan into the plan file
-        this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
+        this.writePlan(plan, planFileIO);
     }
 
 
@@ -213,7 +217,7 @@ public class Plan {
     private Task getNextPendingTask(RandomAccessFile planFileIO) 
             throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
-        Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
+        Vector<TaskDescription> plan = this.readPlan(planFileIO);
         TaskDescription pendingDesc = null;
         boolean inProgress = false, waiting = false; // are there waiting tasks & tasks in progress ?
         int pos;
@@ -252,24 +256,32 @@ public class Plan {
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
         // update the plan file
-        this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
+        this.writePlan(plan, planFileIO);
 
         return Task.createTask(pendingDesc);
     }
 
 
     /**
-     * Writes the current plan status into the plan file, using serialization. Closes the output stream.
+     * Writes the current plan status into the plan file, using serialization.
      * @param plan the current plan status
      * @param planFile the file to write to (an open output stream)
      */
-    private void writePlan(Vector<TaskDescription> plan, FileOutputStream planFile) throws IOException {
+    private void writePlan(Vector<TaskDescription> plan, RandomAccessFile planFile) throws IOException {
 
-        ObjectOutputStream oos = new ObjectOutputStream(planFile);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        byte [] planData;
 
         oos.writeObject(plan);
         oos.flush();
         oos.close();
+
+        planData = bos.toByteArray();
+
+        planFile.seek(0);
+        planFile.setLength(planData.length);
+        planFile.write(planData);
     }
 
     /**
@@ -293,13 +305,18 @@ public class Plan {
         while (!independent.isEmpty()){
 
             TaskDescription task = independent.poll();
+            Vector<TaskDescription> dependent;
+
             task.setOrder(sorted.size());
             sorted.add(task);
 
-            for (TaskDescription depTask : task.getDependent()){
+            dependent = task.getDependent();
+            if (dependent != null){
+                for (TaskDescription depTask : dependent){
 
-                if (depTask.allPrerequisitiesSorted()){
-                    independent.add(depTask);
+                    if (depTask.allPrerequisitiesSorted()){
+                        independent.add(depTask);
+                    }
                 }
             }
         }
@@ -323,10 +340,18 @@ public class Plan {
      * @return the current plan with correct task statuses
      * @throws IOException if an I/O error occurs while reading the input file or if the file is incorrect
      */
-    private Vector<TaskDescription> readPlan(FileInputStream planFile) throws IOException, ClassNotFoundException {
+    private Vector<TaskDescription> readPlan(RandomAccessFile planFile) throws IOException, ClassNotFoundException {
 
-        ObjectInputStream ois = new ObjectInputStream(planFile);
-        Vector<TaskDescription> plan = (Vector<TaskDescription>) ois.readObject();
+        byte [] planFileContents = new byte [(int) planFile.length()];
+        ByteArrayInputStream bis;
+        ObjectInputStream ois;
+        Vector<TaskDescription> plan;
+
+        planFile.seek(0); // bufferring needed: file must not be closed
+        planFile.read(planFileContents);
+        bis = new ByteArrayInputStream(planFileContents);
+        ois = new ObjectInputStream(bis);
+        plan = (Vector<TaskDescription>) ois.readObject();
         ois.close();
 
         return plan;
@@ -340,20 +365,21 @@ public class Plan {
     public synchronized void updateTaskStatus(String id, TaskStatus status) throws PlanException {
 
         FileLock lock = null;
+        RandomAccessFile planFileIO = null;
 
         try {
             // lock the plan file
-            RandomAccessFile planFileIO = new RandomAccessFile(this.planFile, "rw");
+            planFileIO = new RandomAccessFile(this.planFile, "rw");
             lock = planFileIO.getChannel().lock();
 
             // obtain the plan
-            Vector<TaskDescription> plan = this.readPlan(new FileInputStream(planFileIO.getFD()));
+            Vector<TaskDescription> plan = this.readPlan(planFileIO);
 
             // update the statuses
             this.updateTaskStatus(plan, id, status);
             
             // write the plan back
-            this.writePlan(plan, new FileOutputStream(planFileIO.getFD()));
+            this.writePlan(plan, planFileIO);
         }
         catch (ClassNotFoundException ex){
             Logger.getInstance().message("Plan file error - " + ex.getMessage(), Logger.V_IMPORTANT);
@@ -373,6 +399,15 @@ public class Plan {
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
+            }
+
+            // close the plan file
+            try {
+                planFileIO.close();
+            }
+            catch(IOException ex){
+                Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                throw new PlanException(PlanException.ERR_IO_ERROR);
             }
         }
 

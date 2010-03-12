@@ -113,9 +113,10 @@ public class FileMerger extends Task {
         for (String file : in){
 
             FileInputStream is = new FileInputStream(file);
+            int bytesRead;
 
-            while (is.read(buffer) >= 0){
-                os.write(buffer);
+            while ((bytesRead = is.read(buffer)) >= 0){
+                os.write(buffer, 0, bytesRead);
             }
 
             is.close();

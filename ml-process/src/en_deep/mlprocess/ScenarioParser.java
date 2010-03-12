@@ -75,12 +75,12 @@ class ScenarioParser {
             Hashtable<String, String> taskParameters = null;
 
             // split into clauses: task name, input, output, algorithm, parameters, end.
-            String [] clauses = taskSection.split(";", 6);
+            String [] clauses = taskSection.split(";", 7);
             for (int i = 0; i < clauses.length; ++i){
                 clauses[i] = clauses[i].trim();
             }
             // check for correct section ending
-            if (!clauses[clauses.length -1].equals("end")){
+            if (!clauses[clauses.length - 2].equals("end") || !clauses[clauses.length - 1].equals("")){
                 throw new DataException(DataException.ERR_END_EXPECTED, this.fileName, this.line);
             }
             // check for correct section beginning
@@ -90,7 +90,7 @@ class ScenarioParser {
             taskName = clauses[0].split("\\s+", 2)[1]; // set the task name
             
             // handle all the section contents
-            for (int i = 1; i < clauses.length - 1; ++i){
+            for (int i = 1; i < clauses.length - 2; ++i){
 
                 String [] clause = clauses[i].split("\\s+", 2);
 
@@ -303,7 +303,8 @@ class ScenarioParser {
     /**
      * Parses the input file with respect to the individual task descriptions. Reads up to
      * MAX_CLAUSES sections - or stops at the first "end" section. Returns null if there is
-     * nothing more than whitespace in the input file.
+     * nothing more than whitespace in the input file. Opens the file if it's not already
+     * open and closes it if there's nothing more to be read
      * 
      * @return the next task description section
      */
@@ -333,6 +334,7 @@ class ScenarioParser {
 
         retVal = buf.toString().trim();
         if (retVal.equals("")){
+            this.input.close(); // close the file if we're at the end
             return null;
         }
         return retVal;
@@ -446,13 +448,13 @@ class ScenarioParser {
             sb.append(new String(rawLine));
         }
         else {
-            sb.append(new String(rawLine, 0, comments.firstElement().first));
+            sb.append(new String(rawLine, 0, comments.firstElement().first - 1));
             for (int i = 1; i < comments.size(); ++i){
                 sb.append(new String(rawLine, comments.get(i-1).second,
-                        comments.get(i).first - comments.get(i-1).second));
+                        comments.get(i).first - comments.get(i-1).second - 1));
             }
             sb.append(new String(rawLine, comments.lastElement().second, 
-                    rawLine.length - comments.lastElement().second + 1));
+                    rawLine.length - comments.lastElement().second));
         }
 
         return sb.toString().trim();

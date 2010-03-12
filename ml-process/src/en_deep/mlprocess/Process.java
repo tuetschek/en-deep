@@ -130,7 +130,7 @@ public class Process {
 
         int threads = 1; // default values to parameters
         int instances = 1;
-        int verbosity = Logger.V_NOTHING;
+        int verbosity = Logger.DEFAULT_VERBOSITY;
         String workDir = null;
         String inputFile = null;
 
@@ -160,8 +160,10 @@ public class Process {
                     case OPTS_WORK_DIR:
                         workDir = getter.getOptarg();
                         break;
+                    case ':':
+                        throw new ParamException(ParamException.ERR_MISSING, "" + (char) getter.getOptopt());
                     case '?':
-                        throw new ParamException(ParamException.ERR_INVPAR, "" + getter.getOptopt());
+                        throw new ParamException(ParamException.ERR_INVPAR, "" + (char) getter.getOptopt());
                 }
             }
 
@@ -175,14 +177,14 @@ public class Process {
             inputFile = args[args.length - 1];
 
             // find out the working directory, if set within the input file specs
-            if (workDir == null && inputFile.indexOf(File.pathSeparator) != -1){
+            if (workDir == null && inputFile.indexOf(File.separator) != -1){
 
-                workDir = inputFile.substring(0, inputFile.lastIndexOf(File.pathSeparator));
-                inputFile = inputFile.substring(inputFile.lastIndexOf(File.pathSeparator) + 1);
+                workDir = inputFile.substring(0, inputFile.lastIndexOf(File.separator));
+                inputFile = inputFile.substring(inputFile.lastIndexOf(File.separator) + 1);
             }
             // append path separator character to the directory specification
-            if (workDir.charAt(workDir.length() - 1) != File.pathSeparatorChar){
-                workDir += File.pathSeparator;
+            if (workDir.charAt(workDir.length() - 1) != File.separatorChar){
+                workDir += File.separator;
             }
 
             // check the validity of the input file and working directory (if applicable)
@@ -244,7 +246,9 @@ public class Process {
         this.instances = instances;
         this.workDir = workDir;
 
-        Logger.getInstance().message("Starting process - input:" + workDir + File.pathSeparator + inputFile + ", " + threads + "threads, "
+        Process.instance = this;
+
+        Logger.getInstance().message("Starting process - input:" + workDir + File.separator + inputFile + ", " + threads + "threads, "
                 + instances + "instances assumed.", Logger.V_INFO);
     }
 
@@ -254,7 +258,7 @@ public class Process {
      * @return the path to the input process file
      */
     public String getInputFile(){
-        return this.workDir + File.pathSeparator + this.inputFile;
+        return this.workDir + this.inputFile;
     }
 
     /**
@@ -281,7 +285,6 @@ public class Process {
     /**
      * All the actual work of the {@link Process} is done in here.
      *
-     * First, the working directory is set. Then,
      * {@link Worker}(s) is/are launched to perform all the prescribed {@link Task}s. They use
      * the {@link Plan} singleton to obtain the {@link Task}s. The first call  to
      * {@link Plan.getNextPendingTask()} among all instances of the {@link Process} results
@@ -290,9 +293,6 @@ public class Process {
     private void run() {
 
         this.workers = new Worker [this.instances];
-
-        // set the working directory
-
 
         // create all the workers and run them
         for (int i = 0; i < this.instances; ++i){
