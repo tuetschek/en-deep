@@ -55,7 +55,8 @@ class ScenarioParser {
     /**
      * Performs the actual parsing of the input file. Reads all the Task descriptions and stores
      * them for later retrieval. Marks all file occurrences and sets up the dependencies for the
-     * tasks according to them.
+     * tasks according to them. Relates the files in input and output to the given working directory,
+     * but leaves all other parameters untouched.
      *
      * @throws DataException if there is a syntax error in the input file
      */
@@ -190,14 +191,17 @@ class ScenarioParser {
     }
 
     /**
-     * Parse a list of files within a clause.
+     * Parse a list of files within a clause. Removes quotes and spaces from the list elements,
+     * then prepends all the resulting file names with the working directory.
+     *
      * @param clause the clause string to be parsed
-     * @return a list of file names
+     * @return a list of file names, related to the working directory
      * @throws DataException if there are invalid characters in the file names
      */
     private Vector<String> getFileList(String clause) throws DataException {
 
         Vector<String> list = this.parseCSV(clause); // raw parsing
+        String workDir = Process.getInstance().getWorkDir();
 
         // remove quotes & spaces
         for(int i = 0; i < list.size(); ++i){
@@ -210,7 +214,7 @@ class ScenarioParser {
             else if (s.contains("\"") || s.matches("\\s")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
             }
-            list.setElementAt(s, i);
+            list.setElementAt(workDir + s, i); // prepend with working directory
         }
         
         // return the result

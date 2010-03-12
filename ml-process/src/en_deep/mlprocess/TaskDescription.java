@@ -73,7 +73,8 @@ public class TaskDescription implements Serializable {
 
     /**
      * Creates a new TaskDescription, given the task id, algorithm, parameters,
-     * inputs and outputs.
+     * inputs and outputs. Inputs and outputs specifications must be relative
+     * to the {@link Process} working directory.
      *
      * @param type the type of this task.
      */

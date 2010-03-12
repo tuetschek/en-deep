@@ -79,8 +79,8 @@ public abstract class Task implements Serializable {
      * A constructor to be used with the derived classes. Just sets the needed values.
      * @param id the unique id of the task
      * @param parameters the parameters of this algorithm
-     * @param input list of input files
-     * @param output list of output files
+     * @param input list of input files (paths relative to working directory)
+     * @param output list of output files (paths relative to working directory)
      */
     protected Task(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output){
         this.id = id;

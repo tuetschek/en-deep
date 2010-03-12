@@ -29,6 +29,7 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.File;
 import java.util.Vector;
 
 
@@ -232,12 +233,52 @@ public class TaskExpander {
      * @return expansions or file names corresponding to the pattern
      */
     private Vector<String> expandPattern(String pattern, boolean justExpansions) {
-        throw new UnsupportedOperationException("Not yet implemented");
+
+        String dirName = null, filePattern = null;
+        Vector<String> ret = new Vector<String>();
+        String [] files;
+
+        // split directory and file name pattern, since findPattern recognizes only such
+        // patterns that have just one or more subsequent stars in the file name, the dirName
+        // must be always a valid path name, not a pattern, and the filePattern must not be empty
+        if (pattern.indexOf(File.pathSeparator) != -1){
+            dirName = pattern.substring(0, pattern.lastIndexOf(File.pathSeparator));
+            filePattern = pattern.substring(pattern.lastIndexOf(File.pathSeparator) + 1);
+        }
+        else {
+            dirName = ".";
+            filePattern = pattern;
+        }
+
+        filePattern = filePattern.replaceFirst("\\*+", "*"); // ensure we have just one star in the pattern
+        files = new File(dirName).list();
+
+        // no files in the directory, just return empty list
+        if (files == null){
+            return ret;
+        }
+        // find all matching files and push the expansions or whole file names to the results list
+        for (String file : files){
+
+            String expansion;
+
+            if ((expansion = this.matches(filePattern, file)) != null){
+                if (justExpansions){
+                    ret.add(expansion);
+                }
+                else {
+                    ret.add(file);
+                }
+            }
+        }
+        // return the result
+        return ret;
     }
+
 
     /**
      * Tries to search for one pattern within a given field. Only such strings are returned in which
-     * the pattern is found only once.
+     * the pattern is found only once and is not followed by path separator character(s).
      * @param pattern the pattern to search for
      * @param field the field to search within
      * @return list of indexes at which the pattern was found, or null if none such exist
@@ -249,7 +290,8 @@ public class TaskExpander {
         for (int i = 0; i < field.size(); ++i){
             String elem = field.get(i);
             // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
-            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)){
+            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)
+                    && (elem.indexOf(File.pathSeparator) == -1 || elem.lastIndexOf(File.pathSeparator) < elem.lastIndexOf(pattern))){
                 if (ret == null){
                     ret = new Vector<Integer>();
                 }
@@ -358,6 +400,26 @@ public class TaskExpander {
             }
         }
 
+    }
+
+    /**
+     * Matches a file name pattern against a real file name. Only patterns
+     * with just one single "*" are supported. Returns null or the expansion of the pattern.
+     *
+     * @param pattern the pattern (see detailed method description for restrictions)
+     * @param fileName the file name to match against the pattern
+     * @return the expansion of the pattern if succesful, null otherwise
+     */
+    private String matches(String pattern, String fileName) {
+
+        String beg = pattern.substring(0, pattern.indexOf("*"));
+        String end = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);
+
+        if (fileName.startsWith(beg) && fileName.endsWith(end)
+                && fileName.length() >= beg.length() + end.length()){
+            return fileName.substring(beg.length(), fileName.length() - end.length());
+        }
+        return null;
     }
 
 }
