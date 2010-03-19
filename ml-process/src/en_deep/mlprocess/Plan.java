@@ -35,6 +35,7 @@ import en_deep.mlprocess.exception.TaskException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -224,7 +225,7 @@ public class Plan {
 
         // obtaining the task to be done: we are operating in the topological order
         for (TaskDescription task : plan){
-            if (task.getStatus() == TaskStatus.IN_PROGRESS){
+            if (task.getStatus() == TaskStatus.WAITING){
                 waiting = true;
             }
             else if (task.getStatus() == TaskStatus.IN_PROGRESS){
@@ -248,7 +249,7 @@ public class Plan {
         // expand the task (and possibly dependent tasks) accoring to "*"'s in input / output file names
         TaskExpander te = new TaskExpander(pendingDesc);
         te.expand();
-        plan.addAll(pos = plan.indexOf(pendingDesc), plan); // these well may be empty
+        plan.addAll(pos = plan.indexOf(pendingDesc), te.getTasksToAdd()); // these well may be empty
         plan.removeAll(te.getTasksToRemove());
 
         pendingDesc = plan.get(pos); // the first expanded task
@@ -282,6 +283,12 @@ public class Plan {
         planFile.seek(0);
         planFile.setLength(planData.length);
         planFile.write(planData);
+
+        FileOutputStream debugOs = new FileOutputStream(Process.getInstance().getInputFile() + ".status", false);
+        for (TaskDescription td : plan){
+            debugOs.write(td.toString().getBytes());
+        }
+        debugOs.close();
     }
 
     /**

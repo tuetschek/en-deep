@@ -87,12 +87,12 @@ public class Worker implements Runnable {
      */
     public void run() {
 
-        Logger.getInstance().message("Worker thread " + this.id + "started.", Logger.V_INFO);
+        Logger.getInstance().message("Worker thread " + this.id + " started.", Logger.V_INFO);
 
         try {
             while (this.waitForNextTask()){
 
-                Logger.getInstance().message("Worker thread " + this.id + "working on task " + this.currentTask.getId(),
+                Logger.getInstance().message("Worker thread " + this.id + " working on task " + this.currentTask.getId(),
                         Logger.V_INFO);
 
                 try {

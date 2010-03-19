@@ -131,13 +131,11 @@ public class DataSplitter extends Task {
      */
     private void splitByAttribute(String inputFile, String outputPattern) throws Exception {
 
-        FileInputStream is = new FileInputStream (inputFile);
-        ConverterUtils.DataSource source = new ConverterUtils.DataSource(is);
+        ConverterUtils.DataSource source = new ConverterUtils.DataSource(inputFile);
         Instances data = source.getDataSet(); // read input data
         Attribute splitAttrib;
         Enumeration values;
 
-        is.close();
 
         // find out all attribute values (end if the attribute does not exist or is not string)
         if ((splitAttrib = data.attribute(this.parameters.get(BY_ATTRIBUTE))) == null
@@ -156,7 +154,8 @@ public class DataSplitter extends Task {
             String outputFile = outputPattern.replace("**", splitAttrib.name() + "-" + value);
             FileOutputStream os = null;
             
-            filter.setExpression(splitAttrib.name() + " = " + value);
+            filter.setInputFormat(data);
+            filter.setExpression("ATT" + (splitAttrib.index()+1) + " is '" + value + "'");
             Instances subset = Filter.useFilter(data, filter); // filter the output
 
             Logger.getInstance().message(this.id + ": splitting " + inputFile

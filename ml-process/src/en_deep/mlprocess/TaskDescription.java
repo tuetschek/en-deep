@@ -106,8 +106,8 @@ public class TaskDescription implements Serializable {
         this.output = (Vector<String>) other.output.clone();
         this.status = other.status;
         this.topolOrder = other.topolOrder;
-        this.dependOnMe = (Vector<TaskDescription>) other.dependOnMe.clone();
-        this.iDependOn = (Vector<TaskDescription>) other.iDependOn.clone();
+        this.dependOnMe = (other.dependOnMe != null ? (Vector<TaskDescription>) other.dependOnMe.clone() : null);
+        this.iDependOn = (other.iDependOn != null ? (Vector<TaskDescription>) other.iDependOn.clone() : null);
     }
 
 
@@ -189,7 +189,7 @@ public class TaskDescription implements Serializable {
         String taskId;
 
         lastId++;
-        taskId = prefix + lastId;
+        taskId = prefix + "["+ lastId + "]";
 
         return taskId;
     }
@@ -390,5 +390,29 @@ public class TaskDescription implements Serializable {
     public void looseAllDeps(){
         this.looseDeps(null);
     }
+
+    @Override
+    public String toString() {
+
+        StringBuilder iDO = new StringBuilder();
+        StringBuilder dOM = new StringBuilder();
+
+        if (this.iDependOn != null){
+            for (TaskDescription td : this.iDependOn){
+                iDO.append(td.id + " ");
+            }
+        }
+        if (this.dependOnMe != null){
+            for (TaskDescription td : this.dependOnMe){
+                dOM.append(td.id + " ");
+            }
+        }
+
+        return this.id + ": " + this.status + "\n" + "\tparams: " + this.parameters.toString()
+                + "\n\tiDependOn: " + iDO.toString() + "\n\tdependOnMe: " + dOM.toString()
+                + "\n\tinput: " + this.input.toString() + "\n\toutput:" + this.output.toString() + "\n";
+    }
+
+
 
 }

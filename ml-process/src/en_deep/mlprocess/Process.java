@@ -139,7 +139,7 @@ public class Process {
             LongOpt[] opts = new LongOpt[4];
             opts[0] = new LongOpt(OPTL_THREADS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_THREADS);
             opts[1] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
-            opts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.OPTIONAL_ARGUMENT, null, OPTS_VERBOSITY);
+            opts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.REQUIRED_ARGUMENT, null, OPTS_VERBOSITY);
             opts[3] = new LongOpt(OPTL_WORK_DIR, LongOpt.REQUIRED_ARGUMENT, null, OPTS_WORK_DIR);
 
             Getopt getter = new Getopt(PROGNAME, args, OPTSTRING, opts);
@@ -152,7 +152,7 @@ public class Process {
                         instances = Process.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
                         break;
                     case OPTS_THREADS:
-                        instances = Process.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
+                        threads = Process.getNumericArgPar(OPTL_THREADS, getter.getOptarg());
                         break;
                     case OPTS_VERBOSITY:
                         verbosity = Process.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg());
@@ -248,8 +248,8 @@ public class Process {
 
         Process.instance = this;
 
-        Logger.getInstance().message("Starting process - input:" + workDir + File.separator + inputFile + ", " + threads + "threads, "
-                + instances + "instances assumed.", Logger.V_INFO);
+        Logger.getInstance().message("Starting process - input:" + workDir + File.separator + inputFile + ", " + threads + " thread(s); "
+                + instances + " instance(s) assumed.", Logger.V_INFO);
     }
 
     /**

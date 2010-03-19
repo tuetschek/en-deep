@@ -141,12 +141,15 @@ public class TaskExpander {
             expandCarthesian();
         }
 
-        // check if all the outputs have "*"s
-        if (this.outputTrans.size() != task.getOutput().size()){
+        // check if all the outputs have "*"s (or none -- i.e. in merge tasks (?))
+        if (this.outputTrans != null && this.outputTrans.size() != task.getOutput().size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId());
         }
 
         // expand outputs and dependent tasks using the expanded task name, select tasks for removal
+        // TODO correct expansions of dependent tasks -- merge tasks should be recognized as "**" or "*" ???
+        // (both could be considered correct, "*" probably better !)
+        // allow for "*" on input and "**" on output !!!
         this.expandOutputsAndDeps(this.add);
 
         // remove dependencies of all tasks selected for removal
@@ -341,8 +344,10 @@ public class TaskExpander {
             }
 
             Vector<TaskDescription> deps = t.getDependent();
-            for (TaskDescription dep : deps){
-                this.expandDependent(t, dep, expPat, removeOrig);
+            if (deps != null){
+                for (TaskDescription dep : deps){
+                    this.expandDependent(t, dep, expPat, removeOrig);
+                }
             }
             removeOrig = true;
         }

@@ -182,7 +182,15 @@ class ScenarioParser {
      */
     private void markFileUsage(String file, TaskDescription task, Occurrences.Purpose purpose) throws DataException {
 
-        Occurrences oc = this.fileOccurrences.get(file);
+        Occurrences oc;
+
+        // treat "**" and "***" as "*" in patterns
+        if (file.matches(".*\\*+.*") && !file.matches(".*\\*[^*]+\\*.*")){
+            file = file.replaceFirst("\\*+", "*");
+        }
+
+        oc = this.fileOccurrences.get(file);
+
         if (oc == null) {
             oc = new Occurrences();
             this.fileOccurrences.put(file, oc);
