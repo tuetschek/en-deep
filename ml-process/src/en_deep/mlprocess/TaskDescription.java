@@ -356,7 +356,7 @@ public class TaskDescription implements Serializable {
         // backward dependencies
         if (this.iDependOn != null){
 
-            for(int i = this.iDependOn.size() - 1; i <= 0; ++i){
+            for(int i = this.iDependOn.size() - 1; i >= 0; --i){
                 if (this.iDependOn.get(i).getId().startsWith(idPrefix)){
 
                     TaskDescription dep = this.iDependOn.remove(i);
@@ -370,11 +370,11 @@ public class TaskDescription implements Serializable {
         // forward dependencies
         if (this.dependOnMe != null){
 
-            for (int i = this.dependOnMe.size() - 1; i <= 0; ++i){
+            for (int i = this.dependOnMe.size() - 1; i >= 0; --i){
                 if (this.dependOnMe.get(i).getId().startsWith(idPrefix)){
 
                     TaskDescription dep = this.dependOnMe.remove(i);
-                    dep.dependOnMe.remove(this);
+                    dep.iDependOn.remove(this);
                 }
             }
             if (this.dependOnMe.size() == 0){

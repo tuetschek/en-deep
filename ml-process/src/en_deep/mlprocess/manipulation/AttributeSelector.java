@@ -168,7 +168,7 @@ public class AttributeSelector extends Task {
         }
 
         // create filtered set
-        for (int i = data.numAttributes() - 1; i >= 0; ++i){
+        for (int i = data.numAttributes() - 1; i >= 0; --i){
             if ((this.omit && indexes.contains(i)) || (!this.omit && !indexes.contains(i))){
                 data.deleteAttributeAt(i);
             }

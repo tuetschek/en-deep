@@ -147,10 +147,8 @@ public class TaskExpander {
         }
 
         // expand outputs and dependent tasks using the expanded task name, select tasks for removal
-        // TODO correct expansions of dependent tasks -- merge tasks should be recognized as "**" or "*" ???
-        // (both could be considered correct, "*" probably better !)
-        // allow for "*" on input and "**" on output !!!
-        this.expandOutputsAndDeps(this.add);
+        // TODO correct: do not expand in-"*" & out-no ... make them accept all outputs from previous tasks !!!
+        this.expandOutputsAndDeps((Vector<TaskDescription>) this.add.clone());
 
         // remove dependencies of all tasks selected for removal
         for (TaskDescription t : this.remove){
@@ -374,19 +372,20 @@ public class TaskExpander {
         expanded.looseDeps(anc.getId().substring(0, anc.getId().indexOf('#')));
         expanded.setDependency(anc);
 
-        // if there are "**", something is wrong
-        if (this.hasPattern("**", expanded.getInput())){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId());
-        }
-        // if there are "***", we can't expand outputs and cannot go deeper
-        if (this.hasPattern("***", expanded.getInput())){
+        // if there are "**" or "***", we can't expand outputs and cannot go deeper
+        if (this.hasPattern("**", expanded.getInput()) || this.hasPattern("***", expanded.getInput())){
             return;
         }
 
         // expand outputs
         Vector<String> outputs = task.getOutput();
 
-        // if there are non-pattern outputs, something is wrong
+        // if there are no pattern outputs, the expansion ends
+        if (!this.hasPattern("*", outputs)){
+            return;
+        }
+
+        // if there are some pattern and some non-pattern outputs, something is wrong
         if (this.findPattern("*", outputs).size() != outputs.size()){ 
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId());
         }
