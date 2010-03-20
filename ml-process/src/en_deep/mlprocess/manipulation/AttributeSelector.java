@@ -126,9 +126,11 @@ public class AttributeSelector extends Task {
             }
         }
         catch (TaskException e){
+            e.printStackTrace();
             throw e;
         }
         catch (Exception e){
+            e.printStackTrace();
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }
@@ -141,16 +143,13 @@ public class AttributeSelector extends Task {
      */
     private void selectAttributes(String inputFile, String outputFile) throws Exception {
 
-        FileInputStream is = new FileInputStream (inputFile);
         FileOutputStream os = null;
-        ConverterUtils.DataSource source = new ConverterUtils.DataSource(is);
+        ConverterUtils.DataSource source = new ConverterUtils.DataSource(inputFile);
         ConverterUtils.DataSink out;
         Instances data = source.getDataSet(); // read input data
         HashSet<Integer> indexes = new HashSet<Integer>(this.attribs.length); // valid omitted / selected indexes
 
         Enumeration values;
-
-        is.close();
 
         Logger.getInstance().message(this.id + ": selecting attributes from " + inputFile + " to "
                 + outputFile + "...", Logger.V_DEBUG);

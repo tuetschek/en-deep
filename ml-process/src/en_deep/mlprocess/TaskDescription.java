@@ -36,7 +36,7 @@ import java.util.Hashtable;
  *
  * @author Ondrej Dusek
  */
-public class TaskDescription implements Serializable {
+public class TaskDescription implements Serializable, Comparable<TaskDescription> {
 
     /* CONSTANTS */
 
@@ -92,7 +92,8 @@ public class TaskDescription implements Serializable {
 
     /**
      * Creates a copy of the given task description with a given id suffix.
-     * All the members except algorithm are cloned, i.e. not just their references copied.
+     * All the members except algorithm are cloned, i.e. not just their references copied. Dependencies are
+     * set as in the original task -- on the other side of the dependency as well.
      *
      * @param other the object to be copied
      * @param idSuffix a suffix to be pasted at the end of the original id in order to distinguish the two
@@ -106,8 +107,17 @@ public class TaskDescription implements Serializable {
         this.output = (Vector<String>) other.output.clone();
         this.status = other.status;
         this.topolOrder = other.topolOrder;
-        this.dependOnMe = (other.dependOnMe != null ? (Vector<TaskDescription>) other.dependOnMe.clone() : null);
-        this.iDependOn = (other.iDependOn != null ? (Vector<TaskDescription>) other.iDependOn.clone() : null);
+
+        if (other.dependOnMe != null){ // set forward dependencies
+            for (TaskDescription dep : other.dependOnMe){
+                dep.setDependency(this);
+            }
+        }
+        if (other.iDependOn != null){ // set backward dependencies
+            for (TaskDescription dep : other.iDependOn){
+                this.setDependency(dep);
+            }
+        }
     }
 
 
@@ -115,14 +125,17 @@ public class TaskDescription implements Serializable {
      * Sets a dependency for this task (i.e\. marks this {@link TaskDescription} as depending
      * on the parameter). Checks for duplicate dependencies, i.e. a dependency from task A to
      * task B is stored only once, even if it is enforced multiple times. Sets the task status
-     * to waiting - the dependent task needs to be processed first.
+     * to waiting, if the source is not already done - the source task needs to be processed
+     * first.
      *
      * @param source the governing {@link TaskDescription} that must be processed before this one.
      */
     void setDependency(TaskDescription source) {
 
-        // if we have a dependency, we need to wait for it to finish
-        this.status = TaskStatus.WAITING;
+        // if we have a dependency, we need to wait for it to finish (if not already finished)
+        if (source.status != TaskStatus.DONE){
+            this.status = TaskStatus.WAITING;
+        }
 
         if (this.iDependOn == null){
             this.iDependOn = new Vector<TaskDescription>();
@@ -298,7 +311,7 @@ public class TaskDescription implements Serializable {
      * the given string. All the other parameters, including dependencies, are preserved.
      *
      * @param expPat the pattern expansion to be used
-     * @return
+     * @return a copy of this task, expanded
      */
     public TaskDescription expand(String expPat) {
         
@@ -310,7 +323,7 @@ public class TaskDescription implements Serializable {
             int pos = elem.indexOf("*");
             if (pos != -1 && pos == elem.lastIndexOf("*")){
                 elem = elem.substring(0, pos) + expPat
-                        + (elem.length() < pos - 1 ? elem.substring(pos + 1) : "");
+                        + (elem.length() > pos + 1 ? elem.substring(pos + 1) : "");
             }
             copy.input.set(i, elem);
         }
@@ -325,7 +338,7 @@ public class TaskDescription implements Serializable {
      * If there's no "***" at the given position in the inputs, just a copy is returned.
      *
      * @param expPat the pattern expansion to be used
-     * @return
+     * @return a copy of this task, expanded
      */
     public TaskDescription expand(String expPat, int inputNo){
 
@@ -411,6 +424,60 @@ public class TaskDescription implements Serializable {
         return this.id + ": " + this.status + "\n" + "\tparams: " + this.parameters.toString()
                 + "\n\tiDependOn: " + iDO.toString() + "\n\tdependOnMe: " + dOM.toString()
                 + "\n\tinput: " + this.input.toString() + "\n\toutput:" + this.output.toString() + "\n";
+    }
+
+    /**
+     * If this task description is an expansion of an original tasks, returns the actual pattern replacement
+     * in inputs and outputs of the original task.
+     *
+     * @return the replacement of patterns in inputs and outputs of the original task, or <tt>null</tt> if not applicable
+     */
+    String getPatternReplacement() {
+
+        if (this.id.indexOf('#') == -1){
+            return null;
+        }
+        return this.id.substring(this.id.indexOf('#')).replaceAll("#", "_");
+    }
+
+    /**
+     * Replaces the pos-th input with a list of replacements.
+     *
+     * @param pos the position to be affected
+     * @param replacements the list of replacements for the original input (pattern) at that position
+     */
+    void replaceInput(int pos, Vector<String> replacements) {
+
+        this.input.remove(pos);
+        this.input.addAll(pos, replacements);
+    }
+
+    /**
+     * Replaces the pos-th input with the given replacement.
+     *
+     * @param pos the position to be affected
+     * @param replacement the replacement for the given position
+     */
+    void replaceOutput(int pos, String replacement) {
+
+        this.output.set(pos, replacement);
+    }
+
+    /**
+     * Compares two TaskDescription according to their topological order.
+     *
+     * @param other the TaskDescription to be compared to this one
+     * @return -1 if this has lower topological order, 1 for greater and 0 for equal
+     */
+    public int compareTo(TaskDescription other) {
+
+        if (this.topolOrder < other.topolOrder){
+            return -1;
+        }
+        else if (this.topolOrder > other.topolOrder){
+            return 1;
+        }
+        return 0;
     }
 
 

@@ -98,6 +98,7 @@ public class DataMerger extends Task {
 
     /**
      * Tries to merge several input files into one output, using WEKA code.
+     * TODO do-over using single-instance addition !!!
      * @param in
      * @param out
      */

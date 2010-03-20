@@ -30,7 +30,10 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Vector;
+import java.util.Hashtable;
 
 
 /**
@@ -66,10 +69,8 @@ public class TaskExpander {
     /** Positions in the task input listings, where are wildcard patterns to be found */
     private Vector<Integer> outputTrans;
 
-    /** All the tasks to be removed from the plan */
-    private Vector<TaskDescription> remove;
-    /** All the newly created tasks to be added to the plan */
-    private Vector<TaskDescription> add;
+    /** Expansion pattern matches for all affected tasks */
+    private Hashtable<TaskDescription, Vector<TaskDescription>> expansions;
 
 
     /* METHODS */
@@ -83,8 +84,7 @@ public class TaskExpander {
     public TaskExpander(TaskDescription task){
 
         this.task = task;
-        this.remove = new Vector<TaskDescription>();
-        this.add = new Vector<TaskDescription>();
+        this.expansions = new Hashtable<TaskDescription, Vector<TaskDescription>>();
 
         this.inputTrans = null;
         this.inputHere = null;
@@ -126,14 +126,12 @@ public class TaskExpander {
 
             Vector<String> taskInput = this.task.getInput();
             Vector<String> matches = this.expandPattern(taskInput.get(this.inputTrans.firstElement()), true);
+            Vector<TaskDescription> expTasks = new Vector<TaskDescription> (matches.size());
 
             for (String match : matches){
-                this.add.add(this.task.expand(match));
+                expTasks.add(this.task.expand(match));
             }
-        }
-        // there are only "***" -- prepare for their processing
-        else {
-            this.add.add(this.task);
+            this.expansions.put(this.task, expTasks);
         }
 
         // expand "***"s -- one by one
@@ -141,17 +139,16 @@ public class TaskExpander {
             expandCarthesian();
         }
 
-        // check if all the outputs have "*"s (or none -- i.e. in merge tasks (?))
-        if (this.outputTrans != null && this.outputTrans.size() != task.getOutput().size()){
+        // check if all the outputs have "*"s (otherwise, there's no point in using "*" or "***" for inputs)
+        if (this.outputTrans == null || this.outputTrans.size() != task.getOutput().size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId());
         }
 
-        // expand outputs and dependent tasks using the expanded task name, select tasks for removal
-        // TODO correct: do not expand in-"*" & out-no ... make them accept all outputs from previous tasks !!!
-        this.expandOutputsAndDeps((Vector<TaskDescription>) this.add.clone());
+        // expand outputs and dependent tasks using the expanded task name
+        this.expandOutputsAndDeps();
 
-        // remove dependencies of all tasks selected for removal
-        for (TaskDescription t : this.remove){
+        // remove dependencies of all original unexpanded tasks (which are selected for removal)
+        for (TaskDescription t : this.expansions.keySet()){
             t.looseAllDeps();
         }
 
@@ -160,19 +157,31 @@ public class TaskExpander {
 
     /**
      * Returns the result of the expansion - a list of new expanded tasks that should be added to
-     * the plan.
+     * the plan (in the topological order of the original tasks from which they originate).
      * @return
      */
-    public Vector<TaskDescription> getTasksToAdd(){
-        return this.add;
+    public Collection<TaskDescription> getTasksToAdd(){
+
+        Vector<TaskDescription> all = new Vector<TaskDescription>();
+        TaskDescription [] arr = null;
+
+        for (Vector<TaskDescription> expansion : this.expansions.values()){
+            all.addAll(expansion);
+        }
+
+        arr = all.toArray(new TaskDescription[0]);
+        Arrays.sort(arr);
+
+        return Arrays.asList(arr);
     }
 
     /**
      * Returns the result of the expansion - a list of tasks that should be removed from the
      * plan completely (as their expansions are added to the plan).
      */
-    public Vector<TaskDescription> getTasksToRemove(){
-        return this.remove;
+    public Collection<TaskDescription> getTasksToRemove(){
+
+        return this.expansions.keySet();
     }
 
 
@@ -188,8 +197,7 @@ public class TaskExpander {
             int pos = this.inputHere.get(i);
             Vector<String> files = this.expandPattern(taskInput.get(pos), false);
 
-            taskInput.remove(i);
-            taskInput.addAll(i, files);
+            task.replaceInput(pos, files);
         }
     }
 
@@ -200,17 +208,25 @@ public class TaskExpander {
 
         Vector<String> taskInput = this.task.getInput();
 
+        // iterate over all possible "***" patterns and expand them one by one
         for (Integer pos : this.inputCarth) {
 
-            Vector<String> matches = this.expandPattern(taskInput.get(this.inputCarth.get(pos)), true);
+            Vector<String> matches = this.expandPattern(taskInput.get(pos), true);
             Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
 
             for (String match : matches) {
-                for (TaskDescription t : this.add) {
-                    nextExp.add(t.expand(match, pos));
+
+                if (this.expansions.get(this.task) != null){ // some "*"'s and/or later iterations
+
+                    for (TaskDescription t : this.expansions.get(this.task)) {
+                        nextExp.add(t.expand(match, pos));
+                    }
+                }
+                else { // pure "***" and first iteration
+                    nextExp.add(this.task.expand(match, pos));
                 }
             }
-            this.add = nextExp;
+            this.expansions.put(this.task, nextExp);
         }
     }
 
@@ -279,10 +295,14 @@ public class TaskExpander {
 
     /**
      * Tries to search for one pattern within a given field. Only such strings are returned in which
-     * the pattern is found only once and is not followed by path separator character(s).
+     * the pattern is found only once and is not followed by path separator character(s). The list
+     * of indexes is ascending.
+     *
      * @param pattern the pattern to search for
      * @param field the field to search within
      * @return list of indexes at which the pattern was found, or null if none such exist
+     *
+     * TODO move to TaskDescription itself
      */
     private Vector<Integer> findPattern(String pattern, Vector<String> field) {
 
@@ -307,6 +327,8 @@ public class TaskExpander {
      * @param pattern the pattern to search for
      * @param field the field to search within
      * @return list of indexes at which the pattern was found, or null if none such exist
+     *
+     * TODO move to TaskDescription itself
      */
     private boolean hasPattern(String pattern, Vector<String> field) {
 
@@ -323,84 +345,114 @@ public class TaskExpander {
 
     /**
      * Replaces all patterns in output file names according to the expansion value of input
-     * patterns, replaces patterns in dependent tasks accordingly and selects the unexpanded tasks for removal.
+     * patterns, replaces patterns in dependent tasks accordingly.
      *
-     * @param tasks the tasks to be processed.
      */
-    private void expandOutputsAndDeps(Vector<TaskDescription> tasks) throws TaskException {
+    private void expandOutputsAndDeps() throws TaskException {
 
-        this.remove.add(this.task); // remove the original task
-        boolean removeOrig = false; // remove the dependent unexpanded tasks just once
+        Vector<TaskDescription> deps = this.task.getDependent();
 
-        for (TaskDescription t : tasks){
+        // expand outputs for all tasks to which the original first task expanded
+        for (TaskDescription t : this.expansions.get(this.task)){
             // find out to what was the input pattern expanded
-            String expPat = t.getId().substring(t.getId().indexOf('#')).replaceAll("#", "_");
+            String expPat = t.getPatternReplacement();
             Vector<String> outputs = t.getOutput();
 
+            // copy the pattern expansion to the input
             for (int i = 0; i < outputs.size(); ++i){
                 outputs.set(i, outputs.get(i).replace("*", expPat));
             }
+        }
 
-            Vector<TaskDescription> deps = t.getDependent();
-            if (deps != null){
-                for (TaskDescription dep : deps){
-                    this.expandDependent(t, dep, expPat, removeOrig);
-                }
+        // expand dependent tasks
+        if (deps != null){
+            for (TaskDescription dep : deps){
+                this.expandDependent(this.task, dep);
             }
-            removeOrig = true;
         }
     }
 
 
     /**
-     * Expands all dependent tasks with the given pattern, given an expanded one and an unexpanded one.
+     * Expands all dependent tasks, given an expanded task and an unexpanded one, which depends on it.
      * @param anc the already expanded task
      * @param task its dependent, not yet expanded task
-     * @param expPat the expansion pattern
-     * @param removeOriginal should we add the original tasks for removal?
      * @throws DataException if there are some problems with the tasks specifications
      */
-    private void expandDependent(TaskDescription anc, TaskDescription task, String expPat, boolean removeOriginal) 
+    private void expandDependent(TaskDescription anc, TaskDescription task) 
             throws TaskException {
 
-        TaskDescription expanded = task.expand(expPat); // this expands "*"s
+        Vector<TaskDescription> exps = null;
 
-        if (removeOriginal){
-            this.remove.add(task);
-        }
-        this.add.add(expanded);
-        expanded.looseDeps(anc.getId().substring(0, anc.getId().indexOf('#')));
-        expanded.setDependency(anc);
+        // this means there are no more dependent expansions and we need only to put all outputs
+        // from expanded anc as inputs to this task
+        if (!this.hasPattern("*", task.getOutput())){
 
-        // if there are "**" or "***", we can't expand outputs and cannot go deeper
-        if (this.hasPattern("**", expanded.getInput()) || this.hasPattern("***", expanded.getInput())){
+            Vector<String> replacements = new Vector<String>();
+            Vector<String> taskInput = task.getInput();
+            Vector<Integer> patterns = this.findPattern("*", taskInput);
+
+            for (TaskDescription ancExp : this.expansions.get(anc)){ // find pattern replacements
+                replacements.add(ancExp.getPatternReplacement());
+            }
+            for (int i = patterns.size() - 1; i >= 0; --i){ // apply them in inputs
+
+                Vector<String> files = new Vector<String>(replacements.size());
+                String pattern = taskInput.get(patterns.get(i));
+
+                for (String rep : replacements){ // all replacements for each "*"-input
+                    files.add(pattern.replace("*", rep));
+                }
+
+                task.replaceInput(patterns.get(i), files);
+            }
             return;
         }
 
-        // expand outputs
+        // now we know the expansion line continues, we need to expand this task
+        
+        // prepare data structures
+        exps = new Vector<TaskDescription>(this.expansions.get(anc).size());
+        this.expansions.put(task, exps);
+
+        // expand the "task", according to the expansions of anc
+        for (TaskDescription ancExp : this.expansions.get(anc)){
+            
+            TaskDescription expanded = task.expand(ancExp.getPatternReplacement()); // this expands "*"s
+
+            exps.add(expanded);
+            expanded.looseDeps(anc.getId());
+            expanded.setDependency(ancExp);
+        }
+
+        // if there are "**" or "***" left to be expanded, we can't expand outputs and go deeper, yet
+        if (this.hasPattern("**", task.getInput()) || this.hasPattern("***", task.getInput())){
+            return;
+        }
+
+        // now continue to outputs and dependent tasks expansion
+
         Vector<String> outputs = task.getOutput();
-
-        // if there are no pattern outputs, the expansion ends
-        if (!this.hasPattern("*", outputs)){
-            return;
-        }
 
         // if there are some pattern and some non-pattern outputs, something is wrong
         if (this.findPattern("*", outputs).size() != outputs.size()){ 
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId());
         }
 
-        for (int i = 0; i < outputs.size(); ++i){
-            outputs.set(i, outputs.get(i).replace("*", expPat));
+        for (TaskDescription exp : exps){
+
+            for (int i = 0; i < outputs.size(); ++i){
+                exp.replaceOutput(i, outputs.get(i).replace("*", exp.getPatternReplacement()));
+            }
         }
 
-        // go deeper only if we have "*" ("**" and pure-"***" cannot be expanded yet)
-        Vector<TaskDescription> deps = expanded.getDependent();
+        // go deeper only if there are "*"s ("**" and pure-"***" cannot be expanded yet)
+        Vector<TaskDescription> deps = task.getDependent();
 
         for (TaskDescription dep : deps){
 
             if (this.hasPattern("*", dep.getInput())){
-                this.expandDependent(expanded, dep, expPat, removeOriginal);
+                this.expandDependent(task, dep);
             }
         }
 
