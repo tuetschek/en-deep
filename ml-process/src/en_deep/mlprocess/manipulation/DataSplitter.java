@@ -74,7 +74,7 @@ public class DataSplitter extends Task {
      * </p>
      *
      * @param id the task id
-     * @param parameters have no sense here
+     * @param parameters the task parameters
      * @param input the input data sets or files
      * @param output the output data sets or files
      */

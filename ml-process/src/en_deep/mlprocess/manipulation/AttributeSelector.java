@@ -30,7 +30,6 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Logger;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -39,8 +38,6 @@ import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
-import weka.filters.Filter;
-import weka.filters.unsupervised.instance.SubsetByExpression;
 
 /**
  * This class splits the data into equal pieces by lines.
@@ -78,7 +75,7 @@ public class AttributeSelector extends Task {
      * </p>
      *
      * @param id the task id
-     * @param parameters have no sense here
+     * @param parameters the task parameters
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
