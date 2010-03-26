@@ -30,13 +30,14 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.List;
 import java.util.Vector;
 import java.util.Hashtable;
+import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.converters.ConverterUtils;
 
 /**
  * This class merges several data sets into one.
@@ -80,7 +81,7 @@ public class DataMerger extends Task {
 
         int ratio = this.input.size() / this.output.size();
 
-        if (this.input.size() % this.output.size() !=  0){
+        if (this.input.size() == 0 || this.input.size() % this.output.size() !=  0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
 
@@ -89,7 +90,7 @@ public class DataMerger extends Task {
             try {
                 this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
             }
-            catch(IOException e){
+            catch(Exception e){
                 Logger.getInstance().message(this.id + ": I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
                 throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
             }
@@ -98,58 +99,37 @@ public class DataMerger extends Task {
 
     /**
      * Tries to merge several input files into one output, using WEKA code.
-     * TODO do-over using single-instance addition !!!
+     *
      * @param in
      * @param out
      */
-    private void mergeData(List<String> in, String out) throws IOException {
+    private void mergeData(List<String> in, String out) throws Exception {
 
-        File temp1 = File.createTempFile(this.id, "");
-        File temp2 = File.createTempFile(this.id, "");
-        PrintStream ps;
-        PrintStream origOut = System.out; // remember original output stream
+        ConverterUtils.DataSource bulkIn = new ConverterUtils.DataSource(in.get(0));
+        Instances bulk = bulkIn.getDataSet();
+        bulkIn.reset();
 
-        String [] args = new String[3];
-        args[0] = "append";
+        Logger.getInstance().message(this.id + ": adding " + in.get(0) + " to " + out + "...", Logger.V_DEBUG);
 
+        for (int i = 1; i < in.size(); ++i){
 
-        // merge first two files
-        args[1] = in.get(0);
-        args[2] = in.get(1);
+            ConverterUtils.DataSource addIn = new ConverterUtils.DataSource(in.get(i));
+            Instances add = addIn.getDataSet();
+            addIn.reset();
 
-        Logger.getInstance().message(this.id + ": merge " + args[1] + " + " + args[2], Logger.V_DEBUG);
+            Logger.getInstance().message(this.id + ": adding " + in.get(i) + " to " + out + "...", Logger.V_DEBUG);
 
-        System.setOut(ps = new PrintStream(temp1));
-        Instances.main(args);
-        ps.close();
-
-        // append more files, one at a time (swapping usage of temp files)
-        for (int i = 2; i < in.size(); ++i){
-
-            args[1] = i % 2 == 0 ? temp1.getCanonicalPath() : temp2.getCanonicalPath();
-            args[2] = in.get(i);
-
-            Logger.getInstance().message(this.id + ": adding " + args[2] + " to merged data file.", Logger.V_DEBUG);
-
-            System.setOut(ps = (i % 2 == 0 ? new PrintStream(temp2) : new PrintStream(temp1)));
-            Instances.main(args);
-            ps.close();
+            for (int j = 0; j < add.numInstances(); ++j){
+                bulk.add(add.instance(j));
+            }
         }
 
-        Logger.getInstance().message(this.id + ": moving tempfile to its final destination.", Logger.V_DEBUG);
+        Logger.getInstance().message(this.id + ": writing output to " + out + "...", Logger.V_DEBUG);
 
-        // move the last temp file to the file destination and delete the other
-        if (in.size() % 2 == 0){
-            temp1.renameTo(new File(out));
-            temp2.delete();
-        }
-        else {
-            temp2.renameTo(new File(out));
-            temp1.delete();
-        }
-
-        // restore the original output stream
-        System.setOut(origOut);
+        FileOutputStream os = new FileOutputStream(out);
+        ConverterUtils.DataSink bulkOut = new ConverterUtils.DataSink(os);
+        bulkOut.write(bulk);
+        os.close();
     }
 
 

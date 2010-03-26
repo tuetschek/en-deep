@@ -48,7 +48,7 @@ public class Worker implements Runnable {
     /* CONSTANTS */
 
     /** Base time to suspend the {@link Worker} for when there are no pending {@link Task}s */
-    private static final int SUSPEND_TIME = 300000;
+    private static final int SUSPEND_TIME = 30000;
 
     /** Random time that is added to base suspend time */
     private static final int SUSPEND_RANDOM = 10000;

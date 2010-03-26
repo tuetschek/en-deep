@@ -292,13 +292,15 @@ public class Process {
      */
     private void run() {
 
-        this.workers = new Worker [this.instances];
+        this.workers = new Worker [this.threads];
 
         // create all the workers and run them
-        for (int i = 0; i < this.instances; ++i){
+        for (int i = 0; i < this.threads; ++i){
             
             this.workers[i] = new Worker(i);
-            this.workers[i].run();
+            Thread t = new Thread(this.workers[i]);
+
+            t.start();
         }
 
         // TODO wait for the Workers to finish ?

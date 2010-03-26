@@ -43,7 +43,6 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 import java.util.ArrayDeque;
 import java.util.Vector;
-import org.xml.sax.SAXException;
 
 
 
@@ -186,7 +185,7 @@ public class Plan {
      * @throws IOException if there are some I/O problems with the file
      * @throws DataException if there are some illogical event dependencies
      */
-    private void createPlan(RandomAccessFile planFileIO) throws IOException, DataException {
+    private synchronized void createPlan(RandomAccessFile planFileIO) throws IOException, DataException {
 
         Process process = Process.getInstance();
         ScenarioParser parser = new ScenarioParser(process.getInputFile());
@@ -215,7 +214,7 @@ public class Plan {
      * @throws TaskException if there are problems with the task classes' descriptions
      * @throws SchedulingException if there are tasks waiting or in progress, but no pending ones
      */
-    private Task getNextPendingTask(RandomAccessFile planFileIO) 
+    private synchronized Task getNextPendingTask(RandomAccessFile planFileIO)
             throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
         Vector<TaskDescription> plan = this.readPlan(planFileIO);
@@ -268,7 +267,7 @@ public class Plan {
      * @param plan the current plan status
      * @param planFile the file to write to (an open output stream)
      */
-    private void writePlan(Vector<TaskDescription> plan, RandomAccessFile planFile) throws IOException {
+    private synchronized void writePlan(Vector<TaskDescription> plan, RandomAccessFile planFile) throws IOException {
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -347,7 +346,7 @@ public class Plan {
      * @return the current plan with correct task statuses
      * @throws IOException if an I/O error occurs while reading the input file or if the file is incorrect
      */
-    private Vector<TaskDescription> readPlan(RandomAccessFile planFile) throws IOException, ClassNotFoundException {
+    private synchronized Vector<TaskDescription> readPlan(RandomAccessFile planFile) throws IOException, ClassNotFoundException {
 
         byte [] planFileContents = new byte [(int) planFile.length()];
         ByteArrayInputStream bis;
