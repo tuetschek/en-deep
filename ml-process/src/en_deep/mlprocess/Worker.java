@@ -114,7 +114,7 @@ public class Worker implements Runnable {
                     Logger.V_IMPORTANT);
         }
 
-        Logger.getInstance().message("Worker thread #" + this.id + "finished - nothing else to do.", Logger.V_INFO);
+        Logger.getInstance().message("Worker thread #" + this.id + " finished - nothing else to do.", Logger.V_INFO);
     }
 
     /**

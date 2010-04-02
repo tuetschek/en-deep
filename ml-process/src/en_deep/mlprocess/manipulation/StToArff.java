@@ -29,6 +29,7 @@ package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.Process;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -50,6 +51,11 @@ public class StToArff extends Task {
 
     /** The lang_conf parameter name */
     private static final String LANG_CONF = "lang_conf";
+
+    /** The multiclass parameter name */
+    private static final String MULTICLASS = "multiclass";
+    /** The predicted parameter name */
+    private static final String PREDICTED = "predicted";
 
     /** Number of compulsory fields that are in each sentence */
     private static final int COMPULSORY_FIELDS = 14;
@@ -83,6 +89,16 @@ public class StToArff extends Task {
         "@ATTRIBUTE pred STRING"
     };
 
+    /** Attribute definition start in ARFF files */
+    private static final String ATTRIBUTE = "@ATTRIBUTE";
+    /** Specification of an attribute as CLASS in ARFF files */
+    private static final String CLASS = "CLASS";
+    /** Specification of an attribute as INTEGER in ARFF files */
+    private static final String INTEGER = "INTEGER";
+
+    /** Semantic relation (multiclass) attribute name in ARFF files */
+    private static final String SEM_REL = "semrel";
+
     /** Start of the data section in ARFF files */
     private static final String DATA = "@DATA";
 
@@ -98,6 +114,8 @@ public class StToArff extends Task {
     private static final int IDXI_POS = 4;
     /** Index of the lemma attribute in the ST file */
     private static final int IDXI_LEMMA = 2;
+    /** Starting index of the semantic roles (APRED) in the ST file */
+    private static final int IDXI_SEMROLE = 14;
 
     /* DATA */
 
@@ -114,6 +132,13 @@ public class StToArff extends Task {
     private String nounPat;
     /** Tag pattern for nouns in the ST file */
     private String verbPat;
+
+    /** Use predicted noun and verb values ? */
+    private boolean usePredicted;
+    /** Create a multiclass semantic relation description ? */
+    private boolean useMulticlass;
+    /** Path to config file */
+    private final String configFile;
 
     /** Sentence ID generation -- last used value */
     private static int lastId = 0;
@@ -134,6 +159,8 @@ public class StToArff extends Task {
      * language (on three lines and space-separated, FEAT specification should be left blank if FEAT is not used), followed
      * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (space-separated)</li>
      * <li><tt>predicted</tt> TODO work with predicted arguments only ?? </li>
+     * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
+     * (one semantic class each) with 0/1 values are created.</li>
      * </ul>
      *
      * @param id the task id
@@ -147,10 +174,32 @@ public class StToArff extends Task {
         super(id, parameters, input, output);
 
         // check parameters
-        if (parameters.get(LANG_CONF) == null){
+        if (this.parameters.get(LANG_CONF) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
+        if (this.parameters.get(MULTICLASS) != null){
+            this.useMulticlass = (this.parameters.get(MULTICLASS).equals("0")
+                    || this.parameters.get(MULTICLASS).equalsIgnoreCase("false"))
+                    ? false : true;
+        }
+        else {
+            this.useMulticlass = false;
+        }
+        if (this.parameters.get(PREDICTED) != null){
+            this.usePredicted = (this.parameters.get(PREDICTED).equals("0")
+                    || this.parameters.get(PREDICTED).equalsIgnoreCase("false"))
+                    ? false : true;
+        }
+        else {
+            this.usePredicted = false;
+        }
 
+        // find the config file
+        this.configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
+        if (!new File(this.configFile).exists()){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+      
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
@@ -181,9 +230,11 @@ public class StToArff extends Task {
             }
         }
         catch (TaskException e){
+            e.printStackTrace();
             throw e;
         }
         catch (Exception e){
+            e.printStackTrace();
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }
@@ -196,7 +247,7 @@ public class StToArff extends Task {
      */
     private void convert(String st, String arff) throws TaskException, FileNotFoundException, IOException {
 
-        RandomAccessFile in = new RandomAccessFile("st", "r");
+        RandomAccessFile in = new RandomAccessFile(st, "r");
         Vector<String []> sentence = this.readSentence(in);
         Vector<String> outFiles;
         int sentenceId;
@@ -215,7 +266,9 @@ public class StToArff extends Task {
 
                 for (String [] word : sentence){
 
+                    // print the compulsory fields
                     out.print(sentenceId);
+
                     for (int j = 0; j < COMPULSORY_FIELDS; ++j){
                         if (this.feat == null && (j == IDXO_FEAT || j == IDXO_FEAT + 1)){
                             continue;
@@ -223,7 +276,23 @@ public class StToArff extends Task {
                         out.print("," + word[j]);
                     }
                     // TODO add generated features
-                    // TODO add 0/1 for argument types !
+
+                    // print the resulting semantic relation to the given predicate
+                    if (!this.useMulticlass){
+                        for (String role : this.semRoles){
+                            if (word[IDXI_SEMROLE + i].equals(role)){
+                                out.print(",1");
+                            }
+                            else {
+                                out.print(",0");
+                            }
+                        }
+                    }
+                    else {
+                        out.print("," + word[IDXI_SEMROLE + i]);
+                    }
+
+                    out.println();
                 }
 
                 out.close();
@@ -246,7 +315,7 @@ public class StToArff extends Task {
      */
     private void readLangConf() throws FileNotFoundException, IOException, TaskException {
 
-        RandomAccessFile in = new RandomAccessFile(this.parameters.get(LANG_CONF), "r");
+        RandomAccessFile in = new RandomAccessFile(this.configFile, "r");
         String posStr = in.readLine();
         String featStr = in.readLine();
         String deprelStr = in.readLine();
@@ -256,14 +325,17 @@ public class StToArff extends Task {
 
         in.close();
 
-        if (pos == null || feat == null || deprel == null || this.nounPat == null || this.verbPat == null){
+        if (posStr == null || featStr == null || deprelStr == null
+                || semRolesStr == null || this.nounPat == null || this.verbPat == null){
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
 
-        this.pos = posStr.split("\\s+");
-        this.feat = featStr.split("\\s+");
-        if (this.feat.length == 0){
+        this.pos = posStr.split("\\s+");        
+        if (featStr.equals("")){
             this.feat = null;
+        }
+        else {
+            this.feat = featStr.split("\\s+");
         }
         this.deprel = deprelStr.split("\\s+");
         this.semRoles = semRolesStr.split("\\s+");
@@ -283,7 +355,9 @@ public class StToArff extends Task {
     }
 
     /**
-     * Writes output ARFF files headers for the given file names.
+     * Writes output ARFF files headers for the given file names. Heeds the "multiclass" parameter
+     * (see {@link StToArff}).
+     *
      * @param outFiles a list of file names to write
      */
     private void writeHeaders(Vector<String> fileNames) throws FileNotFoundException {
@@ -297,6 +371,7 @@ public class StToArff extends Task {
 
             out.println(RELATION + " " + fileName);
 
+            // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
 
                 if (this.feat != null && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
@@ -331,6 +406,23 @@ public class StToArff extends Task {
                 }
             }
 
+            // TODO print generated features' headers
+
+            // print the target class / classes header(s) (according to the "multiclass" parameter)
+            if (!this.useMulticlass){
+                for (String role : this.semRoles){
+                    out.println(ATTRIBUTE + " " + role + " " + INTEGER);
+                }
+            }
+            else {
+                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {-,");
+                out.print(this.semRoles[0]);
+                for (String role : this.semRoles){
+                    out.print("," + role);
+                }
+                out.println("}");
+            }
+
             out.println(DATA);
 
             out.close();
@@ -339,7 +431,7 @@ public class StToArff extends Task {
 
     /**
      * Finds out the names of the output ARFF files (which contain the names of the predicates
-     * in the output pattern).
+     * in the output pattern). Heeds the "predicted" parameter (see {@link StToArff})
      *
      * @param sentence the sentence, containing all the needed predicates
      * @param pattern output file name pattern
@@ -354,13 +446,13 @@ public class StToArff extends Task {
             if (sentence.get(i)[IDXI_FILLPRED].equals("Y")){ // a predicate has been found -> fill output file details
 
                 String posSuffix = TAG_ERR;
-                if (sentence.get(i)[IDXI_POS].matches(this.nounPat)){
+                if (sentence.get(i)[IDXI_POS + (this.usePredicted ? 1 : 0)].matches(this.nounPat)){
                     posSuffix = NOUN;
                 }
-                else if (sentence.get(i)[IDXI_POS].matches(this.verbPat)){
+                else if (sentence.get(i)[IDXI_POS + (this.usePredicted ? 1 : 0)].matches(this.verbPat)){
                     posSuffix = VERB;
                 }
-                out.add(pattern.replace("**", sentence.get(i)[IDXI_LEMMA] + posSuffix));
+                out.add(pattern.replace("**", sentence.get(i)[IDXI_LEMMA + (this.usePredicted ? 1 : 0)] + posSuffix));
             }
         }
 

@@ -288,8 +288,8 @@ class ScenarioParser {
 
             String [] nameVal = listMember.split("=", 2);
 
-            nameVal[0].trim();
-            nameVal[1].trim();
+            nameVal[0] = nameVal[0].trim();
+            nameVal[1] = nameVal[1].trim();
 
             if (nameVal[0].matches("[^a-zA-Z0-9_\\.-]")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_PARAMETER, this.fileName, this.line);
