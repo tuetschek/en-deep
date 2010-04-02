@@ -27,10 +27,10 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.Task.TaskStatus;
 import java.io.Serializable;
 import java.util.Vector;
 import java.util.Hashtable;
+import java.util.Stack;
 
 /**
  *
@@ -40,6 +40,21 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
     /* CONSTANTS */
 
+    /**
+     * The possible progress statuses of a {@link Task}.
+     * <ul>
+     * <li>WAITING = waiting for another {@link Task}(s) to finish</li>
+     * <li>PeNDING = ready to be processed</li>
+     * <li>IN_PROGRESS = currently being processed</li>
+     * <li>DONE = successfully finished</li>
+     * <li>FAILED = finished with an error, this stops the processing of dependant tasks</li>
+     * </ul>
+     *
+     * TODO move TaskStatus to TaskDescription ?
+     */
+    public enum TaskStatus {
+        WAITING, PENDING, IN_PROGRESS, DONE, FAILED
+    }
     
     /* DATA */
 
@@ -478,6 +493,43 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
             return 1;
         }
         return 0;
+    }
+
+
+    /**
+     * Resets the current task status to PENDING, if it's already set as IN_PROGRESS, DONE or ERROR.
+     * Does nothing if the task's status is WAITING or PENDING. Sets all dependent tasks to WAITING.
+     */
+    public void resetStatus() {
+
+        Stack<TaskDescription> toUpdate;
+
+        if (this.status == TaskStatus.PENDING || this.status == TaskStatus.WAITING){
+            return;
+        }
+        this.status = TaskStatus.PENDING;
+
+        if (this.dependOnMe == null){
+            return;
+        }
+        
+        // update all depending tasks
+        toUpdate = new Stack<TaskDescription>();
+        for (TaskDescription t : this.dependOnMe){
+            toUpdate.push(t);
+        }
+
+        while (!toUpdate.empty()){
+            TaskDescription t = toUpdate.pop();
+
+            t.status = TaskStatus.WAITING;
+            if (t.dependOnMe == null){
+                continue;
+            }
+            for (TaskDescription dep : t.dependOnMe){
+                toUpdate.push(dep);
+            }
+        }
     }
 
 

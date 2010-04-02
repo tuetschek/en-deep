@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.Task.TaskStatus;
+import en_deep.mlprocess.TaskDescription.TaskStatus;
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.PlanException;
 import en_deep.mlprocess.exception.SchedulingException;
@@ -54,14 +54,29 @@ import java.util.Vector;
  */
 public class Plan {
 
+    /* CONSTANTS */
+
+    /** File extension for the plan file */
+    public static final String PLAN_FILE_SUFFIX =  ".todo";
+    /** File extension for the reset file */
+    public static final String RESET_FILE_SUFFIX =  ".reset";
+    /** File extension for the status file */
+    public static final String STATUS_FILE_SUFFIX = ".status";
 
     /* DATA */
 
     /** The planFile file */
     private File planFile;
 
+    /** The task reset list file */
+    private File resetFile;
+
+    /** Current status printout file */
+    private File statusFile;
+
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
+
 
 
     /* METHODS */
@@ -72,12 +87,15 @@ public class Plan {
      */
     private Plan(){
         
-        // open the planFile file (and create it if necessary)
-        this.planFile = new File(Process.getInstance().getInputFile() + ".todo");
+        this.planFile = new File(Process.getInstance().getInputFile() + PLAN_FILE_SUFFIX);
+        this.resetFile = new File(Process.getInstance().getInputFile() + RESET_FILE_SUFFIX);
+        this.statusFile = new File(Process.getInstance().getInputFile() + STATUS_FILE_SUFFIX);
 
+        // create the needed files if necessary
         try {
             // this ensures we never have an exception, but the file may be empty
             planFile.createNewFile();
+            resetFile.createNewFile();
         }
         catch(IOException ex){
             Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
@@ -90,7 +108,7 @@ public class Plan {
      *
      * @return the only instance of {@link Plan}
      */
-    public static Plan getInstance(){
+    public static synchronized Plan getInstance(){
 
         if (Plan.instance == null){
             Plan.instance = new Plan();
@@ -116,17 +134,25 @@ public class Plan {
      */
     public synchronized Task getNextPendingTask() throws PlanException, SchedulingException {
 
-        FileLock lock = null;
+        FileLock planLock = null;
+        FileLock resetLock = null;
         Task nextPending = null;
         RandomAccessFile planFileIO = null;
+        RandomAccessFile resetFileIO = null;
         
-        // try to acquire lock on the to-do file and get a planned task
+        // try to acquire planLock on the to-do file and get a planned task
         try {
             planFileIO = new RandomAccessFile(this.planFile, "rw");
-            lock = planFileIO.getChannel().lock();
+            planLock = planFileIO.getChannel().lock();
 
             if (planFileIO.length() == 0){ // the planFile file - the planFile has not yet been created
                 this.createPlan(planFileIO);
+            }
+
+            resetFileIO = new RandomAccessFile(this.resetFile, "rw");
+            resetLock = resetFileIO.getChannel().lock();
+            if (resetFileIO.length() != 0){
+                this.resetTasks(planFileIO, resetFileIO);
             }
            
             nextPending = this.getNextPendingTask(planFileIO);
@@ -148,19 +174,29 @@ public class Plan {
             throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
 
-        // always release the lock on the to-do file
+        // always release the lock on the plan and reset file
         finally {
-            if (lock != null && lock.isValid()){
+            if (resetLock != null && resetLock.isValid()){
                 try {
-                    lock.release();
+                    resetLock.release();
                 }
                 catch(IOException ex){
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
             }
-            // close the to-do file
+            if (planLock != null && planLock.isValid()){
+                try {
+                    planLock.release();
+                }
+                catch(IOException ex){
+                    Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                    throw new PlanException(PlanException.ERR_IO_ERROR);
+                }
+            }
+            // close the to-do file and reset file
             try {
+                resetFileIO.close();
                 planFileIO.close();
             }
             catch(IOException ex){
@@ -283,7 +319,7 @@ public class Plan {
         planFile.setLength(planData.length);
         planFile.write(planData);
 
-        FileOutputStream debugOs = new FileOutputStream(Process.getInstance().getInputFile() + ".status", false);
+        FileOutputStream debugOs = new FileOutputStream(this.statusFile, false);
         for (TaskDescription td : plan){
             debugOs.write(td.toString().getBytes());
         }
@@ -374,7 +410,7 @@ public class Plan {
         RandomAccessFile planFileIO = null;
 
         try {
-            // lock the plan file
+            // planLock the plan file
             planFileIO = new RandomAccessFile(this.planFile, "rw");
             lock = planFileIO.getChannel().lock();
 
@@ -396,7 +432,7 @@ public class Plan {
             throw new PlanException(PlanException.ERR_IO_ERROR);
         }
         finally {
-            // release lock
+            // release planLock
             if (lock != null && lock.isValid()){
                 try {
                     lock.release();
@@ -446,6 +482,39 @@ public class Plan {
 
         // update the task
         updatedTask.setStatus(taskStatus);
+    }
+
+    /**
+     * Reset all the tasks that are listed in the resetFile. Writes the updated plan.
+     * @param planFileIO locked and open plan I/O file
+     * @param resetFileIO locked and open reset I/O file
+     */
+    private void resetTasks(RandomAccessFile planFileIO, RandomAccessFile resetFileIO) 
+            throws IOException, ClassNotFoundException {
+
+        Vector<TaskDescription> plan = this.readPlan(planFileIO);
+        String line = resetFileIO.readLine();
+
+        while (line != null){
+
+            String [] taskPrefixes = line.split(",");
+
+            for (String taskPrefix : taskPrefixes){
+
+                taskPrefix = taskPrefix.trim();
+
+                for (TaskDescription task : plan){
+
+                    if (task.getId().startsWith(taskPrefix)){
+                        task.resetStatus();
+                    }
+                }
+            }
+            line = resetFileIO.readLine();
+        }
+
+        resetFileIO.setLength(0);
+        this.writePlan(plan, planFileIO);
     }
 
 

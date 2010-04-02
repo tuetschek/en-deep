@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.Task.TaskStatus;
+import en_deep.mlprocess.TaskDescription.TaskStatus;
 import en_deep.mlprocess.exception.PlanException;
 import en_deep.mlprocess.exception.SchedulingException;
 import en_deep.mlprocess.exception.TaskException;

@@ -29,6 +29,8 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.exception.ParamException;
 import gnu.getopt.*;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * The main executable class, responsible for the whole process.
@@ -47,6 +49,7 @@ import java.io.File;
  * <li><tt>--threads</tt> number of {@link Worker} threads for this {@link Process} instance (default: 1)</li>
  * <li><tt>--instances</tt> number of instances that are going to be run simultaneously (default: 1)</li>
  * <li><tt>--verbosity</tt> the desired verbosity level (0-4, default: 0 - i.e. no messages)</li>
+ * <li><tt>--reset</tt> comma-separated list of tasks whose status should be reset to PENDING or WAITING</li>
  * </ul>
  * <p>
  * The <tt>--instances</tt> parameter determines the level of parallelization for the process plan
@@ -81,6 +84,8 @@ public class Process {
     private static final String OPTL_VERBOSITY = "verbosity";
     /** The --workdir option long name */
     private static final String OPTL_WORK_DIR = "workdir";
+    /** The --reset option long name */
+    private static final String OPTL_RESET_TASKS = "reset";
 
     /** The --threads option short name */
     private static final char OPTS_THREADS = 't';
@@ -90,11 +95,13 @@ public class Process {
     private static final char OPTS_VERBOSITY = 'v';
     /** The --workdir option short name */
     private static final char OPTS_WORK_DIR = 'd';
+    /** The --reset option short name */
+    private static final char OPTS_RESET_TASKS = 'r';
 
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process";
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "i:t:v:d:";
+    private static final String OPTSTRING = "i:t:v:d:r:";
 
     /* DATA */
     /** The only instance of Process */
@@ -133,14 +140,16 @@ public class Process {
         int verbosity = Logger.DEFAULT_VERBOSITY;
         String workDir = null;
         String inputFile = null;
+        String resetTasks = null;
 
         try {
             // parsing the options
-            LongOpt[] opts = new LongOpt[4];
+            LongOpt[] opts = new LongOpt[5];
             opts[0] = new LongOpt(OPTL_THREADS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_THREADS);
             opts[1] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
             opts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.REQUIRED_ARGUMENT, null, OPTS_VERBOSITY);
             opts[3] = new LongOpt(OPTL_WORK_DIR, LongOpt.REQUIRED_ARGUMENT, null, OPTS_WORK_DIR);
+            opts[4] = new LongOpt(OPTL_RESET_TASKS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_RESET_TASKS);
 
             Getopt getter = new Getopt(PROGNAME, args, OPTSTRING, opts);
             int c;
@@ -159,6 +168,9 @@ public class Process {
                         break;
                     case OPTS_WORK_DIR:
                         workDir = getter.getOptarg();
+                        break;
+                    case OPTS_RESET_TASKS:
+                        resetTasks = getter.getOptarg();
                         break;
                     case ':':
                         throw new ParamException(ParamException.ERR_MISSING, "" + (char) getter.getOptopt());
@@ -205,8 +217,14 @@ public class Process {
 
         // if the parameters are correct and everything is set up, create the actual process
         // and launch it
-        Process p = new Process(threads, instances, workDir, inputFile);
-        p.run();
+        try {
+            Process p = new Process(threads, instances, workDir, inputFile, resetTasks);
+            p.run();
+        }
+        catch (Exception e){
+            Logger.getInstance().message("Could not create process - " + e.getMessage(), Logger.V_IMPORTANT);
+            System.exit(1);
+        }        
     }
 
     /**
@@ -238,8 +256,11 @@ public class Process {
      * @param instances the number of instances that are to be run in total
      * @param workDir the working directory (if different from where the input file is)
      * @param inputFile the input process scenario file
+     * @param resetTasks the tasks whose status is to be reset befor the running (may be null)
+     * @throws IOException if the reset task list could not be created
      */
-    private Process(int threads, int instances, String workDir, String inputFile) {
+    private Process(int threads, int instances, String workDir, String inputFile, String resetTasks)
+            throws IOException {
 
         this.inputFile = inputFile;
         this.threads = threads;
@@ -250,6 +271,10 @@ public class Process {
 
         Logger.getInstance().message("Starting process - input:" + workDir + File.separator + inputFile + ", " + threads + " thread(s); "
                 + instances + " instance(s) assumed.", Logger.V_INFO);
+
+        if (resetTasks != null){
+            this.createResetList(resetTasks);
+        }
     }
 
     /**
@@ -302,8 +327,20 @@ public class Process {
 
             t.start();
         }
+    }
 
-        // TODO wait for the Workers to finish ?
+    /**
+     * Creates a file that lists all tasks whose statuses should be reset upon plan loading.
+     *
+     * @param resetTasks comma-separated list of task name prefixes to be reset
+     * @throws IOException if the list file cannot be created
+     */
+    private void createResetList(String resetTasks) throws IOException {
+
+        FileOutputStream out = new FileOutputStream(this.getInputFile() + Plan.RESET_FILE_SUFFIX);
+
+        out.write(resetTasks.getBytes());
+        out.close();        
     }
 
 

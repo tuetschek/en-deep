@@ -40,25 +40,6 @@ import java.util.Vector;
  */
 public abstract class Task implements Serializable {
 
-    /* CONSTANTS */
-
-    /**
-     * The possible progress statuses of a {@link Task}.
-     * <ul>
-     * <li>WAITING = waiting for another {@link Task}(s) to finish</li>
-     * <li>PeNDING = ready to be processed</li>
-     * <li>IN_PROGRESS = currently being processed</li>
-     * <li>DONE = successfully finished</li>
-     * <li>FAILED = finished with an error, this stops the processing of dependant tasks</li>
-     * </ul>
-     *
-     * TODO move TaskStatus to TaskDescription ?
-     */
-    public enum TaskStatus {
-        WAITING, PENDING, IN_PROGRESS, DONE, FAILED
-    }
-
-
     /* DATA */
 
     /** The unique ID of the {@link Task} (for {@link TaskException}s and {@link TaskStatus} progress update) */
