@@ -27,9 +27,11 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Process;
+import en_deep.mlprocess.manipulation.genfeat.Feature;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -51,11 +53,16 @@ public class StToArff extends Task {
 
     /** The lang_conf parameter name */
     private static final String LANG_CONF = "lang_conf";
-
     /** The multiclass parameter name */
     private static final String MULTICLASS = "multiclass";
     /** The predicted parameter name */
     private static final String PREDICTED = "predicted";
+    /** The pred_only parameter name */
+    private static final String PRED_ONLY = "pred_only";
+    /** The generate parameter name */
+    private static final String GENERATE = "generate";
+    /** The omit_semclass parameter name */
+    private static final String OMIT_SEMCLASS = "omit_semclass";
 
     /** Number of compulsory fields that are in each sentence */
     private static final int COMPULSORY_FIELDS = 14;
@@ -66,6 +73,21 @@ public class StToArff extends Task {
     private static final String VERB = ".v";
     /** Output file suffix for errorneously tagged predicates */
     private static final String TAG_ERR = ".e";
+
+    /** Attribute definition start in ARFF files */
+    public static final String ATTRIBUTE = "@ATTRIBUTE";
+    /** Specification of an attribute as CLASS in ARFF files */
+    public static final String CLASS = "CLASS";
+    /** Specification of an attribute as INTEGER in ARFF files */
+    public static final String INTEGER = "INTEGER";
+    /** Specification of an attribute as STRING in ARFF files */
+    public static final String STRING = "STRING";
+
+    /** Semantic relation (multiclass) attribute name in ARFF files */
+    private static final String SEM_REL = "semrel";
+
+    /** Start of the data section in ARFF files */
+    private static final String DATA = "@DATA";
 
     /** Caption of ARFF files */
     private static final String RELATION = "@RELATION";
@@ -89,59 +111,34 @@ public class StToArff extends Task {
         "@ATTRIBUTE pred STRING"
     };
 
-    /** Attribute definition start in ARFF files */
-    private static final String ATTRIBUTE = "@ATTRIBUTE";
-    /** Specification of an attribute as CLASS in ARFF files */
-    private static final String CLASS = "CLASS";
-    /** Specification of an attribute as INTEGER in ARFF files */
-    private static final String INTEGER = "INTEGER";
-
-    /** Semantic relation (multiclass) attribute name in ARFF files */
-    private static final String SEM_REL = "semrel";
-
-    /** Start of the data section in ARFF files */
-    private static final String DATA = "@DATA";
-
+    
+    /** Index of the FEAT attribute in the output ARFF file */
+    private static final int IDXO_WORDID = 2;
     /** Index of the FEAT attribute in the output ARFF file */
     private static final int IDXO_FEAT = 7;
     /** Index of the POS attribute in the output ARFF file */
     private static final int IDXO_POS = 5;
     /** Index of the DEPREL attribute in the output ARFF file */
     private static final int IDXO_DEPREL = 11;
-    /** Index of the FILLPRED attribute in the ST file */
-    private static final int IDXI_FILLPRED = 12;
-    /** Index of the POS attribute in the ST file */
-    private static final int IDXI_POS = 4;
-    /** Index of the lemma attribute in the ST file */
-    private static final int IDXI_LEMMA = 2;
-    /** Starting index of the semantic roles (APRED) in the ST file */
-    private static final int IDXI_SEMROLE = 14;
 
     /* DATA */
 
-    /** Possible POS tags in the ST file */
-    private String [] pos;
-    /** Possible FEAT values in the ST file (null if not used at all) */
-    private String [] feat;
-    /** Possible DEPREL values in the ST file */
-    private String [] deprel;
-    /** Possible semantic roles */
-    private String [] semRoles;
 
-    /** Tag pattern for verbs in the ST file */
-    private String nounPat;
-    /** Tag pattern for nouns in the ST file */
-    private String verbPat;
-
-    /** Use predicted noun and verb values ? */
-    private boolean usePredicted;
     /** Create a multiclass semantic relation description ? */
     private boolean useMulticlass;
-    /** Path to config file */
-    private final String configFile;
+    /** Output predicates only ? */
+    private boolean predOnly;
+    /** Omit semantic class in the ouptut ? */
+    private boolean omitSemClass;
 
     /** Sentence ID generation -- last used value */
     private static int lastId = 0;
+
+    /** Features to be generated */
+    private Vector<Feature> genFeats;
+
+    /** The input configuration */
+    private StToArffConfig config;
 
 
     /* METHODS */
@@ -158,9 +155,12 @@ public class StToArff extends Task {
      * <li><tt>lang_conf</tt> -- path to the language config file, that contains a list of POS, FEAT and DEPREL for the current
      * language (on three lines and space-separated, FEAT specification should be left blank if FEAT is not used), followed
      * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (space-separated)</li>
-     * <li><tt>predicted</tt> TODO work with predicted arguments only ?? </li>
+     * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
      * (one semantic class each) with 0/1 values are created.</li>
+     * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
+     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, ommiting all other words in a sentence</li>
+     * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * </ul>
      *
      * @param id the task id
@@ -177,28 +177,22 @@ public class StToArff extends Task {
         if (this.parameters.get(LANG_CONF) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
-        if (this.parameters.get(MULTICLASS) != null){
-            this.useMulticlass = (this.parameters.get(MULTICLASS).equals("0")
-                    || this.parameters.get(MULTICLASS).equalsIgnoreCase("false"))
-                    ? false : true;
-        }
-        else {
-            this.useMulticlass = false;
-        }
-        if (this.parameters.get(PREDICTED) != null){
-            this.usePredicted = (this.parameters.get(PREDICTED).equals("0")
-                    || this.parameters.get(PREDICTED).equalsIgnoreCase("false"))
-                    ? false : true;
-        }
-        else {
-            this.usePredicted = false;
-        }
 
         // find the config file
-        this.configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
-        if (!new File(this.configFile).exists()){
+        String configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
+        if (!new File(configFile).exists()){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
+        this.config = new StToArffConfig(configFile, this.getBooleanParameterVal(PREDICTED));
+
+        // initialize boolean parameters
+        this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
+        this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
+        this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);       
+
+        // initialize features to be generated
+        this.initGenFeats();
+
       
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
@@ -222,7 +216,7 @@ public class StToArff extends Task {
 
         try {
             // read the list of possible POS, FEAT and DEPREL tags
-            this.readLangConf();
+            this.config.init();
 
             for (int i = 0; i < this.input.size(); ++i){
                 // convert the files
@@ -249,47 +243,67 @@ public class StToArff extends Task {
 
         RandomAccessFile in = new RandomAccessFile(st, "r");
         Vector<String []> sentence = this.readSentence(in);
+        int [] predNums;
         Vector<String> outFiles;
         int sentenceId;
 
         while (sentence != null){
 
-            outFiles = this.findOutputs(sentence, arff); // find predicate names (output file names)
+            predNums = this.findPredicates(sentence); // find predicate positions
+            outFiles = this.findOutputs(sentence, predNums, arff); // find correpsonding output file names
             this.writeHeaders(outFiles); // prepare output file headers
             sentenceId = generateSentenceId();
 
             // for all predicates, write the sentence to an output file
-            for (int i = 0; i < sentence.get(0).length - COMPULSORY_FIELDS; ++i){
+            for (int i = 0; i < predNums.length; ++i){
 
                 FileOutputStream os = new FileOutputStream(outFiles.get(i), true);
                 PrintStream out = new PrintStream(os);
 
-                for (String [] word : sentence){
+                for (int j = 0; j < sentence.size(); ++j){
+
+                    String [] word = sentence.get(j);
+
+                    // skip non-predicate lines if such setting is imposed
+                    if (this.predOnly && !word[this.config.IDXI_FILLPRED].equals("Y")){
+                        continue;
+                    }
 
                     // print the compulsory fields
                     out.print(sentenceId);
 
-                    for (int j = 0; j < COMPULSORY_FIELDS; ++j){
-                        if (this.feat == null && (j == IDXO_FEAT || j == IDXO_FEAT + 1)){
+                    for (int k = 0; k < COMPULSORY_FIELDS; ++k){
+                        if (this.config.posFeat == null && (k == IDXO_FEAT || k == IDXO_FEAT + 1)){
                             continue;
                         }
-                        out.print("," + word[j]);
-                    }
-                    // TODO add generated features
-
-                    // print the resulting semantic relation to the given predicate
-                    if (!this.useMulticlass){
-                        for (String role : this.semRoles){
-                            if (word[IDXI_SEMROLE + i].equals(role)){
-                                out.print(",1");
-                            }
-                            else {
-                                out.print(",0");
-                            }
+                        if (k == IDXO_WORDID || k == IDXO_DEPREL || k == IDXO_DEPREL + 1){
+                            out.print("," + word[k]);
+                        }
+                        else { // quote non-numeric fields
+                            out.print(",\"" + word[k] + "\"");
                         }
                     }
-                    else {
-                        out.print("," + word[IDXI_SEMROLE + i]);
+                    
+                    // add generated features
+                    for (Feature f : this.genFeats){
+                        out.print("," + f.generate(sentence, j, predNums[i]));
+                    }
+
+                    // print the resulting semantic relation to the given predicate
+                    if (!this.omitSemClass){
+                        if (!this.useMulticlass){
+                            for (String role : this.config.semRoles){
+                                if (word[this.config.IDXI_SEMROLE + i].equals(role)){
+                                    out.print(",1");
+                                }
+                                else {
+                                    out.print(",0");
+                                }
+                            }
+                        }
+                        else {
+                            out.print(",\"" + word[this.config.IDXI_SEMROLE + i] + "\"");
+                        }
                     }
 
                     out.println();
@@ -305,42 +319,6 @@ public class StToArff extends Task {
     }
 
 
-    /**
-     * Reads the language configuration from a file, i.e\. all POS, FEAT and DEPREL values,
-     * noun and verb POS tag pattern for the current ST file language.
-     * 
-     * @throws FileNotFoundException
-     * @throws IOException
-     * @throws TaskException
-     */
-    private void readLangConf() throws FileNotFoundException, IOException, TaskException {
-
-        RandomAccessFile in = new RandomAccessFile(this.configFile, "r");
-        String posStr = in.readLine();
-        String featStr = in.readLine();
-        String deprelStr = in.readLine();
-        this.nounPat = in.readLine();
-        this.verbPat = in.readLine();
-        String semRolesStr = in.readLine();
-
-        in.close();
-
-        if (posStr == null || featStr == null || deprelStr == null
-                || semRolesStr == null || this.nounPat == null || this.verbPat == null){
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
-        }
-
-        this.pos = posStr.split("\\s+");        
-        if (featStr.equals("")){
-            this.feat = null;
-        }
-        else {
-            this.feat = featStr.split("\\s+");
-        }
-        this.deprel = deprelStr.split("\\s+");
-        this.semRoles = semRolesStr.split("\\s+");
-
-    }
     
 
     /**
@@ -374,12 +352,9 @@ public class StToArff extends Task {
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
 
-                if (this.feat != null && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
+                if (this.config.posFeat != null && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
                     out.print(HEADER[i] + " {");
-                    out.print(this.feat[0]);
-                    for (int j = 1; j < this.feat.length; ++j){
-                        out.print("," + this.feat[j]);
-                    }
+                    out.print(this.config.getFeat());
                     out.println("}");
                 }
                 else if (i == IDXO_FEAT || i == IDXO_FEAT + 1){
@@ -387,18 +362,12 @@ public class StToArff extends Task {
                 }
                 else if (i == IDXO_POS || i == IDXO_POS + 1){
                     out.print(HEADER[i] + " {");
-                    out.print(this.pos[0]);
-                    for (int j = 1; j < this.pos.length; ++j){
-                        out.print("," + this.pos[j]);
-                    }
+                    out.print(this.config.getPos());
                     out.println("}");
                 }
                 else if (i == IDXO_DEPREL || i == IDXO_DEPREL + 1){
                     out.print(HEADER[i] + " {");
-                    out.print(this.deprel[0]);
-                    for (int j = 1; j < this.deprel.length; ++j){
-                        out.print("," + this.deprel[j]);
-                    }
+                    out.print(this.config.getDepRel());
                     out.println("}");
                 }
                 else {
@@ -406,20 +375,20 @@ public class StToArff extends Task {
                 }
             }
 
-            // TODO print generated features' headers
+            // print generated features' headers
+            for (Feature f : this.genFeats){
+                out.println(f.getHeader());
+            }
 
             // print the target class / classes header(s) (according to the "multiclass" parameter)
             if (!this.useMulticlass){
-                for (String role : this.semRoles){
+                for (String role : this.config.semRoles){
                     out.println(ATTRIBUTE + " " + role + " " + INTEGER);
                 }
             }
             else {
                 out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {-,");
-                out.print(this.semRoles[0]);
-                for (String role : this.semRoles){
-                    out.print("," + role);
-                }
+                out.print(this.config.getSemRoles());
                 out.println("}");
             }
 
@@ -437,22 +406,22 @@ public class StToArff extends Task {
      * @param pattern output file name pattern
      * @return
      */
-    private Vector<String> findOutputs(Vector<String[]> sentence, String pattern) {
+    private Vector<String> findOutputs(Vector<String[]> sentence, int [] predNums, String pattern) {
 
-        Vector<String> out = new Vector<String>(sentence.get(0).length - COMPULSORY_FIELDS);
+        Vector<String> out = new Vector<String>(predNums.length);
 
-        for (int i = 0; i < sentence.size(); ++i){ // search for predicates
+        for (int i = 0; i < predNums.length; ++i){ // search for predicates
 
-            if (sentence.get(i)[IDXI_FILLPRED].equals("Y")){ // a predicate has been found -> fill output file details
+            if (sentence.get(predNums[i])[this.config.IDXI_FILLPRED].equals("Y")){ // a predicate has been found -> fill output file details
 
                 String posSuffix = TAG_ERR;
-                if (sentence.get(i)[IDXI_POS + (this.usePredicted ? 1 : 0)].matches(this.nounPat)){
+                if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.nounPat)){
                     posSuffix = NOUN;
                 }
-                else if (sentence.get(i)[IDXI_POS + (this.usePredicted ? 1 : 0)].matches(this.verbPat)){
+                else if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.verbPat)){
                     posSuffix = VERB;
                 }
-                out.add(pattern.replace("**", sentence.get(i)[IDXI_LEMMA + (this.usePredicted ? 1 : 0)] + posSuffix));
+                out.add(pattern.replace("**", sentence.get(predNums[i])[this.config.IDXI_LEMMA] + posSuffix));
             }
         }
 
@@ -476,5 +445,227 @@ public class StToArff extends Task {
         }
 
         return res.size() > 0 ? res : null;
+    }
+
+    /**
+     * Returns a boolean value of a class {@link parameters parameter}, which is false if the parameter
+     * value is "0" or "false" and true otherwise
+     *
+     * @param paramName the name of the parameter to be examined
+     * @return the boolean value of the parameter
+     */
+    private boolean getBooleanParameterVal(String paramName) {
+
+        if (this.parameters.get(paramName) != null){
+            return (this.parameters.get(paramName).equals("0")
+                    || this.parameters.get(paramName).equalsIgnoreCase("false"))
+                    ? false : true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Parse the parameter with generated features setting and initialize all needed.
+     */
+    private void initGenFeats() {
+
+        String [] featList;
+
+        this.genFeats = new Vector<Feature>();
+
+        if (this.parameters.get(GENERATE) == null){
+            return;
+        }
+        
+        featList = this.parameters.get(GENERATE).split(",");
+
+        for (String featName : featList){
+
+            Feature feat = Feature.createFeature(featName.trim());
+
+            if (feat == null){
+                Logger.getInstance().message(this.id + ": Feature " + featName + " has not been found, skipping.",
+                        Logger.V_WARNING);
+            }
+            this.genFeats.add(feat);
+        }
+    }
+
+
+    /**
+     * Returns a list of positions where the predicates in this sentence are
+     * @param sentence the sentence to be processed
+     * @return the list of predicate positions in the sentence
+     */
+    private int[] findPredicates(Vector<String[]> sentence) throws TaskException {
+
+        int [] ret = new int [sentence.get(0).length - COMPULSORY_FIELDS];
+        int pos = 0;
+
+        for (int i = 0; i < sentence.size(); ++i){ // collect all predicate positions
+            if (sentence.get(i)[this.config.IDXI_FILLPRED].equals("Y")){
+                ret[pos] = i;
+                pos++;
+            }
+        }
+        if (pos != ret.length){ // check their number
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+        }
+        return ret;
+    }
+
+
+    /**
+     * This stores all the configuration needed for the conversion an the generated
+     * features as well.
+     */
+    public class StToArffConfig {
+
+        /* CONSTANTS */
+
+        /** Index of the FORM attribute in the ST file */
+        public final int IDXI_FORM = 1;
+        /** Index of the FILLPRED attribute in the ST file */
+        public final int IDXI_FILLPRED = 12;
+        /** Starting index of the semantic roles (APRED) in the ST file */
+        public final int IDXI_SEMROLE = 14;
+        /** Index of the POS attribute in the ST file */
+        public final int IDXI_POS;
+        /** Index of the lemma attribute in the ST file */
+        public final int IDXI_LEMMA;
+        /** Index of the HEAD attribute in the ST file */
+        public final int IDXI_HEAD;
+        /** Index of the DEPREL attribute in the ST file */
+        public final int IDXI_DEPREL;
+
+        /* VARIABLES */
+
+        /** Possible POS tags in the ST file */
+        public String [] pos;
+        /** Possible part-of-speech FEAT values in the ST file (null if not used at all) */
+        public String [] posFeat;
+        /** Possible DEPREL values in the ST file */
+        public String [] deprel;
+        /** Possible semantic roles */
+        public String [] semRoles;
+
+        /** Tag pattern for verbs in the ST file */
+        public String nounPat;
+        /** Tag pattern for nouns in the ST file */
+        public String verbPat;
+
+        /** Path to config file */
+        private final String configFile;
+
+        /** Use predicted POS and DEPREL values ? */
+        private boolean usePredicted;
+
+        /* METHODS */
+
+        StToArffConfig(String configFile, boolean usePredicted){
+            this.configFile = configFile;
+            this.usePredicted = usePredicted;
+
+            if (this.usePredicted){
+                IDXI_POS = 5;
+                IDXI_LEMMA = 3;
+                IDXI_HEAD = 9;
+                IDXI_DEPREL = 11;
+            }
+            else {
+                IDXI_POS = 4;
+                IDXI_LEMMA = 2;
+                IDXI_HEAD = 8;
+                IDXI_DEPREL = 10;
+            }
+        }
+
+        /**
+         * Reads the language configuration from a file, i.e\. all POS, FEAT and DEPREL values,
+         * noun and verb POS tag pattern for the current ST file language.
+         *
+         * @throws FileNotFoundException
+         * @throws IOException
+         * @throws TaskException
+         */
+        private void init() throws FileNotFoundException, IOException {
+
+            RandomAccessFile in = new RandomAccessFile(this.configFile, "r");
+            String posStr = in.readLine();
+            String featStr = in.readLine();
+            String deprelStr = in.readLine();
+            this.nounPat = in.readLine();
+            this.verbPat = in.readLine();
+            String semRolesStr = in.readLine();
+
+            in.close();
+
+            if (posStr == null || featStr == null || deprelStr == null
+                    || semRolesStr == null || this.nounPat == null || this.verbPat == null){
+                throw new IOException();
+            }
+
+            this.pos = posStr.split("\\s+");
+            if (featStr.equals("")){
+                this.posFeat = null;
+            }
+            else {
+                this.posFeat = featStr.split("\\s+");
+            }
+            this.deprel = deprelStr.split("\\s+");
+            this.semRoles = semRolesStr.split("\\s+");
+        }
+
+
+        /**
+         * Return a comma-separated list of possible POS tags
+         * @return list of POS tags
+         */
+        public String getPos(){
+            return this.listMembers(this.pos);
+        }
+
+        /**
+         * Return a comma-separated list of possible POS tag features
+         * @return list of POS tag features
+         */
+        public String getFeat(){
+            return this.listMembers(this.posFeat);
+        }
+
+        /**
+         * Return a comma-separated list of possible dependency relations
+         * @return list of dependency relations
+         */
+        public String getDepRel(){
+            return this.listMembers(this.deprel);
+        }
+
+
+        /**
+         * Return a comma-separated list of possible semantic roles
+         * @return list of semantic roles
+         */
+        public String getSemRoles(){
+            return this.listMembers(this.semRoles);
+        }
+
+        /**
+         * Return a comma-separated list of items from an array
+         * @param arr the array to be transformed to a string
+         * @return a comma-separated list in string form
+         */
+        private String listMembers(String [] arr){
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.append(arr[0]);
+            for (int j = 1; j < arr.length; ++j){
+                sb.append(",\"" + arr[j] + "\"");
+            }
+            return sb.toString();
+        }
     }
 }
