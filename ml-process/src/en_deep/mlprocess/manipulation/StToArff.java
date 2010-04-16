@@ -222,11 +222,9 @@ public class StToArff extends Task {
             }
         }
         catch (TaskException e){
-            e.printStackTrace();
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }

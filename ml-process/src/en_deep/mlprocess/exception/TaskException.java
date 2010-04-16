@@ -53,6 +53,8 @@ public class TaskException extends GeneralException {
     public static final int ERR_PATTERN_SPECS = 8;
     /** Error code: "Task initialization error." */
     public static final int ERR_TASK_INIT_ERR = 9;
+    /** Error code: "Invalid input data." */
+    public static final int ERR_INVALID_DATA = 10;
 
     /* DATA */
 
@@ -101,6 +103,8 @@ public class TaskException extends GeneralException {
                 return this.taskId + ": Wrong pattern specifications.";
             case ERR_TASK_INIT_ERR:
                 return this.taskId + ": Task initialization error.";
+            case ERR_INVALID_DATA:
+                return this.taskId + ": Invalid input data.";
         default:
                 return "Unknown error.";
         }
