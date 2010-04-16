@@ -40,6 +40,10 @@ import java.util.Vector;
  */
 public abstract class Feature {
 
+    /* CONSTANTS */
+    
+    protected static final String LF = System.getProperty("line.separator");
+
     /* DATA */
 
     /** The used ST-file format setting */
@@ -63,7 +67,7 @@ public abstract class Feature {
      * @param name the desired class name (within the {@link en_deep.mlprocess.manipulation.genfeats} package)
      * @return the {@link Feature} object to use with the {@link StToArff} class.
      */
-    public static Feature createFeature(String name) {
+    public static Feature createFeature(String name, StToArffConfig config) {
 
         Feature res = null;
         Class featureClass = null;
@@ -71,7 +75,10 @@ public abstract class Feature {
 
         // retrieve the task class
         try {
-            featureClass = Class.forName(Feature.class.getPackage().getName() + "." + name);
+            if (!name.contains(".")){
+                name = Feature.class.getPackage().getName() + "." + name;
+            }
+            featureClass = Class.forName(name);
         }
         catch (ClassNotFoundException ex) {
             return null;
@@ -80,7 +87,7 @@ public abstract class Feature {
         // try to call a constructor with no parameters
         try {
             featureConstructor = featureClass.getConstructor(StToArffConfig.class);
-            res = (Feature) featureConstructor.newInstance();
+            res = (Feature) featureConstructor.newInstance(config);
         }
         catch(Exception ex){
             return null;
@@ -90,7 +97,8 @@ public abstract class Feature {
     }
 
     /**
-     * Returns the ARFF header for this generated feature.
+     * Returns the ARFF header for this generated feature. The header is does not end with a new-line
+     * character.
      * @return the ARFF-style header (name &amp; type)
      */
     public abstract String getHeader();

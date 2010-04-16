@@ -68,9 +68,6 @@ import java.io.IOException;
  * <li>0 - nothing</li>
  * </ul>
  *
- * TODO second run - set a special switch: "overwrite, overwrite-newer + date, no-overwrite,
- *          & overwrite-which, leave-which
- *
  * @author Ondrej Dusek
  */
 public class Process {
@@ -200,7 +197,7 @@ public class Process {
             }
 
             // check the validity of the input file and working directory (if applicable)
-            if (!(new File(workDir)).isDirectory()){ // TODO possibly check working directory and input file access rights ?
+            if (!(new File(workDir)).isDirectory()){ // TODO possibly check access rights for working directory and input file ?
                 throw new ParamException(ParamException.ERR_DIR_NOT_FOUND);
             }
             if (!(new File(workDir + inputFile)).exists()){

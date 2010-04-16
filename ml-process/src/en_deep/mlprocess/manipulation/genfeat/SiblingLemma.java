@@ -41,13 +41,13 @@ public class SiblingLemma extends Feature {
 
     /* METHODS */
 
-    SiblingLemma(StToArff.StToArffConfig config){
+    public SiblingLemma(StToArff.StToArffConfig config){
         super(config);
     }
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingLemma " + StToArff.STRING + "\n"
+        return StToArff.ATTRIBUTE + " LeftSiblingLemma " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " RightSiblingLemma " + StToArff.STRING;
     }
 
@@ -71,8 +71,8 @@ public class SiblingLemma extends Feature {
         }
 
         // produce output -- find the POS's of the both siblings, if applicable
-        return "\"" + (leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_LEMMA] : "") + "\",\""
-                + (rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_LEMMA] : "") + "\"";
+        return "\"" + this.config.escape(leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_LEMMA] : "") + "\",\""
+                + this.config.escape(rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_LEMMA] : "") + "\"";
     }
 
 }

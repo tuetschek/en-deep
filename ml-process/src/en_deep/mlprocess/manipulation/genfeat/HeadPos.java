@@ -46,7 +46,7 @@ public class HeadPos extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " RelPos " + StToArff.CLASS + "{Before,After,-}";
+        return StToArff.ATTRIBUTE + " HeadPos " + StToArff.CLASS + "{Before,After,_}";
     }
 
     @Override
@@ -55,7 +55,7 @@ public class HeadPos extends Feature {
         int headPos = Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]);
 
         if (headPos == 0){
-            return "-";
+            return "_";
         }
 
         if (wordNo - 1 < headPos){

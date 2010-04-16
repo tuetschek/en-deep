@@ -71,7 +71,6 @@ public class DataMerger extends Task {
      * Checks if the number of inputs is divisible by the number of outputs, then tries to read all the
      * inputs and write the outputs.
      *
-     * TODO I/O support for my own input format ?
      * @throws TaskException for wrong number of inputs, or if an I/O error occurs
      */
     @Override

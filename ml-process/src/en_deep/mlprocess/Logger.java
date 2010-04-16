@@ -27,6 +27,9 @@
 
 package en_deep.mlprocess;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /**
  * Aggregates all the informative / debug messages and prints only those that correspond
  * to the program verbosity setting.
@@ -61,6 +64,8 @@ public class Logger {
     /** The only {@link Logger} instance */
     private static final Logger instance = new Logger();
 
+    /** This serves for formating dates */
+    private SimpleDateFormat dateFormatter;
 
     /* METHODS */
 
@@ -70,6 +75,7 @@ public class Logger {
      * set to 0 at startup.
      */
     private Logger(){
+        this.dateFormatter = new SimpleDateFormat("MMMM dd, yyyy HH:mm:ss z --- ");
     }
 
     /**
@@ -98,6 +104,7 @@ public class Logger {
     public void message(String text, int importance){
 
         if (importance <= this.verbosity){
+            System.err.print(this.dateFormatter.format(new Date()));
             System.err.println(text);
         }
     }

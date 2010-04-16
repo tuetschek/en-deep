@@ -47,7 +47,7 @@ public class VoiceEn extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " Voice " + StToArff.CLASS + "{Infinite,Active,Passive,-}";
+        return StToArff.ATTRIBUTE + " Voice " + StToArff.CLASS + "{Infinite,Active,Passive,_}";
     }
 
     @Override
@@ -73,11 +73,14 @@ public class VoiceEn extends Feature {
             if (headPos.startsWith("VB")){ // VBN dependens on another verb form -> passive
                 return "Passive";
             }
+            else if (headPos.startsWith("N")){ // VBN depends on a noun - adjectively used passive
+                return "Passive";
+            }
             return "Active";
         }
         // not a verb
         else {
-            return "-";
+            return "_";
         }
     }
 

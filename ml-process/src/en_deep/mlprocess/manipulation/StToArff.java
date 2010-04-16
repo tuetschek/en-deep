@@ -77,7 +77,7 @@ public class StToArff extends Task {
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
     /** Specification of an attribute as CLASS in ARFF files */
-    public static final String CLASS = "CLASS";
+    public static final String CLASS = "";
     /** Specification of an attribute as INTEGER in ARFF files */
     public static final String INTEGER = "INTEGER";
     /** Specification of an attribute as STRING in ARFF files */
@@ -99,21 +99,19 @@ public class StToArff extends Task {
         "@ATTRIBUTE form STRING",
         "@ATTRIBUTE lemma STRING",
         "@ATTRIBUTE p-lemma STRING",
-        "@ATTRIBUTE pos CLASS",
-        "@ATTRIBUTE p-pos CLASS",
-        "@ATTRIBUTE feat CLASS",
-        "@ATTRIBUTE p-feat CLASS",
+        "@ATTRIBUTE pos ",
+        "@ATTRIBUTE p-pos ",
+        "@ATTRIBUTE feat ",
+        "@ATTRIBUTE p-feat ",
         "@ATTRIBUTE head INTEGER",
         "@ATTRIBUTE p-head INTEGER",
-        "@ATTRIBUTE deprel CLASS",
-        "@ATTRIBUTE p-deprel CLASS",
-        "@ATTRIBUTE fillpred CLASS {Y,-}",
+        "@ATTRIBUTE deprel ",
+        "@ATTRIBUTE p-deprel ",
+        "@ATTRIBUTE fillpred {Y,_}",
         "@ATTRIBUTE pred STRING"
     };
 
     
-    /** Index of the FEAT attribute in the output ARFF file */
-    private static final int IDXO_WORDID = 2;
     /** Index of the FEAT attribute in the output ARFF file */
     private static final int IDXO_FEAT = 7;
     /** Index of the POS attribute in the output ARFF file */
@@ -265,7 +263,7 @@ public class StToArff extends Task {
                     String [] word = sentence.get(j);
 
                     // skip non-predicate lines if such setting is imposed
-                    if (this.predOnly && !word[this.config.IDXI_FILLPRED].equals("Y")){
+                    if (this.predOnly && j != predNums[i]){
                         continue;
                     }
 
@@ -273,10 +271,12 @@ public class StToArff extends Task {
                     out.print(sentenceId);
 
                     for (int k = 0; k < COMPULSORY_FIELDS; ++k){
-                        if (this.config.posFeat == null && (k == IDXO_FEAT || k == IDXO_FEAT + 1)){
+                        if (this.config.posFeat == null && 
+                                (k == this.config.IDXI_FEAT || k == this.config.IDXI_FEAT + this.config.predictedNon)){
                             continue;
                         }
-                        if (k == IDXO_WORDID || k == IDXO_DEPREL || k == IDXO_DEPREL + 1){
+                        if (k == this.config.IDXI_WORDID || k == this.config.IDXI_HEAD
+                                || k == this.config.IDXI_HEAD + this.config.predictedNon){
                             out.print("," + word[k]);
                         }
                         else { // quote non-numeric fields
@@ -380,16 +380,19 @@ public class StToArff extends Task {
                 out.println(f.getHeader());
             }
 
-            // print the target class / classes header(s) (according to the "multiclass" parameter)
-            if (!this.useMulticlass){
-                for (String role : this.config.semRoles){
-                    out.println(ATTRIBUTE + " " + role + " " + INTEGER);
+            // print the target class / classes header(s) (according to the "multiclass" parameter),
+            // if supposed to do so at all (heed the "omit_semclass" parameter)
+            if (!this.omitSemClass){
+                if (!this.useMulticlass){
+                    for (String role : this.config.semRoles){
+                        out.println(ATTRIBUTE + " " + role + " " + INTEGER);
+                    }
                 }
-            }
-            else {
-                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {-,");
-                out.print(this.config.getSemRoles());
-                out.println("}");
+                else {
+                    out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
+                    out.print(this.config.getSemRoles());
+                    out.println("}");
+                }
             }
 
             out.println(DATA);
@@ -483,13 +486,15 @@ public class StToArff extends Task {
 
         for (String featName : featList){
 
-            Feature feat = Feature.createFeature(featName.trim());
+            Feature feat = Feature.createFeature(featName.trim(), this.config);
 
             if (feat == null){
                 Logger.getInstance().message(this.id + ": Feature " + featName + " has not been found, skipping.",
                         Logger.V_WARNING);
             }
-            this.genFeats.add(feat);
+            else {
+                this.genFeats.add(feat);
+            }
         }
     }
 
@@ -525,6 +530,8 @@ public class StToArff extends Task {
 
         /* CONSTANTS */
 
+        /** Index of the word id in the ST file */
+        public final int IDXI_WORDID = 0;
         /** Index of the FORM attribute in the ST file */
         public final int IDXI_FORM = 1;
         /** Index of the FILLPRED attribute in the ST file */
@@ -539,6 +546,8 @@ public class StToArff extends Task {
         public final int IDXI_HEAD;
         /** Index of the DEPREL attribute in the ST file */
         public final int IDXI_DEPREL;
+        /** Index of the DEPREL attribute in the ST file */
+        public final int IDXI_FEAT;
 
         /* VARIABLES */
 
@@ -560,7 +569,12 @@ public class StToArff extends Task {
         private final String configFile;
 
         /** Use predicted POS and DEPREL values ? */
-        private boolean usePredicted;
+        private final boolean usePredicted;
+        /** 
+         * Always -1, if usePredicted is true, 1 otherwise -- in order to cover the second 
+         * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
+         */
+        private final int predictedNon;
 
         /* METHODS */
 
@@ -573,12 +587,16 @@ public class StToArff extends Task {
                 IDXI_LEMMA = 3;
                 IDXI_HEAD = 9;
                 IDXI_DEPREL = 11;
+                IDXI_FEAT = 7;
+                this.predictedNon = -1;
             }
             else {
                 IDXI_POS = 4;
                 IDXI_LEMMA = 2;
                 IDXI_HEAD = 8;
                 IDXI_DEPREL = 10;
+                IDXI_FEAT = 6;
+                this.predictedNon = 1;
             }
         }
 
@@ -661,11 +679,25 @@ public class StToArff extends Task {
 
             StringBuilder sb = new StringBuilder();
 
-            sb.append(arr[0]);
+            if (arr == null || arr.length == 0){
+                return "";
+            }
+
+            sb.append("\"" + this.escape(arr[0]) + "\"");
             for (int j = 1; j < arr.length; ++j){
-                sb.append(",\"" + arr[j] + "\"");
+                sb.append(",\"" + this.escape(arr[j]) + "\"");
             }
             return sb.toString();
+        }
+
+        /**
+         * Escapes a string to be used in quotes in an ARFF file.
+         * 
+         * @param str the input string
+         * @return the escaped version
+         */
+        public String escape(String str){
+            return str.replace("\\", "\\\\").replace("\"", "\\\"");
         }
     }
 }

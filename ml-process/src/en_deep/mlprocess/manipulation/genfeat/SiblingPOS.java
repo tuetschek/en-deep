@@ -41,16 +41,16 @@ public class SiblingPOS extends Feature {
 
     /* METHODS */
 
-    SiblingPOS(StToArff.StToArffConfig config){
+    public SiblingPOS(StToArff.StToArffConfig config){
         super(config);
     }
 
     @Override
     public String getHeader() {
         return StToArff.ATTRIBUTE + " LeftSiblingPOS " + StToArff.CLASS
-                + " {-," + this.config.getPos() + "}\n"
+                + " {_," + this.config.getPos() + "}" + LF
                 + StToArff.ATTRIBUTE + " RightSiblingPOS " + StToArff.CLASS
-                + " {-," + this.config.getPos() + "}";
+                + " {_," + this.config.getPos() + "}";
     }
 
     @Override
@@ -73,8 +73,8 @@ public class SiblingPOS extends Feature {
         }
 
         // produce output -- find the POS's of the both siblings, if applicable
-        return (leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_POS] : "-") + ","
-                + (rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_POS] : "-");
+        return "\"" + this.config.escape(leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_POS] : "_") + "\",\""
+                + this.config.escape(rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_POS] : "_") + "\"";
     }
 
 }

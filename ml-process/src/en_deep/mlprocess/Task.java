@@ -30,6 +30,7 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -104,6 +105,9 @@ public abstract class Task implements Serializable {
             taskConstructor = taskClass.getConstructor(String.class, Hashtable.class, Vector.class, Vector.class);
             res = (Task) taskConstructor.newInstance(desc.getId(), desc.getParameters(),
                     desc.getInput(),desc.getOutput());
+        }
+        catch(InvocationTargetException ex){
+            throw new TaskException(TaskException.ERR_TASK_INIT_ERR, desc.getId());
         }
         catch(Exception ex){
             throw new TaskException(TaskException.ERR_TASK_CLASS_INCORRECT, desc.getId());

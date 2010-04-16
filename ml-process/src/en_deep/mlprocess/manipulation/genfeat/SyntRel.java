@@ -45,7 +45,7 @@ public class SyntRel extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " SiblChild " + StToArff.INTEGER + "\n"
+        return StToArff.ATTRIBUTE + " SiblChild " + StToArff.INTEGER + LF
                 + StToArff.ATTRIBUTE + " SyntDep " + StToArff.INTEGER;
     }
 
@@ -56,7 +56,7 @@ public class SyntRel extends Feature {
         boolean syntDep = false;
         int curPos = wordNo + 1;
 
-        while (curPos != 0){ // find out the syntactical dependency
+        while (curPos != 0){ // find out the syntactical dependency (a predicate doesn't depend on itself)
             curPos = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
             if (curPos == predNo + 1){
                 syntDep = true;
@@ -64,9 +64,11 @@ public class SyntRel extends Feature {
             }
         }
 
+        // siblings (a predicate is it's own sibling)
         if (sentence.get(wordNo)[this.config.IDXI_HEAD].equals(sentence.get(predNo)[this.config.IDXI_HEAD])){
             siblChild = true;
         }
+        // child
         else if (Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]) == predNo + 1) {
             siblChild = true;
         }

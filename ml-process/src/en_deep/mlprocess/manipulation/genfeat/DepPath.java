@@ -32,9 +32,10 @@ import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
 import java.util.Vector;
 
 /**
- * This feature contains the complete path in DEPREL and POS values from the argument to the predicate.
+ * This feature contains the complete path in DEPREL and POS values from the argument candidate
+ * to the predicate.
  * It is composed of the DEPREL/POS values + / and \ as "up" and "down", or a single "+" for
- * the argument being the predicate itself.
+ * the argument candidate being the predicate itself.
  * @author Ondrej Dusek
  */
 public class DepPath extends Feature {
@@ -45,8 +46,8 @@ public class DepPath extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " DepPathRel " + StToArff.STRING + "\n"
-                + StToArff.ATTRIBUTE + " DepPathPOS " + StToArff.STRING + "\n"
+        return StToArff.ATTRIBUTE + " DepPathRel " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " DepPathPOS " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " DepPathLength " + StToArff.INTEGER;
     }
 
@@ -58,20 +59,27 @@ public class DepPath extends Feature {
         StringBuilder pathRel = new StringBuilder(), pathPos = new StringBuilder();
         int pathLength = 0;
 
+        if (wordNo == predNo){ // special case -- argument == predicate
+            return "\"+\",\"+\",0";
+        }
+
         while(curPos > 0){ // find the way from the predicate to the root
             int head = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
-            pathBack[head-1] = curPos;
-
+            if (head > 0){
+                pathBack[head-1] = curPos;
+            }
             curPos = head;
         }
 
         // find the way up from the argument to the predicate-root path
         curPos = wordNo + 1;
-        while (curPos != 0 && pathBack[curPos-1] == 0){
+        while (curPos != 0 && curPos != predNo + 1 && pathBack[curPos-1] == 0){
             int head = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
 
-            pathRel.append("/" + sentence.get(curPos - 1)[this.config.IDXI_DEPREL]);
-            pathPos.append("/" + sentence.get(curPos - 1)[this.config.IDXI_POS]);
+            if (curPos != wordNo + 1){
+                pathRel.append("/" + sentence.get(curPos - 1)[this.config.IDXI_DEPREL]);
+                pathPos.append("/" + sentence.get(curPos - 1)[this.config.IDXI_POS]);
+            }
             curPos = head;
             pathLength++;
         }
@@ -98,7 +106,8 @@ public class DepPath extends Feature {
             pathPos.append("/");
         }
 
-        return "\"" + pathRel.toString() + "\",\"" + pathPos.toString() + "\"," + Integer.toString(pathLength);
+        return "\"" + this.config.escape(pathRel.toString()) + "\",\""
+                + this.config.escape(pathPos.toString()) + "\"," + Integer.toString(pathLength);
     }
 
 }

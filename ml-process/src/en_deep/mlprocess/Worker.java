@@ -92,6 +92,7 @@ public class Worker implements Runnable {
         try {
             while (this.waitForNextTask()){
 
+                long time = System.currentTimeMillis();
                 Logger.getInstance().message("Worker thread " + this.id + " working on task " + this.currentTask.getId(),
                         Logger.V_INFO);
 
@@ -104,7 +105,8 @@ public class Worker implements Runnable {
                     continue;
                 }
 
-                Logger.getInstance().message("task " + this.currentTask.getId() + " finished.", Logger.V_INFO);
+                time = System.currentTimeMillis() - time;
+                Logger.getInstance().message("task " + this.currentTask.getId() + " finished in " + time/1000.0 + " secs.", Logger.V_INFO);
                 Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.DONE);
             }
         }

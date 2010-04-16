@@ -38,15 +38,15 @@ import java.util.Vector;
  */
 public class Children extends Feature {
 
-    Children(StToArffConfig config){
+    public Children(StToArffConfig config){
         super(config);
     }
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " ChildrenPOS " + StToArff.STRING + "\n"
-                + StToArff.ATTRIBUTE + " ChildrenLemma " + StToArff.STRING + "\n"
-                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING + "\n";
+        return StToArff.ATTRIBUTE + " ChildrenPOS " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " ChildrenLemma " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING;
     }
 
     @Override
@@ -66,9 +66,9 @@ public class Children extends Feature {
         // create lists for all three types
         for (Integer childPos : children){
             if (!first){
-                pos.append(",");
-                lemma.append(",");
-                form.append(",");
+                pos.append("|");
+                lemma.append("|");
+                form.append("|");
             }
             pos.append(sentence.get(childPos)[this.config.IDXI_POS]);
             lemma.append(sentence.get(childPos)[this.config.IDXI_LEMMA]);
@@ -77,7 +77,8 @@ public class Children extends Feature {
         }
 
         // output the result
-        return "\"" + pos.toString() + "\",\"" + lemma.toString() + "\",\"" + form.toString() + "\"";
+        return "\"" + this.config.escape(pos.toString()) + "\",\""
+                + this.config.escape(lemma.toString()) + "\",\"" + this.config.escape(form.toString()) + "\"";
     }
 
 

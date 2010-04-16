@@ -41,13 +41,13 @@ public class SiblingForm extends Feature {
 
     /* METHODS */
 
-    SiblingForm(StToArff.StToArffConfig config){
+    public SiblingForm(StToArff.StToArffConfig config){
         super(config);
     }
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingForm " + StToArff.STRING + "\n"
+        return StToArff.ATTRIBUTE + " LeftSiblingForm " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " RightSiblingForm " + StToArff.STRING;
     }
 
@@ -71,8 +71,8 @@ public class SiblingForm extends Feature {
         }
 
         // produce output -- find the POS's of the both siblings, if applicable
-        return "\"" + (leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_FORM] : "") + "\",\""
-                + (rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_FORM] : "") + "\"";
+        return "\"" + this.config.escape(leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_FORM] : "") + "\",\""
+                + this.config.escape(rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_FORM] : "") + "\"";
     }
 
 }
