@@ -191,6 +191,10 @@ public class Process {
                 workDir = inputFile.substring(0, inputFile.lastIndexOf(File.separator));
                 inputFile = inputFile.substring(inputFile.lastIndexOf(File.separator) + 1);
             }
+            // otherwise working directory is the current one
+            else if (workDir == null){
+                workDir = ".";
+            }
             // append path separator character to the directory specification
             if (workDir.charAt(workDir.length() - 1) != File.separatorChar){
                 workDir += File.separator;

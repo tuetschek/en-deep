@@ -219,7 +219,7 @@ class ScenarioParser {
             if (s.startsWith("\"") && s.endsWith("\"")){
                 s = this.unquote(s);
             }
-            else if (s.contains("\"") || s.matches("\\s")){
+            else if (s.contains("\"") || s.matches("(?s).*\\s.*")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
             }
             list.setElementAt(workDir + s, i); // prepend with working directory
@@ -238,8 +238,8 @@ class ScenarioParser {
     private String unquote(String string) throws DataException {
 
         string = string.substring(1, string.length()-1);
-        if (string.matches("[^\"]\"[^\"]")){
-            throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
+        if (string.matches("(?s).*[^\"]\"[^\"].*")){
+            throw new DataException(DataException.ERR_QUOTES_MISMATCH, this.fileName, this.line);
         }
         return string.replaceAll("\"\"", "\"");
     }
@@ -297,7 +297,7 @@ class ScenarioParser {
             if (nameVal[1].startsWith("\"") && nameVal[1].endsWith("\"")){
                 nameVal[1] = this.unquote(nameVal[1]);
             }
-            else if (nameVal[1].contains("\"") || nameVal[1].matches("\\s")){
+            else if (nameVal[1].contains("\"") || nameVal[1].matches("(?s).*\\s.*")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_PARAMETER, this.fileName, this.line);
             }
 

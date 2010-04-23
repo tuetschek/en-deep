@@ -112,7 +112,7 @@ public class Worker implements Runnable {
         }
         catch(PlanException ex){
             // plan file related errors are critical - they result in Worker stopping
-            Logger.getInstance().message("Plan access in worker thread #" + this.id + ":" + ex.getMessage(),
+            Logger.getInstance().message("Plan access in worker thread #" + this.id + ": " + ex.getMessage(),
                     Logger.V_IMPORTANT);
         }
 

@@ -381,32 +381,43 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
             idPrefix = "";
         }
 
-        // backward dependencies
-        if (this.iDependOn != null){
+        // loose both prefix directions
+        this.looseDeps(idPrefix, true);
+        this.looseDeps(idPrefix, false);
+    }
 
-            for(int i = this.iDependOn.size() - 1; i >= 0; --i){
-                if (this.iDependOn.get(i).getId().startsWith(idPrefix)){
+    /**
+     * Looses dependencies in the given direction to all tasks whose ids match
+     * the given prefix.
+     * @param backwards the direction used in search -- true = backwards, false = forwards
+     * @param idPrefix the prefix to drop dependency to
+     */
+    public void looseDeps(String idPrefix, boolean backwards){
 
-                    TaskDescription dep = this.iDependOn.remove(i);
-                    dep.dependOnMe.remove(this);
+        Vector<TaskDescription> dependList = backwards ? this.iDependOn : this.dependOnMe;
+
+        if (dependList != null){
+
+            // remove all wanted dependencies from the list
+            for (int i = dependList.size() - 1; i >= 0; --i){
+                if (dependList.get(i).getId().startsWith(idPrefix)){
+
+                    TaskDescription dep = dependList.remove(i);
+                    if (backwards){
+                        dep.dependOnMe.remove(this);
+                    }
+                    else {
+                        dep.iDependOn.remove(this);
+                    }
                 }
             }
-            if (this.iDependOn.size() == 0){
-                this.iDependOn = null;
-            }
-        }
-        // forward dependencies
-        if (this.dependOnMe != null){
-
-            for (int i = this.dependOnMe.size() - 1; i >= 0; --i){
-                if (this.dependOnMe.get(i).getId().startsWith(idPrefix)){
-
-                    TaskDescription dep = this.dependOnMe.remove(i);
-                    dep.iDependOn.remove(this);
+            if (dependList.size() == 0){ // make the list null if it's empty
+                if (backwards){
+                    this.iDependOn = null;
                 }
-            }
-            if (this.dependOnMe.size() == 0){
-                this.dependOnMe = null;
+                else {
+                    this.dependOnMe = null;
+                }
             }
         }
     }

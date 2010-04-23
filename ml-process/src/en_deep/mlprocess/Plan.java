@@ -196,8 +196,10 @@ public class Plan {
             }
             // close the to-do file and reset file
             try {
-                resetFileIO.close();
                 planFileIO.close();
+                if (resetFileIO != null){ // test if we really got that far
+                    resetFileIO.close();
+                }
             }
             catch(IOException ex){
                 Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);

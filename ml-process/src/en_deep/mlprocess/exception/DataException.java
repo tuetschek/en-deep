@@ -55,6 +55,8 @@ public class DataException extends GeneralException {
     public static final int ERR_UNEXPECTED_EOF = 9;
     /** Error code: "Loop task dependency" */
     public static final int ERR_LOOP_DEPENDENCY = 10;
+    /** Error code: "Quotes mismatch" */
+    public static final int ERR_QUOTES_MISMATCH = 11;
 
     /* DATA */
 
@@ -125,6 +127,9 @@ public class DataException extends GeneralException {
                 break;
             case ERR_LOOP_DEPENDENCY:
                 errMsg = "Loop task dependency";
+                break;
+            case ERR_QUOTES_MISMATCH:
+                errMsg = "Quotes mismatch";
                 break;
             default:
                 errMsg = "Unknown error";
