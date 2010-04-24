@@ -28,8 +28,10 @@
 package en_deep.mlprocess;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Vector;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.Stack;
 
 /**
@@ -55,6 +57,9 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
     public enum TaskStatus {
         WAITING, PENDING, IN_PROGRESS, DONE, FAILED
     }
+
+    /** A character in the task name that indicates this task has been expanded */
+    public static final char EXPANSION_MARK = '#';
     
     /* DATA */
 
@@ -80,9 +85,6 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
     /** All the Task that are depending on this one */
     private Vector<TaskDescription> dependOnMe;
 
-    /** This serves for generating tasks id in parallelization */
-    private static int lastId = 0;
-
 
     /* METHODS */
 
@@ -96,7 +98,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
     public TaskDescription(String id, String algorithm, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output){
 
-        this.id = TaskDescription.generateId(id);
+        this.id = id;
         this.algorithm = algorithm;
         this.parameters = parameters;
         this.input = input;
@@ -115,7 +117,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      */
     private TaskDescription(TaskDescription other, String idSuffix){
 
-        this.id = other.id + '#' + idSuffix;
+        this.id = other.id + EXPANSION_MARK + idSuffix;
         this.algorithm = other.algorithm;
         this.parameters = (Hashtable<String,String>) other.parameters.clone();
         this.input = (Vector<String>) other.input.clone();
@@ -194,7 +196,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
     }
 
     /**
-     * Returns a list of all dependent tasks, or null if there are none.
+     * Returns a list of all directly dependent tasks, or null if there are none.
      * @return a list of all tasks depending on this one
      */
     Vector<TaskDescription> getDependent(){
@@ -207,20 +209,30 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
 
     /**
-     * Returns the unique ID for this task, composed of the name for the task
-     * section in the input scenario file and a unique number.
-     *
-     * @return the generated ID string
+     * Returns a list of all - even transitively - dependent tasks, or null if there
+     * are none. The resulting list is not checked for duplicities, so one task may
+     * result in being added more times.
+     * 
+     * @return a list of all tasks transitively depending on this one
      */
-    private static synchronized String generateId(String prefix){
+    LinkedList<TaskDescription> getDependentTransitive(){
 
-        String taskId;
+        LinkedList<TaskDescription> deps = new LinkedList<TaskDescription>();
 
-        lastId++;
-        taskId = prefix + "["+ lastId + "]";
+        if (this.dependOnMe == null){
+            return null;
+        }
+        deps.addAll(this.dependOnMe);
+        for (TaskDescription dep : this.dependOnMe){
 
-        return taskId;
+            LinkedList<TaskDescription> transDep = dep.getDependentTransitive();
+            if (transDep != null){
+                deps.addAll(transDep);
+            }
+        }
+        return deps;
     }
+
 
     /**
      * Returns true if all the tasks on which this task depends are already topologically
@@ -377,10 +389,6 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      */
     public void looseDeps(String idPrefix) {
 
-        if (idPrefix == null){ // null parameter -- remove all dependencies
-            idPrefix = "";
-        }
-
         // loose both prefix directions
         this.looseDeps(idPrefix, true);
         this.looseDeps(idPrefix, false);
@@ -396,6 +404,9 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
         Vector<TaskDescription> dependList = backwards ? this.iDependOn : this.dependOnMe;
 
+        if (idPrefix == null){ // null id prefix -- remove all dependencies
+            idPrefix = "";
+        }
         if (dependList != null){
 
             // remove all wanted dependencies from the list
@@ -430,6 +441,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         this.looseDeps(null);
     }
 
+
     @Override
     public String toString() {
 
@@ -451,6 +463,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
                 + "\n\tiDependOn: " + iDO.toString() + "\n\tdependOnMe: " + dOM.toString()
                 + "\n\tinput: " + this.input.toString() + "\n\toutput:" + this.output.toString() + "\n";
     }
+
 
     /**
      * If this task description is an expansion of an original tasks, returns the actual pattern replacement

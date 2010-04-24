@@ -57,6 +57,8 @@ public class DataException extends GeneralException {
     public static final int ERR_LOOP_DEPENDENCY = 10;
     /** Error code: "Quotes mismatch" */
     public static final int ERR_QUOTES_MISMATCH = 11;
+    /** Error code: "Duplicate task name" */
+    public static final int ERR_DUPLICATE_TASK_NAME = 12;
 
     /* DATA */
 
@@ -130,6 +132,9 @@ public class DataException extends GeneralException {
                 break;
             case ERR_QUOTES_MISMATCH:
                 errMsg = "Quotes mismatch";
+                break;
+            case ERR_DUPLICATE_TASK_NAME:
+                errMsg = "Duplicate task name";
                 break;
             default:
                 errMsg = "Unknown error";

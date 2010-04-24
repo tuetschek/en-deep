@@ -42,7 +42,13 @@ import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.Vector;
+import java.util.regex.Pattern;
 
 
 
@@ -225,8 +231,7 @@ public class Plan {
      */
     private synchronized void createPlan(RandomAccessFile planFileIO) throws IOException, DataException {
 
-        Process process = Process.getInstance();
-        ScenarioParser parser = new ScenarioParser(process.getInputFile());
+        ScenarioParser parser = new ScenarioParser(Process.getInstance().getInputFile());
         Vector<TaskDescription> plan;
 
         // parse the input file
@@ -301,6 +306,156 @@ public class Plan {
 
 
     /**
+     * Reads all the prefixes of the tasks to be reset from a file. If there is nothing to be
+     * reset, returns null. If all tasks should be reset, returns an empty string. The reset of all
+     * tasks is triggered by a single "#" in the reset file.
+     *
+     * @param resetFileIO the open reset file
+     * @return a string pattern for tasks to be reset (null for none, empty for all)
+     * @throws IOException in case of an I/O error
+     */
+    private String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
+
+        String line = resetFileIO.readLine();
+        StringBuilder pattern = new StringBuilder("^(");
+        boolean first = true;
+
+        while (line != null) {
+
+            String[] taskPrefixes = line.split(",");
+
+            for (String prefix : taskPrefixes) {
+                
+                if (prefix.matches("\\s+")){ // skip just whitespace
+                    continue;
+                }
+                prefix = prefix.trim();
+                if (first){
+                    pattern.append(prefix);
+                    first= false;
+                }
+                else {
+                    pattern.append("|");
+                    pattern.append(prefix);
+                }
+            }
+            line = resetFileIO.readLine();
+        }
+        pattern.append(").*");
+
+        if (pattern.toString().equals("().*")){ // reset none
+            return null;
+        }
+        else if (pattern.toString().equals("(#).*")){ // reset all
+            return "";
+        }
+        return pattern.toString();
+    }
+
+    /**
+     * Marks all tasks in the given plan and their expansions, too. Creates a hashtable with unexpanded
+     * task names as keys and their (even expanded) tasks as values.
+     *
+     * @param plan the plan where to collect task names in
+     * @return the hashtable with unexpanded task names and the corresponding tasks
+     */
+    private Hashtable<String, Vector<TaskDescription>> markTaskNames(Vector<TaskDescription> plan) {
+
+        Hashtable<String, Vector<TaskDescription>> oldPlanByName = new Hashtable<String, Vector<TaskDescription>>();
+
+        for (TaskDescription task : plan) {
+            String prefix = task.getId().replaceFirst("#.*$", "");
+            if (oldPlanByName.get(prefix) == null) {
+                oldPlanByName.put(prefix, new Vector<TaskDescription>());
+            }
+            oldPlanByName.get(prefix).add(task);
+        }
+        return oldPlanByName;
+    }
+
+
+    /**
+     * This removes the tasks that need to be reset in any case from the current plan,
+     * so that they are certainly reset in the new one.
+     *
+     * @param resetRegex the regexp for tasks to be reset (obtained by{@link Plan.getResetPrefixes(RandomAccessFile)})
+     * @param plan the plan to remove the tasks from
+     */
+    private void removeTasksToReset(String resetRegex, Vector<TaskDescription> plan) {
+
+        if (resetRegex.equals("")) {
+
+            Pattern resetPattern = Pattern.compile(resetRegex);
+            LinkedList<TaskDescription> toRemove = new LinkedList<TaskDescription>();
+
+            for (TaskDescription task : plan) {
+
+                if (resetPattern.matcher(task.getId()).matches()) {
+                    toRemove.addAll(task.getDependentTransitive());
+                }
+            }
+            plan.removeAll(toRemove);
+        }
+    }
+
+    /**
+     * This checks the new plan against the old one, updating all the statuses of unchanged tasks.
+     * If there have been some expansions performed in the old plan, they are done in the new one and
+     * the task equality is checked on the results of that expansion.
+     *
+     * @param newPlan the new plan
+     * @param oldPlanByName the old plan, in a hashmap by (unexpanded) task names
+     * @throws TaskException if an expansion fails
+     */
+    private void updateStatuses(Vector<TaskDescription> newPlan,
+            Hashtable<String, Vector<TaskDescription>> oldPlanByName) throws TaskException {
+        
+        int i = 0;
+        while (i < newPlan.size()) {
+
+            Vector<TaskDescription> oldTasks;
+            TaskDescription task = newPlan.get(i);
+
+            if ((oldTasks = oldPlanByName.get(task.getId())) != null) {
+
+                // we need to check for changes
+                // there was already an expansion for the old task, therefore we need to expand the new task
+                if (oldTasks.size() > 1 || !oldTasks.get(0).getId().equals(task.getId())) {
+
+                    TaskExpander expander = new TaskExpander(task);
+                    Collection<TaskDescription> newTasks;
+
+                    expander.expand();
+                    newPlan.removeAll(expander.getTasksToRemove());
+                    newTasks = expander.getTasksToAdd();
+                    newPlan.addAll(i, newTasks);
+
+                    // check the expansion results and set the right statuses
+                    for (TaskDescription newTask : newTasks) {
+                        int index;
+                        if ((index = oldTasks.indexOf(newTask)) != -1) {
+                            newTask.setStatus(oldTasks.get(index).getStatus());
+                        }
+                    }
+                    i += newTasks.size();
+                } 
+                else {
+                    // update an unexpanded task status, if it's identical to the one in the old plan
+                    if (oldTasks.get(0).equals(task)) {
+                        task.setStatus(oldTasks.get(0).getStatus());
+                    }
+                    ++i;
+                }
+            }
+            else {
+                // task not found in the old plan, just leave is as it is
+                ++i;
+            }
+        }
+    }
+
+
+    /**
      * Writes the current plan status into the plan file, using serialization.
      * @param plan the current plan status
      * @param planFile the file to write to (an open output stream)
@@ -328,6 +483,7 @@ public class Plan {
         debugOs.close();
     }
 
+    
     /**
      * Topologically sorts the process plan. Sort as Kahn, A. B. (1962), "Topological sorting of large networks",
      * Communications of the ACM 5 (11): 558–562.
@@ -492,31 +648,35 @@ public class Plan {
      * @param resetFileIO locked and open reset I/O file
      */
     private void resetTasks(RandomAccessFile planFileIO, RandomAccessFile resetFileIO) 
-            throws IOException, ClassNotFoundException {
+            throws IOException, ClassNotFoundException, DataException, TaskException {
 
-        Vector<TaskDescription> plan = this.readPlan(planFileIO);
-        String line = resetFileIO.readLine();
+        Vector<TaskDescription> oldPlan = this.readPlan(planFileIO);
+        ScenarioParser parser = new ScenarioParser(Process.getInstance().getInputFile());
+        Vector<TaskDescription> newPlan;
+        String resetRegex = this.getResetPrefixes(resetFileIO);
+        Hashtable<String, Vector<TaskDescription>> oldPlanByName;
 
-        while (line != null){
-
-            String [] taskPrefixes = line.split(",");
-
-            for (String taskPrefix : taskPrefixes){
-
-                taskPrefix = taskPrefix.trim();
-
-                for (TaskDescription task : plan){
-
-                    if (task.getId().startsWith(taskPrefix)){
-                        task.resetStatus();
-                    }
-                }
-            }
-            line = resetFileIO.readLine();
+        if (resetRegex == null){ // nothing to be reset
+            return;
         }
 
-        resetFileIO.setLength(0);
-        this.writePlan(plan, planFileIO);
+        // parse the new version of the input file
+        parser.parse();
+
+        // topologically sort the new plan
+        newPlan = parser.getTasks();
+        this.sortPlan(newPlan);
+
+        // remove the tasks that need to be reset in any case
+        this.removeTasksToReset(resetRegex, oldPlan);
+        // mark task names
+        oldPlanByName = this.markTaskNames(oldPlan);
+
+        // update unchanged tasks' statuses to the current progress in the old plan
+        this.updateStatuses(newPlan, oldPlanByName);
+
+        resetFileIO.setLength(0); // clear the reset file
+        this.writePlan(newPlan, planFileIO); // write down the new plan
     }
 
 

@@ -49,7 +49,9 @@ import java.io.IOException;
  * <li><tt>--threads</tt> number of {@link Worker} threads for this {@link Process} instance (default: 1)</li>
  * <li><tt>--instances</tt> number of instances that are going to be run simultaneously (default: 1)</li>
  * <li><tt>--verbosity</tt> the desired verbosity level (0-4, default: 0 - i.e. no messages)</li>
- * <li><tt>--reset</tt> comma-separated list of tasks whose status should be reset to PENDING or WAITING</li>
+ * <li><tt>--reset</tt> comma-separated list of tasks whose status should be reset to PENDING or WAITING; in any
+ * case if this is triggered, all changed tasks are reset. In order to trigger just the reset of changed tasks,
+ * a single "#" should be set as an argument.</li>
  * </ul>
  * <p>
  * The <tt>--instances</tt> parameter determines the level of parallelization for the process plan

@@ -25,6 +25,8 @@ class ScenarioParser {
     private Vector<TaskDescription> tasks;
     /** All occurrences of files */
     private Hashtable<String,Occurrences> fileOccurrences;
+    /** All used task names with the corresponding tasks */
+    private Hashtable<String,TaskDescription> tasksByName;
     
     /** The name of the processed file */
     private String fileName;
@@ -48,6 +50,7 @@ class ScenarioParser {
         this.fileName = fileName;
         this.tasks = new Vector<TaskDescription>();
         this.fileOccurrences = new Hashtable<String, Occurrences>();
+        this.tasksByName = new Hashtable<String, TaskDescription>();
     }
 
 
@@ -87,8 +90,11 @@ class ScenarioParser {
             if (!clauses[0].startsWith("task ")){
                 throw new DataException(DataException.ERR_TASK_EXPECTED, this.fileName, this.line);
             }
-            taskName = clauses[0].split("\\s+", 2)[1]; // set the task name
-            
+            taskName = clauses[0].split("\\s+", 2)[1]; // set the task name and check for duplicity
+            if (this.tasksByName.containsKey(taskName)){
+                throw new DataException(DataException.ERR_DUPLICATE_TASK_NAME, this.fileName, this.line);
+            }
+          
             // handle all the section contents
             for (int i = 1; i < clauses.length - 2; ++i){
 
@@ -140,6 +146,7 @@ class ScenarioParser {
 
             // store the task
             this.tasks.add(task);
+            this.tasksByName.put(taskName, task);
         }
 
         // set the task dependencies
