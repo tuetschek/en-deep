@@ -136,7 +136,7 @@ public class TaskExpander {
 
         // expand "***"s -- one by one
         if (this.inputCarth != null){
-            expandCarthesian();
+            this.expandCarthesian();
         }
 
         // check if all the outputs have "*"s (otherwise, there's no point in using "*" or "***" for inputs)
@@ -187,6 +187,8 @@ public class TaskExpander {
 
     /**
      * Expands all the "**"s in the task inputs specification.
+     *
+     * TODO it would be better to create a completely new task object, so that it doesn't get confusing
      */
     private void expandHere() {
         
@@ -236,10 +238,10 @@ public class TaskExpander {
      */
     private void findPatterns() {
 
-        this.inputTrans = this.findPattern("*", this.task.getInput());
-        this.inputHere = this.findPattern("**", this.task.getInput());
-        this.inputCarth = this.findPattern("***", this.task.getInput());
-        this.outputTrans = this.findPattern("*", this.task.getOutput());
+        this.inputTrans = this.task.getInputPatternPos("*");
+        this.inputHere = this.task.getInputPatternPos("**");
+        this.inputCarth = this.task.getInputPatternPos("***");
+        this.outputTrans = this.task.getOutputPatternPos("*");
     }
 
     /**
@@ -294,56 +296,6 @@ public class TaskExpander {
 
 
     /**
-     * Tries to search for one pattern within a given field. Only such strings are returned in which
-     * the pattern is found only once and is not followed by path separator character(s). The list
-     * of indexes is ascending.
-     *
-     * @param pattern the pattern to search for
-     * @param field the field to search within
-     * @return list of indexes at which the pattern was found, or null if none such exist
-     *
-     * TODO move to TaskDescription itself
-     */
-    private Vector<Integer> findPattern(String pattern, Vector<String> field) {
-
-        Vector<Integer> ret = null;
-
-        for (int i = 0; i < field.size(); ++i){
-            String elem = field.get(i);
-            // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
-            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)
-                    && (elem.indexOf(File.separator) == -1 || elem.lastIndexOf(File.separator) < elem.lastIndexOf(pattern))){
-                if (ret == null){
-                    ret = new Vector<Integer>();
-                }
-                ret.add(i);
-            }
-        }
-        return ret;
-    }
-
-    /**
-     * This behaves exactly same as {@link findPattern}, but returns only after just one given pattern has been found.
-     * @param pattern the pattern to search for
-     * @param field the field to search within
-     * @return list of indexes at which the pattern was found, or null if none such exist
-     *
-     * TODO move to TaskDescription itself
-     */
-    private boolean hasPattern(String pattern, Vector<String> field) {
-
-        for (int i = 0; i < field.size(); ++i){
-            String elem = field.get(i);
-            // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
-            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    /**
      * Replaces all patterns in output file names according to the expansion value of input
      * patterns, replaces patterns in dependent tasks accordingly.
      *
@@ -386,11 +338,11 @@ public class TaskExpander {
 
         // this means there are no more dependent expansions and we need only to put all outputs
         // from expanded anc as inputs to this task
-        if (!this.hasPattern("*", task.getOutput())){
+        if (!task.hasOutputPattern("*")){
 
             Vector<String> replacements = new Vector<String>();
             Vector<String> taskInput = task.getInput();
-            Vector<Integer> patterns = this.findPattern("*", taskInput);
+            Vector<Integer> patterns = task.getInputPatternPos("*");
 
             for (TaskDescription ancExp : this.expansions.get(anc)){ // find pattern replacements
                 replacements.add(ancExp.getPatternReplacement());
@@ -426,7 +378,7 @@ public class TaskExpander {
         }
 
         // if there are "**" or "***" left to be expanded, we can't expand outputs and go deeper, yet
-        if (this.hasPattern("**", task.getInput()) || this.hasPattern("***", task.getInput())){
+        if (task.hasInputPattern("**") || task.hasInputPattern("***")){
             return;
         }
 
@@ -435,7 +387,7 @@ public class TaskExpander {
         Vector<String> outputs = task.getOutput();
 
         // if there are some pattern and some non-pattern outputs, something is wrong
-        if (this.findPattern("*", outputs).size() != outputs.size()){ 
+        if (task.getOutputPatternPos("*").size() != outputs.size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId());
         }
 
@@ -451,7 +403,7 @@ public class TaskExpander {
 
         for (TaskDescription dep : deps){
 
-            if (this.hasPattern("*", dep.getInput())){
+            if (dep.hasInputPattern("*")){
                 this.expandDependent(task, dep);
             }
         }

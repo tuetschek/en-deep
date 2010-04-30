@@ -28,7 +28,7 @@
 package en_deep.mlprocess;
 
 import java.io.Serializable;
-import java.util.Collection;
+import java.io.File;
 import java.util.Vector;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -476,7 +476,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         if (this.id.indexOf('#') == -1){
             return null;
         }
-        return this.id.substring(this.id.indexOf('#')).replaceAll("#", "_");
+        return this.id.substring(this.id.indexOf('#') + 1).replaceAll("#", "_");
     }
 
     /**
@@ -556,6 +556,140 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         }
     }
 
+    /**
+     * This compares two task descriptions. They are assumed to be equal, if they have the same
+     * id, same algorithm and its parameters and same inputs and outputs. Dependencies are 
+     * not taken into account.
+     * 
+     * @param obj the object to compare this TaskDescription with
+     * @return true if the given object is equal to this one, false otherwise
+     */
+    @Override
+    public boolean equals(Object obj) {
 
+        if (obj.getClass() == this.getClass()){
+            TaskDescription other = (TaskDescription) obj;
+
+            return (this.id.equals(other.id) && this.algorithm.equals(other.algorithm)
+                    && this.parameters.equals(other.parameters)
+                    && this.input.equals(other.input) && this.output.equals(other.output));
+        }
+        else {
+            return false;
+        }
+    }
+
+
+    /**
+     * Provides a hash code for the TaskDescription, using id, algorithm, parameters,
+     * inputs and outputs.
+     *
+     * @return the hash code for this TaskDescription
+     */
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 97 * hash + (this.id != null ? this.id.hashCode() : 0);
+        hash = 97 * hash + (this.algorithm != null ? this.algorithm.hashCode() : 0);
+        hash = 97 * hash + (this.parameters != null ? this.parameters.hashCode() : 0);
+        hash = 97 * hash + (this.input != null ? this.input.hashCode() : 0);
+        hash = 97 * hash + (this.output != null ? this.output.hashCode() : 0);
+        return hash;
+    }
+
+
+    /**
+     * Tries to search for one pattern within a given field. Only such strings are returned in which
+     * the pattern is found only once and is not followed by path separator character(s). The list
+     * of indexes is ascending.
+     *
+     * @param pattern the pattern to search for
+     * @param output if true, it searches within output, if false, it searches within input specifications
+     * @return list of indexes at which the pattern was found, or null if none such exist
+     */
+    private Vector<Integer> getPatternPos(String pattern, boolean output) {
+
+        Vector<Integer> ret = null;
+        Vector<String> field = output ? this.output : this.input;
+
+        for (int i = 0; i < field.size(); ++i){
+            String elem = field.get(i);
+            // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
+            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)
+                    && (elem.indexOf(File.separator) == -1 || elem.lastIndexOf(File.separator) < elem.lastIndexOf(pattern))){
+                if (ret == null){
+                    ret = new Vector<Integer>();
+                }
+                ret.add(i);
+            }
+        }
+        return ret;
+    }
+
+
+    /**
+     * This behaves exactly same as {@link findPattern}, but returns only after just one given pattern has been found.
+     *
+     * @param pattern the pattern to search for
+     * @param output if true, it searches within the task input, otherwise, it searches within the output
+     * @return true if the given pattern has been found within the given field
+     */
+    private boolean hasPattern(String pattern, boolean output) {
+
+        Vector<String> field = output ? this.output : this.input;
+
+        for (int i = 0; i < field.size(); ++i){
+            String elem = field.get(i);
+            // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
+            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    /**
+     * Returns all the positions in the input specification, on which the given pattern is found.
+     *
+     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @return the list of all positions on which the pattern is found, or null
+     */
+    public Vector<Integer> getInputPatternPos(String pattern){
+        return this.getPatternPos(pattern, false);
+    }
+
+
+    /**
+     * Returns all the positions in the output specification, on which the given pattern is found.
+     *
+     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @return the list of all positions on which the pattern is found, or null
+     */
+    public Vector<Integer> getOutputPatternPos(String pattern){
+        return this.getPatternPos(pattern, true);
+    }
+
+
+    /**
+     * Returns true, if the TaskDescription has the given pattern in its input specifications.
+     *
+     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @return true if the pattern occurs in the input specifications, false otherwise
+     */
+    public boolean hasInputPattern(String pattern){
+        return this.hasPattern(pattern, false);
+    }
+
+
+    /**
+     * Returns true, if the TaskDescription has the given pattern in its output specifications.
+     *
+     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @return true if the pattern occurs in the output specifications, false otherwise
+     */
+    public boolean hasOutputPattern(String pattern){
+        return this.hasPattern(pattern, true);
+    }
 
 }

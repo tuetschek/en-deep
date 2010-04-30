@@ -43,8 +43,6 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Vector;
@@ -317,7 +315,7 @@ public class Plan {
     private String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
 
         String line = resetFileIO.readLine();
-        StringBuilder pattern = new StringBuilder("^(");
+        StringBuilder pattern = new StringBuilder("(");
         boolean first = true;
 
         while (line != null) {
@@ -375,7 +373,7 @@ public class Plan {
 
 
     /**
-     * This removes the tasks that need to be reset in any case from the current plan,
+     * This removes the tasks from the current plan that need to be reset in any case,
      * so that they are certainly reset in the new one.
      *
      * @param resetRegex the regexp for tasks to be reset (obtained by{@link Plan.getResetPrefixes(RandomAccessFile)})
@@ -383,7 +381,7 @@ public class Plan {
      */
     private void removeTasksToReset(String resetRegex, Vector<TaskDescription> plan) {
 
-        if (resetRegex.equals("")) {
+        if (!resetRegex.equals("")){
 
             Pattern resetPattern = Pattern.compile(resetRegex);
             LinkedList<TaskDescription> toRemove = new LinkedList<TaskDescription>();
@@ -420,7 +418,11 @@ public class Plan {
 
                 // we need to check for changes
                 // there was already an expansion for the old task, therefore we need to expand the new task
-                if (oldTasks.size() > 1 || !oldTasks.get(0).getId().equals(task.getId())) {
+                //
+                // "here-expansion" works, too (last condition) - the task is expanded and "i" doesn't move, so
+                // the equality of the expansion result is tested in the next iteration
+                if (oldTasks.size() > 1 || !oldTasks.get(0).getId().equals(task.getId())
+                        || (task.hasInputPattern("**") && !oldTasks.get(0).hasInputPattern("**"))) {
 
                     TaskExpander expander = new TaskExpander(task);
                     Collection<TaskDescription> newTasks;
@@ -438,7 +440,7 @@ public class Plan {
                         }
                     }
                     i += newTasks.size();
-                } 
+                }
                 else {
                     // update an unexpanded task status, if it's identical to the one in the old plan
                     if (oldTasks.get(0).equals(task)) {
