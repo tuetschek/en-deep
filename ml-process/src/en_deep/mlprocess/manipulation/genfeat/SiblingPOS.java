@@ -47,10 +47,8 @@ public class SiblingPOS extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingPOS " + StToArff.CLASS
-                + " {_," + this.config.getPos() + "}" + LF
-                + StToArff.ATTRIBUTE + " RightSiblingPOS " + StToArff.CLASS
-                + " {_," + this.config.getPos() + "}";
+        return StToArff.ATTRIBUTE + " LeftSiblingPOS " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " RightSiblingPOS " + StToArff.STRING;
     }
 
     @Override

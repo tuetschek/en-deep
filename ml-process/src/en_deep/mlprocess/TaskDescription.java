@@ -459,7 +459,9 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
             }
         }
 
-        return this.id + ": " + this.status + "\n" + "\tparams: " + this.parameters.toString()
+        return this.id + ": " + this.status + "\n"
+                + "\talgorithm: " + this.algorithm.toString()
+                + "\n\tparams: " + this.parameters.toString()
                 + "\n\tiDependOn: " + iDO.toString() + "\n\tdependOnMe: " + dOM.toString()
                 + "\n\tinput: " + this.input.toString() + "\n\toutput:" + this.output.toString() + "\n";
     }

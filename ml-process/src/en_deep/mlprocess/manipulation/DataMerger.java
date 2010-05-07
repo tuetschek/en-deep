@@ -43,6 +43,11 @@ import weka.core.converters.ConverterUtils;
  */
 public class DataMerger extends Task {
 
+    /* CONSTANTS */
+    
+    /** Line feed character */
+    private static final String LF = System.getProperty("line.separator");
+
     /* DATA */
 
     /* METHODS */
@@ -97,35 +102,49 @@ public class DataMerger extends Task {
     /**
      * Tries to merge several input files into one output, using WEKA code.
      *
-     * @param in
-     * @param out
+     * @param in the list of input files to be merged
+     * @param out the output file to write to
      */
     private void mergeData(List<String> in, String out) throws Exception {
 
-        ConverterUtils.DataSource bulkIn = new ConverterUtils.DataSource(in.get(0));
-        Instances bulk = bulkIn.getDataSet();
-        bulkIn.reset();
+        ConverterUtils.DataSource data = new ConverterUtils.DataSource(in.get(0));
+        FileOutputStream os = new FileOutputStream(out);
+        Instances firstStructure = data.getStructure();
 
         Logger.getInstance().message(this.id + ": adding " + in.get(0) + " to " + out + "...", Logger.V_DEBUG);
 
+        // write the first file, including the headers
+        os.write(firstStructure.toString().getBytes("UTF-8"));
+
+        while (data.hasMoreElements(firstStructure)){
+            os.write(data.nextElement(firstStructure).toString().getBytes("UTF-8"));
+            os.write(LF.getBytes());
+        }
+
+        data.reset();
+
+        // add the other files
         for (int i = 1; i < in.size(); ++i){
 
-            ConverterUtils.DataSource addIn = new ConverterUtils.DataSource(in.get(i));
-            Instances add = addIn.getDataSet();
-            addIn.reset();
+            data = new ConverterUtils.DataSource(in.get(i));
+            Instances structure = data.getStructure();
+            String errMsg;
 
             Logger.getInstance().message(this.id + ": adding " + in.get(i) + " to " + out + "...", Logger.V_DEBUG);
 
-            for (int j = 0; j < add.numInstances(); ++j){
-                bulk.add(add.instance(j));
+            // check for equal data format
+            if ((errMsg = structure.equalHeadersMsg(firstStructure)) != null){
+                Logger.getInstance().message(this.id + ": cannot merge -- headers differ: " + errMsg, Logger.V_IMPORTANT);
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
             }
+
+            while (data.hasMoreElements(structure)){
+                os.write(data.nextElement(structure).toString().getBytes("UTF-8"));
+                os.write(LF.getBytes());
+            }
+            data.reset();
         }
 
-        Logger.getInstance().message(this.id + ": writing output to " + out + "...", Logger.V_DEBUG);
-
-        FileOutputStream os = new FileOutputStream(out);
-        ConverterUtils.DataSink bulkOut = new ConverterUtils.DataSink(os);
-        bulkOut.write(bulk);
         os.close();
     }
 

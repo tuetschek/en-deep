@@ -389,7 +389,12 @@ public class Plan {
             for (TaskDescription task : plan) {
 
                 if (resetPattern.matcher(task.getId()).matches()) {
-                    toRemove.addAll(task.getDependentTransitive());
+
+                    LinkedList<TaskDescription> trans = task.getDependentTransitive();
+
+                    if (trans != null){
+                        toRemove.addAll(trans);
+                    }
                 }
             }
             plan.removeAll(toRemove);

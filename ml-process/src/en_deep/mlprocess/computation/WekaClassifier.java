@@ -35,7 +35,7 @@ import java.lang.reflect.Constructor;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
-import weka.classifiers.Classifier;
+import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -56,7 +56,7 @@ public class WekaClassifier extends Task {
 
     /* DATA */
 
-    private Classifier classif;
+    private AbstractClassifier classif;
 
     /* METHODS */
  
@@ -129,6 +129,7 @@ public class WekaClassifier extends Task {
             throw e;
         }
         catch (Exception e){
+            e.printStackTrace();
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }
@@ -147,7 +148,7 @@ public class WekaClassifier extends Task {
             Constructor classifConstructor = null;
             classifClass = Class.forName(this.parameters.get(WEKA_CLASS));
             classifConstructor = classifClass.getConstructor();
-            this.classif = (Classifier) classifConstructor.newInstance();
+            this.classif = (AbstractClassifier) classifConstructor.newInstance();
         }
         catch (Exception e) {
             Logger.getInstance().message(this.id + ": WEKA class not found or not valid: "

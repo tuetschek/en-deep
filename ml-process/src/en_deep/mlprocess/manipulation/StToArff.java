@@ -27,11 +27,14 @@
 
 package en_deep.mlprocess.manipulation;
 
+import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -39,7 +42,12 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
+import java.util.Set;
 import java.util.Vector;
+import weka.core.Instances;
+import weka.core.converters.ConverterUtils;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * This class converts the original ST file format of the CoNLL task to ARFF file format
@@ -99,14 +107,14 @@ public class StToArff extends Task {
         "@ATTRIBUTE form STRING",
         "@ATTRIBUTE lemma STRING",
         "@ATTRIBUTE p-lemma STRING",
-        "@ATTRIBUTE pos ",
-        "@ATTRIBUTE p-pos ",
-        "@ATTRIBUTE feat ",
-        "@ATTRIBUTE p-feat ",
+        "@ATTRIBUTE pos STRING",
+        "@ATTRIBUTE p-pos STRING",
+        "@ATTRIBUTE feat STRING",
+        "@ATTRIBUTE p-feat STRING",
         "@ATTRIBUTE head INTEGER",
         "@ATTRIBUTE p-head INTEGER",
-        "@ATTRIBUTE deprel ",
-        "@ATTRIBUTE p-deprel ",
+        "@ATTRIBUTE deprel STRING",
+        "@ATTRIBUTE p-deprel STRING",
         "@ATTRIBUTE fillpred {Y,_}",
         "@ATTRIBUTE pred STRING"
     };
@@ -114,13 +122,8 @@ public class StToArff extends Task {
     
     /** Index of the FEAT attribute in the output ARFF file */
     private static final int IDXO_FEAT = 7;
-    /** Index of the POS attribute in the output ARFF file */
-    private static final int IDXO_POS = 5;
-    /** Index of the DEPREL attribute in the output ARFF file */
-    private static final int IDXO_DEPREL = 11;
 
     /* DATA */
-
 
     /** Create a multiclass semantic relation description ? */
     private boolean useMulticlass;
@@ -138,6 +141,9 @@ public class StToArff extends Task {
     /** The input configuration */
     private StToArffConfig config;
 
+    /** Used output files (for reprocessing) */
+    private HashMultimap<String, String> usedFiles;
+
 
     /* METHODS */
 
@@ -150,9 +156,8 @@ public class StToArff extends Task {
      * <strong>Parameters:</strong>
      * </p>
      * <ul>
-     * <li><tt>lang_conf</tt> -- path to the language config file, that contains a list of POS, FEAT and DEPREL for the current
-     * language (on three lines and space-separated, FEAT specification should be left blank if FEAT is not used), followed
-     * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (space-separated)</li>
+     * <li><tt>lang_conf</tt> -- path to the language config file, that contains a FEAT usage indication ("1"/empty line), followed
+     * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (one line, space-separated).</li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
      * (one semantic class each) with 0/1 values are created.</li>
@@ -161,6 +166,7 @@ public class StToArff extends Task {
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * </ul>
      *
+     * @todo no need for possible list of POS, FEAT and DEPREL in the lang_conf file, exclude it
      * @param id the task id
      * @param parameters the task parameters
      * @param input the input data sets or files
@@ -191,7 +197,10 @@ public class StToArff extends Task {
         // initialize features to be generated
         this.initGenFeats();
 
-      
+        // initialize the list of used output files
+        this.usedFiles = HashMultimap.create();
+
+        // check outputs
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
@@ -220,11 +229,21 @@ public class StToArff extends Task {
                 // convert the files
                 this.convert(this.input.get(i), this.output.get(i));
             }
+
+            // now convert the string attributes to nominal types in the output
+            for (String predicate : this.usedFiles.keySet()){
+                
+                Logger.getInstance().message(this.id + ": Rewriting header(s) for " + predicate + " ...", Logger.V_DEBUG);
+                this.stringToNominal(predicate);
+            }
         }
         catch (TaskException e){
+            e.printStackTrace();
             throw e;
         }
         catch (Exception e){
+            e.printStackTrace();
+            Logger.getInstance().message("ERROR: " + e.getMessage(), Logger.V_IMPORTANT);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }
@@ -269,9 +288,9 @@ public class StToArff extends Task {
                     out.print(sentenceId);
 
                     for (int k = 0; k < COMPULSORY_FIELDS; ++k){
-                        if (this.config.posFeat == null && 
+                        if (this.config.posFeat == false &&
                                 (k == this.config.IDXI_FEAT || k == this.config.IDXI_FEAT + this.config.predictedNon)){
-                            continue;
+                            continue; // skip FEAT if we're not using them
                         }
                         if (k == this.config.IDXI_WORDID || k == this.config.IDXI_HEAD
                                 || k == this.config.IDXI_HEAD + this.config.predictedNon){
@@ -308,16 +327,20 @@ public class StToArff extends Task {
                 }
 
                 out.close();
+                out = null;
             }
 
             sentence = this.readSentence(in); // read next sentence
+
+            if (sentenceId % 1000 == 0){
+                Logger.getInstance().message(this.id + ": Input: " + st + ", sentence: " + sentenceId, Logger.V_DEBUG);
+            }
         }
 
         in.close();
+        in = null;
     }
-
-
-    
+ 
 
     /**
      * Returns a unique sentence ID.
@@ -332,7 +355,8 @@ public class StToArff extends Task {
 
     /**
      * Writes output ARFF files headers for the given file names. Heeds the "multiclass" parameter
-     * (see {@link StToArff}).
+     * (see {@link StToArff}). Some parameter types are left as STRING at first. They are converted
+     * to class values later.
      *
      * @param outFiles a list of file names to write
      */
@@ -350,23 +374,11 @@ public class StToArff extends Task {
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
 
-                if (this.config.posFeat != null && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
-                    out.print(HEADER[i] + " {");
-                    out.print(this.config.getFeat());
-                    out.println("}");
+                if (this.config.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
+                    out.println(HEADER[i]);
                 }
-                else if (i == IDXO_FEAT || i == IDXO_FEAT + 1){
+                else if (i == IDXO_FEAT || i == IDXO_FEAT + 1){ // do not print FEAT headers if we're not using them
                     continue;
-                }
-                else if (i == IDXO_POS || i == IDXO_POS + 1){
-                    out.print(HEADER[i] + " {");
-                    out.print(this.config.getPos());
-                    out.println("}");
-                }
-                else if (i == IDXO_DEPREL || i == IDXO_DEPREL + 1){
-                    out.print(HEADER[i] + " {");
-                    out.print(this.config.getDepRel());
-                    out.println("}");
                 }
                 else {
                     out.println(HEADER[i]);
@@ -396,12 +408,14 @@ public class StToArff extends Task {
             out.println(DATA);
 
             out.close();
+            out = null;
         }
     }
 
     /**
      * Finds out the names of the output ARFF files (which contain the names of the predicates
-     * in the output pattern). Heeds the "predicted" parameter (see {@link StToArff})
+     * in the output pattern) and stores them for later use. Heeds the "predicted"
+     * parameter (see {@link StToArff}).
      *
      * @param sentence the sentence, containing all the needed predicates
      * @param pattern output file name pattern
@@ -416,13 +430,18 @@ public class StToArff extends Task {
             if (sentence.get(predNums[i])[this.config.IDXI_FILLPRED].equals("Y")){ // a predicate has been found -> fill output file details
 
                 String posSuffix = TAG_ERR;
+                String predicate, fileName;
+
                 if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.nounPat)){
                     posSuffix = NOUN;
                 }
                 else if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.verbPat)){
                     posSuffix = VERB;
                 }
-                out.add(pattern.replace("**", sentence.get(predNums[i])[this.config.IDXI_LEMMA] + posSuffix));
+                predicate = sentence.get(predNums[i])[this.config.IDXI_LEMMA] + posSuffix;
+                fileName = pattern.replace("**", predicate);
+                this.usedFiles.put(predicate, fileName); // store the used file name
+                out.add(fileName);
             }
         }
 
@@ -521,6 +540,125 @@ public class StToArff extends Task {
 
 
     /**
+     * Converts all the STRING attributes in the output files with the given predicate
+     * to NOMINAL, using the StringToNominal WEKA filter. Uses values from all output files
+     * for the same predicate, so that there's no problem with the classification later.
+     *
+     * @param predicate a predicate for which the files are to be converted
+     */
+    private void stringToNominal(String predicate) throws Exception {
+
+        Instances bulk = this.getAllData(this.usedFiles.get(predicate)); // read all instances
+        StringToNominal filter = new StringToNominal();        
+        StringBuilder toConvert = new StringBuilder();
+        String newHeader;
+
+        // get the list of attributes to be converted
+        for (int i = 0; i < bulk.numAttributes(); ++i){
+            if (bulk.attribute(i).isString()){
+                if (toConvert.length() != 0){
+                    toConvert.append(",");
+                }
+                toConvert.append(Integer.toString(i+1));
+            }
+        }
+
+        // convert the strings to nominal
+        filter.setAttributeRange(toConvert.toString());
+        filter.setInputFormat(bulk);
+        bulk = Filter.useFilter(bulk, filter);
+
+        // write the new nominal header into the old files
+        bulk.delete();
+        newHeader = bulk.toString();
+        newHeader = newHeader.substring(0, newHeader.indexOf("\n@data\n") + 1);
+        for (String file : this.usedFiles.get(predicate)){
+            this.rewriteHeader(file, newHeader);
+        }
+    }
+
+    /**
+     * Adds-up all instances from the given list of output ARFF files.
+     *
+     * @param files the list of files to read
+     * @return all the instances in the files
+     * @throws Exception if an I/O error occurs
+     */
+    private Instances getAllData(Set<String> files) throws Exception {
+
+        Instances data = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        boolean first = true;
+
+        // write all parts into a buffer
+        for (String file : files){
+
+            ConverterUtils.DataSource in = new ConverterUtils.DataSource(file);
+            Instances structure = in.getStructure();
+
+            if (first == true){
+                bos.write(structure.toString().getBytes("UTF-8"));
+                first = false;
+            }
+
+            while (in.hasMoreElements(structure)){
+                bos.write(in.nextElement(structure).toString().getBytes("UTF-8"));
+                bos.write(System.getProperty("line.separator").getBytes());
+            }
+            in.reset();
+        }
+
+        // read the results from the buffer
+        ConverterUtils.DataSource bulkIn = new ConverterUtils.DataSource(new ByteArrayInputStream(bos.toByteArray()));
+        return bulkIn.getDataSet();
+    }
+
+    /**
+     * Rewrites a header of an ARFF file with a new one, preserving the data untouched.
+     * Keeps the file in place.
+     *
+     * @param file the file to be rewritten
+     * @param newHeader the new header contents
+     */
+    private void rewriteHeader(String file, String newHeader) throws IOException, TaskException {
+
+        RandomAccessFile in = new RandomAccessFile(file, "rw");
+        String line = in.readLine();
+        long origLength = in.length();
+        long dataStart = 0;
+        int distance;
+        byte [] buf;
+
+        // find the length of the original header
+        while (line != null && !line.startsWith("@DATA")){
+            dataStart = in.getFilePointer();
+            line = in.readLine();
+        }
+        if (line == null){
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+        }
+
+        // correct file length
+        distance = (int)(- dataStart + newHeader.getBytes("UTF-8").length);
+
+        // move the data
+        buf = new byte [(int)(origLength - dataStart)];
+        in.seek(dataStart);
+        in.readFully(buf);
+        in.setLength(origLength + distance);
+        in.seek(dataStart + distance);
+        in.write(buf);
+
+        // write the new header
+        in.seek(0);
+        in.write(newHeader.getBytes("UTF-8"));
+
+        in.close();
+        in = null;
+    }
+
+
+    /**
      * This stores all the configuration needed for the conversion an the generated
      * features as well.
      */
@@ -549,12 +687,8 @@ public class StToArff extends Task {
 
         /* VARIABLES */
 
-        /** Possible POS tags in the ST file */
-        public String [] pos;
-        /** Possible part-of-speech FEAT values in the ST file (null if not used at all) */
-        public String [] posFeat;
-        /** Possible DEPREL values in the ST file */
-        public String [] deprel;
+        /** Will be FEAT values used for this language? */
+        public boolean posFeat;
         /** Possible semantic roles */
         public String [] semRoles;
 
@@ -599,8 +733,8 @@ public class StToArff extends Task {
         }
 
         /**
-         * Reads the language configuration from a file, i.e\. all POS, FEAT and DEPREL values,
-         * noun and verb POS tag pattern for the current ST file language.
+         * Reads the language configuration from a file, i.e\. all SEMREL values,
+         * noun and verb POS tag pattern and usage of FEAT for the current ST file language.
          *
          * @throws FileNotFoundException
          * @throws IOException
@@ -609,56 +743,20 @@ public class StToArff extends Task {
         private void init() throws FileNotFoundException, IOException {
 
             RandomAccessFile in = new RandomAccessFile(this.configFile, "r");
-            String posStr = in.readLine();
-            String featStr = in.readLine();
-            String deprelStr = in.readLine();
+            this.posFeat = in.readLine().matches("\\s*") ? false : true;
             this.nounPat = in.readLine();
             this.verbPat = in.readLine();
             String semRolesStr = in.readLine();
 
             in.close();
+            in = null;
 
-            if (posStr == null || featStr == null || deprelStr == null
-                    || semRolesStr == null || this.nounPat == null || this.verbPat == null){
+            if (semRolesStr == null || this.nounPat == null || this.verbPat == null){
                 throw new IOException();
             }
 
-            this.pos = posStr.split("\\s+");
-            if (featStr.equals("")){
-                this.posFeat = null;
-            }
-            else {
-                this.posFeat = featStr.split("\\s+");
-            }
-            this.deprel = deprelStr.split("\\s+");
             this.semRoles = semRolesStr.split("\\s+");
         }
-
-
-        /**
-         * Return a comma-separated list of possible POS tags
-         * @return list of POS tags
-         */
-        public String getPos(){
-            return this.listMembers(this.pos);
-        }
-
-        /**
-         * Return a comma-separated list of possible POS tag features
-         * @return list of POS tag features
-         */
-        public String getFeat(){
-            return this.listMembers(this.posFeat);
-        }
-
-        /**
-         * Return a comma-separated list of possible dependency relations
-         * @return list of dependency relations
-         */
-        public String getDepRel(){
-            return this.listMembers(this.deprel);
-        }
-
 
         /**
          * Return a comma-separated list of possible semantic roles
