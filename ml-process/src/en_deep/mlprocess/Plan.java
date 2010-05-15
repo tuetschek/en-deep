@@ -305,11 +305,12 @@ public class Plan {
 
     /**
      * Reads all the prefixes of the tasks to be reset from a file. If there is nothing to be
-     * reset, returns null. If all tasks should be reset, returns an empty string. The reset of all
-     * tasks is triggered by a single "#" in the reset file.
+     * reset, returns null. If changed tasks should be reset, returns an empty string; if all
+     * tasks should be reset, returns "*". The reset of changed tasks is triggered by a
+     * single "#" in the reset file, the reset of all tasks by a single "!" in the reset file.
      *
      * @param resetFileIO the open reset file
-     * @return a string pattern for tasks to be reset (null for none, empty for all)
+     * @return a string pattern for tasks to be reset (null for none, empty for changed, "*" for all)
      * @throws IOException in case of an I/O error
      */
     private String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
@@ -344,8 +345,11 @@ public class Plan {
         if (pattern.toString().equals("().*")){ // reset none
             return null;
         }
-        else if (pattern.toString().equals("(#).*")){ // reset all
+        else if (pattern.toString().equals("(#).*")){ // reset changed
             return "";
+        }
+        else if (pattern.toString().equals("(!).*")){ // reset all
+            return "*";
         }
         return pattern.toString();
     }
@@ -374,14 +378,18 @@ public class Plan {
 
     /**
      * This removes the tasks from the current plan that need to be reset in any case,
-     * so that they are certainly reset in the new one.
+     * so that they are certainly reset in the new one. If the regex is "*", all
+     * tasks are removed, if the regex is "", none are removed.
      *
      * @param resetRegex the regexp for tasks to be reset (obtained by{@link Plan.getResetPrefixes(RandomAccessFile)})
      * @param plan the plan to remove the tasks from
      */
     private void removeTasksToReset(String resetRegex, Vector<TaskDescription> plan) {
 
-        if (!resetRegex.equals("")){
+        if (resetRegex.equals("*")){ // force reset all tasks
+            plan.clear();
+        }
+        else if (!resetRegex.equals("")){ // remove just the tasks with the given pattern (if any)
 
             Pattern resetPattern = Pattern.compile(resetRegex);
             LinkedList<TaskDescription> toRemove = new LinkedList<TaskDescription>();

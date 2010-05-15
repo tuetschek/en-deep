@@ -51,7 +51,7 @@ import java.io.IOException;
  * <li><tt>--verbosity</tt> the desired verbosity level (0-4, default: 0 - i.e. no messages)</li>
  * <li><tt>--reset</tt> comma-separated list of tasks whose status should be reset to PENDING or WAITING; in any
  * case if this is triggered, all changed tasks are reset. In order to trigger just the reset of changed tasks,
- * a single "#" should be set as an argument.</li>
+ * a single "#" should be set as an argument. If all tasks should be reset, "!" should be set as argument.</li>
  * </ul>
  * <p>
  * The <tt>--instances</tt> parameter determines the level of parallelization for the process plan

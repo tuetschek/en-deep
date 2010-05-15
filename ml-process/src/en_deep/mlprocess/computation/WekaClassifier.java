@@ -54,6 +54,9 @@ public class WekaClassifier extends Task {
     /** Name of the weka_class parameter */
     private static final String WEKA_CLASS = "weka_class";
 
+    /** Name of the class_arg parameter */
+    private static final String CLASS_ARG = "class_arg";
+
     /* DATA */
 
     private AbstractClassifier classif;
@@ -66,13 +69,21 @@ public class WekaClassifier extends Task {
      * <p>
      * There must be no patterns in the input and output specifications, the number of inputs
      * must 2, the number of outputs must be 1 and there are no patterns allowed in inputs and outputs.
-     * The first input is used as training and the second as evaluation train.
+     * The first input is used as training data and the second as evaluation data.
      * </p>
      * <p>
      * There is one compulsory parameter:
      * </p>
      * <ul>
      * <li><tt>weka_class</tt> -- the desired WEKA classifier to be used</li>
+     * </ul>
+     * <p>
+     * The following parameter is optional:
+     * </p>
+     * <ul>
+     * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
+     * is not specified, the one argument that is missing from the evaluation data will be selected. If
+     * the training and evaluation data have the same arguments, the last one is used.
      * </ul>
      * <p>
      * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
@@ -209,6 +220,7 @@ public class WekaClassifier extends Task {
         // read the evaluation train and find out the target class
         dataIn = new ConverterUtils.DataSource(evalFile);
         Instances eval = dataIn.getDataSet();
+        dataIn.reset();
 
         this.findTargetFeature(train, eval);
 
@@ -231,7 +243,7 @@ public class WekaClassifier extends Task {
         // write the output
         FileOutputStream os = new FileOutputStream(outFile);
         ConverterUtils.DataSink dataOut = new ConverterUtils.DataSink(os);
-        dataOut.write(train);
+        dataOut.write(eval);
         os.close();
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
@@ -264,6 +276,23 @@ public class WekaClassifier extends Task {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
                 }
             }
+        }
+
+        // an attribute name was given in parameters -- try to find it
+        if (this.parameters.get(CLASS_ARG) != null){
+
+            if (missing != null && !missing.name().equals(this.parameters.get(CLASS_ARG))){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            }
+            if (train.attribute(this.parameters.get(CLASS_ARG)) == null){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            }
+            if (missing == null){
+                train.setClass(train.attribute(this.parameters.get(CLASS_ARG)));
+                eval.setClass(eval.attribute(this.parameters.get(CLASS_ARG)));
+                return;
+            }
+            missing = train.attribute(this.parameters.get(CLASS_ARG));
         }
 
         // no attribute from train is missing in eval
