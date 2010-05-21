@@ -52,10 +52,10 @@ public class WekaClassifier extends Task {
     /* CONSTANTS */
 
     /** Name of the weka_class parameter */
-    private static final String WEKA_CLASS = "weka_class";
+    public static final String WEKA_CLASS = "weka_class";
 
     /** Name of the class_arg parameter */
-    private static final String CLASS_ARG = "class_arg";
+    public static final String CLASS_ARG = "class_arg";
 
     /* DATA */
 

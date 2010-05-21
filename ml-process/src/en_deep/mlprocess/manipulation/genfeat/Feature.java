@@ -64,7 +64,7 @@ public abstract class Feature {
      * This creates a {@link Feature} object for the given name. Returns null if
      * the process fails.
      *
-     * @param name the desired class name (within the {@link en_deep.mlprocess.manipulation.genfeats} package)
+     * @param name the desired class name (within the {@link en_deep.mlprocess.manipulation.genfeat} package)
      * @return the {@link Feature} object to use with the {@link StToArff} class.
      */
     public static Feature createFeature(String name, StToArffConfig config) {

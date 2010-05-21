@@ -77,7 +77,7 @@ public class TaskExpander {
 
     /**
      * This creates a new {@link TaskExpander} object, just setting the {@link TaskDescription} to be
-     * processed. The expansion process is triggered by {@link expand()}
+     * processed. The expansion process is triggered by {@link TaskExpander#expand()}
      *
      * @param task the task to be expanded
      */
@@ -96,7 +96,7 @@ public class TaskExpander {
 
     /**
      * The actual expansion process. When it's finished, the new tasks and tasks to be deleted may be
-     * retrieved using {@link getTasksToRemove()} and {@link getTasksToAdd()}
+     * retrieved using {@link TaskExpander#getTasksToRemove()} and {@link TaskExpander#getTasksToAdd()}
      *
      * @throws DataException if there's a problem with the data specification
      */
@@ -158,7 +158,8 @@ public class TaskExpander {
     /**
      * Returns the result of the expansion - a list of new expanded tasks that should be added to
      * the plan (in the topological order of the original tasks from which they originate).
-     * @return
+     *
+     * @return the new expanded tasks to be added to the plan
      */
     public Collection<TaskDescription> getTasksToAdd(){
 
@@ -178,6 +179,8 @@ public class TaskExpander {
     /**
      * Returns the result of the expansion - a list of tasks that should be removed from the
      * plan completely (as their expansions are added to the plan).
+     *
+     * @return the old tasks to be removed from the plan
      */
     public Collection<TaskDescription> getTasksToRemove(){
 

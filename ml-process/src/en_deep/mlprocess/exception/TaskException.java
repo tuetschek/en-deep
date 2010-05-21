@@ -27,6 +27,8 @@
 
 package en_deep.mlprocess.exception;
 
+import en_deep.mlprocess.Task;
+
 /**
  * The exception class for all run-time task errors.
  * @author Ondrej Dusek

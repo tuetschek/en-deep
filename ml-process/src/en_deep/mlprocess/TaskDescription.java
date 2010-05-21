@@ -35,11 +35,13 @@ import java.util.LinkedList;
 import java.util.Stack;
 
 /**
- *
+ * This class describes one {@link Task} within the {@link Plan}, with respect to the
+ * algorithm used and its settings, inputs, outputs, dependencies and {@link TaskStatus status}.
+ * 
  * @author Ondrej Dusek
  */
 public class TaskDescription implements Serializable, Comparable<TaskDescription> {
-
+  
     /* CONSTANTS */
 
     /**
@@ -93,7 +95,11 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      * inputs and outputs. Inputs and outputs specifications must be relative
      * to the {@link Process} working directory.
      *
-     * @param type the type of this task.
+     * @param id the id of the task
+     * @param algorithm the {@link Task} class that will be used to compute the task
+     * @param parameters the task settings
+     * @param input the task input files
+     * @param output the task ouptut files
      */
     public TaskDescription(String id, String algorithm, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output){
@@ -147,7 +153,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      *
      * @param source the governing {@link TaskDescription} that must be processed before this one.
      */
-    void setDependency(TaskDescription source) {
+    public void setDependency(TaskDescription source) {
 
         // if we have a dependency, we need to wait for it to finish (if not already finished)
         if (source.status != TaskStatus.DONE){
@@ -191,12 +197,14 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      *
      * @param order the topological order for the task
      */
-    void setOrder(int order){
+    public void setOrder(int order){
         this.topolOrder = order;
     }
 
     /**
-     * Returns a list of all directly dependent tasks, or null if there are none.
+     * Returns a list of all directly dependent tasks, or null if there are none. Returns
+     * a copy that is not affected by subsequent changes to the dependencies.
+     * 
      * @return a list of all tasks depending on this one
      */
     Vector<TaskDescription> getDependent(){
@@ -301,7 +309,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      * new status is {@link TaskStatus.DONE}.
      * @param taskStatus the new task status
      */
-    void setStatus(TaskStatus status) {
+    public void setStatus(TaskStatus status) {
 
         this.status = status;
         

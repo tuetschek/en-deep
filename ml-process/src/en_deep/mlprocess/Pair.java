@@ -31,7 +31,7 @@ package en_deep.mlprocess;
  * A simple pair holding two elements.
  * @author Ondrej Dusek
  */
-class Pair<T, U> {
+public class Pair<T, U> {
 
     public T first;
     public U second;
@@ -41,7 +41,7 @@ class Pair<T, U> {
      * @param first the new first element
      * @param second the new second element
      */
-    Pair(T first, U second) {
+    public Pair(T first, U second) {
         this.first = first;
         this.second = second;
     }
@@ -50,14 +50,14 @@ class Pair<T, U> {
      * Sets the first element and leaves the other one null.
      * @param first the new first element
      */
-    Pair(T first){
+    public Pair(T first){
         this(first, null);
     }
 
     /**
      * Sets both elements to null.
      */
-    Pair(){
+    public Pair(){
         this(null, null);
     }
 }

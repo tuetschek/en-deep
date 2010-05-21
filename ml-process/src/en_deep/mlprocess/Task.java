@@ -43,7 +43,7 @@ public abstract class Task implements Serializable {
 
     /* DATA */
 
-    /** The unique ID of the {@link Task} (for {@link TaskException}s and {@link TaskStatus} progress update) */
+    /** The unique ID of the {@link Task} (for {@link TaskException}s and {@link TaskDescription.TaskStatus} progress update) */
     protected String id;
 
     /** The class parameters for this {@link Task} */
@@ -59,6 +59,7 @@ public abstract class Task implements Serializable {
 
     /**
      * A constructor to be used with the derived classes. Just sets the needed values.
+     * 
      * @param id the unique id of the task
      * @param parameters the parameters of this algorithm
      * @param input list of input files (paths relative to working directory)

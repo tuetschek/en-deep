@@ -695,4 +695,107 @@ public class Plan {
     }
 
 
+    /**
+     * This takes an existing task (found by id) and appends it with the given groups of new tasks.
+     * The other tasks are all set as depending on the original task and all the forward dependencies
+     * of the original task are forwarded to the LAST of the new tasks. The internal dependencies
+     * within the group of new tasks MUST be already properly set-up. The last task
+     * in the vector MUST (in any way) depend on all the other new tasks, so that the topological
+     * order is not affected.
+     * 
+     * @param id the id of the task to be expanded
+     * @param expansion the new tasks to be added -- last one of them MUST depend on all the other
+     */
+    public synchronized void appendToTask(String id, Vector<TaskDescription> expansion) throws PlanException {
+        
+        RandomAccessFile planFileIO = null;
+        FileLock planLock = null;
+
+        try {
+            planFileIO = new RandomAccessFile(this.planFile, "rw");
+            planLock = planFileIO.getChannel().lock();
+
+            Vector<TaskDescription> plan = this.readPlan(planFileIO);
+
+            this.appendToTask(plan, id, expansion);
+
+            this.writePlan(plan, planFileIO);
+        }
+        catch (ClassNotFoundException ex){
+            Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+            throw new PlanException(PlanException.ERR_INVALID_PLAN);
+        }
+        catch (IOException ex) {
+            Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+            throw new PlanException(PlanException.ERR_IO_ERROR);
+        }
+        finally {
+            // release the plan file lock
+            if (planLock != null && planLock.isValid()){
+                try {
+                    planLock.release();
+                }
+                catch(IOException ex){
+                    Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                    throw new PlanException(PlanException.ERR_IO_ERROR);
+                }
+            }
+            // close the plan file
+            try {
+                planFileIO.close();
+            }
+            catch(IOException ex){
+                Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                throw new PlanException(PlanException.ERR_IO_ERROR);
+            }
+        }
+    }
+
+    /**
+     * This does the internal plan operations for the {@link Plan.appendToTask(String, Vector)} function --
+     * it puts the new tasks just after the old task, if the given id is found and arranges the dependencies
+     * accordingly.
+     *
+     * @param plan the plan to be modified
+     * @param id the old task to be found in the plan
+     * @param expansion the new tasks to be added to the plan
+     */
+    private void appendToTask(Vector<TaskDescription> plan, String id, Vector<TaskDescription> expansion) 
+            throws PlanException {
+
+        TaskDescription old = null;
+        Vector<TaskDescription> deps;
+        TaskDescription last;
+
+        // find the old task
+        for (TaskDescription t : plan){
+            if (t.getId().equals(id)){
+                old = t;
+                break;
+            }
+        }
+
+        if (old == null){
+            throw new PlanException(PlanException.ERR_INVALID_PLAN);
+        }
+
+        // loosen the dependencies for the original task
+        deps = old.getDependent();
+        old.looseDeps(null, false);
+
+        // connect it to all the new tasks
+        for (TaskDescription t : expansion){
+            t.setDependency(old);
+        }
+
+        // set the dependencies right
+        last = expansion.get(expansion.size() - 1);
+        for (TaskDescription d : deps){
+            d.setDependency(last);
+        }
+
+        // insert the complex into the plan AFTER the original task
+        plan.addAll(plan.indexOf(old) + 1, expansion);
+    }
+
 }

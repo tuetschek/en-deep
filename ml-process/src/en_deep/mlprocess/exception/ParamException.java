@@ -73,7 +73,7 @@ public class ParamException extends GeneralException {
      * Creates a new ParamException with empty parameter name. Should not be used
      * with errors that concern a specific argument.
      *
-     * @param code the error code of the exception (should be {@link ERR_OK} or {@link ERR_TOO_MANY}
+     * @param code the error code of the exception (should be {@link ParamException#ERR_OK} or {@link ParamException#ERR_TOO_MANY}
      */
     public ParamException(int code){
         this(code, "");

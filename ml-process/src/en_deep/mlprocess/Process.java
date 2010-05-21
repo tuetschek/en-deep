@@ -37,7 +37,7 @@ import java.io.IOException;
  *
  * <p>
  * According to the command parameters, the program checks for a process plan and builds
- * one using {@link plan.PlanBuilder} if there is no previously built. Then it tries to run all the
+ * one using {@link Plan} if there is no previously built. Then it tries to run all the
  * {@link Task}s defined in the plan using {@link Worker}(s) a if there's nothing left to do,
  * it exits.
  * </p>
