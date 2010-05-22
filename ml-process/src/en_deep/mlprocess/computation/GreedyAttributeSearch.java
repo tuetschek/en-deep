@@ -42,23 +42,30 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 /**
- * This class tries to run the given WEKA classifier on the same data with several
- * different sets of settings and then selects the one with the best results.
+ * This class applies the greedy attribute selection algorithm with the given
+ * WEKA classifier type and settings on the given data.
  *
  * @author Ondrej Dusek
  */
-public class SettingSelector extends Task {
+public class GreedyAttributeSearch extends Task {
 
     /* CONSTANTS */
 
     /** The name of the "measure" parameter */
-    static final String MEASURE = "measure";
+    private static final String MEASURE = SettingSelector.MEASURE;
 
-    /** The name of the reserved "eval" parameter */
-    private static final String EVAL = "select_from_evaluations";
+    /** The name of the reserved "round" parameter */
+    private static final String ROUND = "round_number";
+
+    /** The name of the "start" parameter */
+    private static final String START = "start";
+    /** The name of the "end" parameter */
+    private static final String END = "end";
+    /** The minimal improvement that is possible */
+    private static final String MIN_IMPROVEMENT = "min_improvement";
 
     /** The name of the "tempfile" parameter */
-    static final String TEMPFILE = "tempfile";
+    private static final String TEMPFILE = SettingSelector.TEMPFILE;
 
     /** The name of the "class_arg" parameter */
     private static final String CLASS_ARG = WekaClassifier.CLASS_ARG;
@@ -66,9 +73,9 @@ public class SettingSelector extends Task {
     private static final String WEKA_CLASS = WekaClassifier.WEKA_CLASS;
 
     /** File extension for classification tempfiles */
-    static final String CLASS_EXT = ".arff";
+    private static final String CLASS_EXT = SettingSelector.CLASS_EXT;
     /** Extension for statistics tempfiles */
-    static final String STATS_EXT = ".txt";
+    private static final String STATS_EXT = SettingSelector.STATS_EXT;
 
     /* DATA */
 
@@ -84,35 +91,49 @@ public class SettingSelector extends Task {
     /** The temporary files pattern */
     private String tempFilePattern;
 
-    /** Are we running in the evaluation mode ? */
-    private boolean evalMode;
+    /** The starting number of attributes used */
+    private int start;
+    /** The maximum number  of attributes used */
+    private int end;
+    /** The current number of attributes for this round */
+    private int round;
+    /** The minimal improvement of the algorithm in order to continue */
+    private double minImprovement;
+
 
     /* METHODS */
 
     /**
      * <p>
-     * This constructs a {@link SettingSelector} object. The constructor just checks
+     * This constructs a {@link GreedyAttributeSearch} object. The constructor just checks
      * the validity of parameters, inputs and outputs.
      * </p>
      * <p>
-     * There are the same parameters as in {@link WekaClassifier}, except that the individual
-     * classifier parameters are now space-separated lists of possible values (the number of
-     * values must be the same). There are additional compulsory parameters:
+     * There are the same parameters as in {@link WekaClassifier}, plus two that are same
+     * as in {@link SettingSelector} -- <tt>measure</tt> and <tt>tempfile</tt>.
+     * There are additional compulsory parameters:
      * </p>
      * <ul>
-     * <li><tt>measure</tt> -- the measure selected for comparing the results</li>
-     * <li><tt>tempfile</tt> -- the temporary files pattern (must contain one asterisk), without
-     * the file extension (automatically adds ".arff" for data and ".txt" for statistics)</li>
+     * <li><tt>start</tt> -- the starting number of attributes (should be very small, for all
+     * possible combinations will be tried)</li>
+     * <li><tt>end</tt>The maximum number of attributes that are to be tried</li>
      * </ul>
      * <p>
      * There must be exactly two inputs (first of which is the training data and second the
      * testing data) and two outputs (one is for the classification output and one for
      * the output of the best set of parameters).
      * </p>
-     * There is a special parameter reserved for the program (the process ends with this
-     * parameter). If the task is run with this parameter, more inputs are allowed.
+     * <p>
+     * There is one more optional parameter, which defaults to 0:
+     * </p>
      * <ul>
-     * <li><tt>eval</tt> -- starts the selection from finished evaluations, if it's set
+     * <li><tt>min_improvement</tt> -- the minimal required improvement in the selected measure for the
+     * algorithm to continue</li>
+     * </li>
+     * There is a special parameter reserved for the program (which controls the process). If the task
+     * is run with this parameter set higher than start, more inputs are allowed:
+     * <ul>
+     * <li><tt>round_number</tt> -- the current number of attributes used
      * </ul>
      *
      * @param id
@@ -120,27 +141,53 @@ public class SettingSelector extends Task {
      * @param input
      * @param output
      */
-    public SettingSelector(String id, Hashtable<String, String> parameters,
+    public GreedyAttributeSearch(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
 
+        // check all parameters related to the round of the task
+        if (this.parameters.get(START) == null || this.parameters.get(END) == null){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+        try {
+            this.start = Integer.valueOf(this.parameters.get(START));
+            this.end = Integer.valueOf(this.parameters.get(END));
+        }
+        catch (NumberFormatException e){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+
+        if (this.parameters.get(ROUND) == null){
+            this.round = this.start;
+        }
+        else {
+            try {
+                this.round = Integer.valueOf(this.parameters.get(ROUND));
+            }
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            }
+        }
+        if (this.start > this.end || this.start <= 0 || this.end <= 0
+                || this.round < this.start || this.round > this.end){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+
         // check the number of inputs and outputs
-        if (this.parameters.get(EVAL) == null && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
+        if (this.round == this.start && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
         if (output.size() != 2){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
 
-        // check the compulsory parameters for the evaluation case
-        if (this.parameters.get(EVAL) != null){
+        // final round -- do not check some parameters
+        if (this.round == this.end){
             if (this.parameters.get(MEASURE) == null){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
             }
-            this.evalMode = true;
-            this.measure = this.parameters.get(MEASURE);
-
+            this.measure = this.parameters.remove(MEASURE);
             return;
         }
 
@@ -154,14 +201,24 @@ public class SettingSelector extends Task {
         this.measure = this.parameters.remove(MEASURE);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = Process.getInstance().getWorkDir() + this.parameters.remove(TEMPFILE);
+
+        // check the optional parameter
+        if (this.parameters.get(MIN_IMPROVEMENT) != null){
+            try {
+                this.minImprovement = Integer.valueOf(this.parameters.get(MIN_IMPROVEMENT));
+            }
+            catch(NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            }
+        }
     }
 
     @Override
     public void perform() throws TaskException {
 
         try {
-            // evaluation mode
-            if (this.evalMode){
+            // select the best attribute
+            if (this.round > this.start){
 
                 Vector<String> evalFiles = new Vector<String>(this.input.size()/2);
                 int best;
@@ -170,17 +227,24 @@ public class SettingSelector extends Task {
                     evalFiles.add(this.input.get(i));
                 }
 
-                // select the best settings
-                best = this.selectBest(evalFiles);
+                // select the best settings and find out if this is the last round
+                best = this.evalRound(evalFiles);
 
                 // copy the best settings to the destination location
-                FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
-                FileUtils.copyFile(this.input.get(best*2 + 1), this.output.get(0));
-
+                if (this.round == this.end){
+                    FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
+                    FileUtils.copyFile(this.input.get(best*2 + 1), this.output.get(0));
+                }
+                else {
+                    FileUtils.copyFile(this.input.get(best*2),
+                            this.tempFilePattern.replace("*", "(" + round + "-best)") + STATS_EXT);
+                    FileUtils.copyFile(this.input.get(best*2 + 1),
+                            this.tempFilePattern.replace("*", "(" + round + "-best)") + CLASS_EXT);
+                }
             }
-            // normal mode -- assign tasks for computation
-            else {
-               Vector<TaskDescription> subTasks = this.createMeasuringTasks();
+            // create the next round
+            if (this.round < this.end){
+               Vector<TaskDescription> subTasks = this.createNextRound();
 
                Plan.getInstance().appendToTask(this.id, subTasks);
             }
@@ -196,14 +260,10 @@ public class SettingSelector extends Task {
 
 
     /**
-     * Opens the given files with evaluation statistics as output by
-     * {@link en_deep.mlprocess.evaluation.EvalClassfication} and select the one which has the
-     * best characteristics according to {@link #measure}.
-     *
-     * @param evalFiles a list of statistics files
-     * @return the number of the best statistics within evalFiles
+     * TODO najde nejlepší výsledek, zkontroluje splnění zlepšovací podmínky (nastaví round = end?) a uloží
+     * do členské proměnné vítěznou množinu atributů.
      */
-    private int selectBest(Vector<String> evalFiles) throws IOException {
+    private int evalRound(Vector<String> evalFiles) throws IOException {
 
         int bestIndex = -1;
         double bestVal = -1.0;
@@ -242,6 +302,7 @@ public class SettingSelector extends Task {
      * This creates all the {@link TaskDescription}s that are needed to test the classifier under
      * the given conditions. The last task is the evaluation mode of this class itself.
      *
+     * TODO rewrite for next round
      * @return the list of all needed tasks
      */
     private Vector<TaskDescription> createMeasuringTasks() throws TaskException {
@@ -310,7 +371,7 @@ public class SettingSelector extends Task {
         // create the last task that will select the best result
         lastTaskParams.put(MEASURE, this.measure);
         lastTaskParams.put(EVAL, "1");
-        lastTask = new TaskDescription(this.id + "#select", SettingSelector.class.getName(),
+        lastTask = new TaskDescription(this.id + "#select", GreedyAttributeSearch.class.getName(),
                 lastTaskParams, lastTaskInput, (Vector<String>) this.output.clone());
         
         for (TaskDescription t : newTasks){

@@ -52,10 +52,13 @@ public class WekaClassifier extends Task {
     /* CONSTANTS */
 
     /** Name of the weka_class parameter */
-    public static final String WEKA_CLASS = "weka_class";
+    static final String WEKA_CLASS = "weka_class";
 
     /** Name of the class_arg parameter */
-    public static final String CLASS_ARG = "class_arg";
+    static final String CLASS_ARG = "class_arg";
+
+    /** Name of the select_args parameter */
+    private static final String SELECT_ARGS = "select_args";
 
     /* DATA */
 
@@ -78,12 +81,14 @@ public class WekaClassifier extends Task {
      * <li><tt>weka_class</tt> -- the desired WEKA classifier to be used</li>
      * </ul>
      * <p>
-     * The following parameter is optional:
+     * The following parameters are optional:
      * </p>
      * <ul>
      * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
-     * the training and evaluation data have the same arguments, the last one is used.
+     * the training and evaluation data have the same arguments, the last one is used.</li>
+     * <li><tt>select_args</tt> -- preselection of arguments to be used (space-separated zero-based NUMBERS
+     * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
      * </ul>
      * <p>
      * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
@@ -126,7 +131,7 @@ public class WekaClassifier extends Task {
             if (inputFile.contains("*")){
                 throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id);
             }
-        }
+        }        
     }
 
 
@@ -176,7 +181,8 @@ public class WekaClassifier extends Task {
            String name = allParams.nextElement();
            String value;
 
-           if (name.equals(WEKA_CLASS)){ // skip the reserved parameter
+           // skip the reserved parameters
+           if (name.equals(WEKA_CLASS) || name.equals(SELECT_ARGS) || name.equals(CLASS_ARG)){
                continue;
            }
 
@@ -223,6 +229,9 @@ public class WekaClassifier extends Task {
         dataIn.reset();
 
         this.findTargetFeature(train, eval);
+
+        // pre-select the attributes
+        this.attributesPreselection(train, eval);
 
         // train the classifier
         this.classif.buildClassifier(train);
@@ -307,6 +316,60 @@ public class WekaClassifier extends Task {
             eval.insertAttributeAt(att, eval.numAttributes());
             eval.setClass(att);
             train.setClass(missing);
+        }
+    }
+
+    /**
+     * This selects only the given attributes if there is a {@link #SELECT_ARGS} setting.
+     * 
+     * @param train the training data
+     * @param eval the evaluation data
+     */
+    private void attributesPreselection(Instances train, Instances eval) {
+
+        String [] selection;
+        boolean [] selectionMask = new boolean [train.numAttributes()];
+
+        if (this.parameters.get(SELECT_ARGS) == null){
+            return;
+        }
+        selection = this.parameters.get(SELECT_ARGS).split("\\s+");
+
+        // find the attributes selected for removal
+        for (String attr : selection){
+
+            int attrNo = -1;
+
+            try {
+                attrNo = Integer.valueOf(attr);
+            }
+            catch(NumberFormatException e){
+                Logger.getInstance().message(this.id + " preselected attribute " + attr + " is not a number.",
+                        Logger.V_WARNING);
+                continue;
+            }
+
+            if (attrNo >= 0 && attrNo < train.numAttributes()){
+                selectionMask[attrNo] = true;
+            }
+            else {
+                Logger.getInstance().message(this.id + " preselected attribute " + attr + " out of range.",
+                        Logger.V_WARNING);
+            }
+        }
+        selectionMask[train.classIndex()] = true;
+
+        // remove the selected attributes
+        for (int i = 0; i < selectionMask.length; ++i){
+            if (!selectionMask[i]){
+
+                String attrName = train.attribute(i).name();
+
+                train.deleteAttributeAt(i);
+                if (eval.attribute(attrName) != null){
+                    eval.deleteAttributeAt(eval.attribute(attrName).index());
+                }
+            }
         }
     }
 

@@ -765,7 +765,6 @@ public class Plan {
 
         TaskDescription old = null;
         Vector<TaskDescription> deps;
-        TaskDescription last;
 
         // find the old task
         for (TaskDescription t : plan){
@@ -789,9 +788,12 @@ public class Plan {
         }
 
         // set the dependencies right
-        last = expansion.get(expansion.size() - 1);
-        for (TaskDescription d : deps){
-            d.setDependency(last);
+        if (deps != null){
+            TaskDescription last = expansion.get(expansion.size() - 1);
+
+            for (TaskDescription d : deps){
+                d.setDependency(last);
+            }
         }
 
         // insert the complex into the plan AFTER the original task
