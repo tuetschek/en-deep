@@ -36,10 +36,15 @@ import en_deep.mlprocess.TaskDescription.TaskStatus;
 import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.MathUtils;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Instances;
+import weka.core.converters.ConverterUtils;
+
 
 /**
  * This class applies the greedy attribute selection algorithm with the given
@@ -56,6 +61,10 @@ public class GreedyAttributeSearch extends Task {
 
     /** The name of the reserved "round" parameter */
     private static final String ROUND = "round_number";
+    /** The name of the reserved "attrib_count" parameter */
+    private static final String ATTRIB_COUNT = "attrib_count";
+    /** The name of the reserved "class_attr_no" parameter */
+    private static final String CLASS_ATTR_NO = "class_attr_no";
 
     /** The name of the "start" parameter */
     private static final String START = "start";
@@ -71,11 +80,19 @@ public class GreedyAttributeSearch extends Task {
     private static final String CLASS_ARG = WekaClassifier.CLASS_ARG;
     /** The name of the "weka_class" parameter */
     private static final String WEKA_CLASS = WekaClassifier.WEKA_CLASS;
-
+    
     /** File extension for classification tempfiles */
     private static final String CLASS_EXT = SettingSelector.CLASS_EXT;
     /** Extension for statistics tempfiles */
     private static final String STATS_EXT = SettingSelector.STATS_EXT;
+
+    /** File types used in the computation */
+    private enum FileTypes {
+        CLASSIF, STATS, ROUND_STATS, BEST_CLASSIF, BEST_STATS
+    }
+
+    /** CR/LF */
+    private static final String LF = System.getProperty("line.separator");
 
     /* DATA */
 
@@ -99,14 +116,24 @@ public class GreedyAttributeSearch extends Task {
     private int round;
     /** The minimal improvement of the algorithm in order to continue */
     private double minImprovement;
-
+    /** The best result from the last round */
+    private double lastBest;
+    /** The bit-mask of the best attributes from the last round */
+    private boolean [] lastBestAttributes;
+    /** A space-separated list of the best attributes from the last round */
+    private String lastBestAttributesList;
+    /** The total available number of attributes */
+    private int attribCount = -1;
+    /** The number of the class attribute */
+    private int classAttribNum = -1;
 
     /* METHODS */
 
     /**
      * <p>
      * This constructs a {@link GreedyAttributeSearch} object. The constructor just checks
-     * the validity of parameters, inputs and outputs.
+     * the validity of parameters, inputs and outputs. It removes all the parameters from
+     * the {@link #parameters} member, except for the classifier parameters.
      * </p>
      * <p>
      * There are the same parameters as in {@link WekaClassifier}, plus two that are same
@@ -130,10 +157,13 @@ public class GreedyAttributeSearch extends Task {
      * <li><tt>min_improvement</tt> -- the minimal required improvement in the selected measure for the
      * algorithm to continue</li>
      * </li>
-     * There is a special parameter reserved for the program (which controls the process). If the task
-     * is run with this parameter set higher than start, more inputs are allowed:
+     * There are special parameters reserved for the program (which control the process):
      * <ul>
-     * <li><tt>round_number</tt> -- the current number of attributes used
+     * <li><tt>round_number</tt> -- the current number of attributes used (If the task
+     * is run with this parameter set higher than start, more inputs are allowed)</li>
+     * <li><tt>attrib_count</tt> -- the total number of possible attributes (excluding the class
+     * attribute)</li>
+     * <li><tt>class_attr_no</tt> -- the number of the class attribute</li>
      * </ul>
      *
      * @param id
@@ -151,26 +181,34 @@ public class GreedyAttributeSearch extends Task {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
         try {
-            this.start = Integer.valueOf(this.parameters.get(START));
-            this.end = Integer.valueOf(this.parameters.get(END));
+            this.start = Integer.parseInt(this.parameters.remove(START));
+            this.end = Integer.parseInt(this.parameters.remove(END));
         }
         catch (NumberFormatException e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
 
+        // first round
         if (this.parameters.get(ROUND) == null){
             this.round = this.start;
         }
+        // other rounds -- need more paramters
         else {
             try {
-                this.round = Integer.valueOf(this.parameters.get(ROUND));
+                this.round = Integer.parseInt(this.parameters.remove(ROUND));
+                this.attribCount = Integer.parseInt(this.parameters.remove(ATTRIB_COUNT));
+                this.classAttribNum = Integer.parseInt(this.parameters.remove(CLASS_ATTR_NO));
             }
-            catch (NumberFormatException e){
+            catch (Exception e){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
             }
         }
+        if (this.attribCount > 0 && this.end > this.attribCount){ // limit the task by number of attributes (if known)
+            this.end = this.attribCount;
+        }
+        // check round constraints (round must be within [start, end + 1])
         if (this.start > this.end || this.start <= 0 || this.end <= 0
-                || this.round < this.start || this.round > this.end){
+                || this.round < this.start || this.round > this.end + 1){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
 
@@ -183,11 +221,12 @@ public class GreedyAttributeSearch extends Task {
         }
 
         // final round -- do not check some parameters
-        if (this.round == this.end){
-            if (this.parameters.get(MEASURE) == null){
+        if (this.round > this.end){
+            if (this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
             }
             this.measure = this.parameters.remove(MEASURE);
+            this.tempFilePattern = this.parameters.remove(TEMPFILE);
             return;
         }
 
@@ -200,12 +239,12 @@ public class GreedyAttributeSearch extends Task {
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.measure = this.parameters.remove(MEASURE);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
-        this.tempFilePattern = Process.getInstance().getWorkDir() + this.parameters.remove(TEMPFILE);
+        this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
         // check the optional parameter
         if (this.parameters.get(MIN_IMPROVEMENT) != null){
             try {
-                this.minImprovement = Integer.valueOf(this.parameters.get(MIN_IMPROVEMENT));
+                this.minImprovement = Double.parseDouble(this.parameters.remove(MIN_IMPROVEMENT));
             }
             catch(NumberFormatException e){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
@@ -220,32 +259,46 @@ public class GreedyAttributeSearch extends Task {
             // select the best attribute
             if (this.round > this.start){
 
-                Vector<String> evalFiles = new Vector<String>(this.input.size()/2);
+                Vector<String> evalFiles = new Vector<String>(this.input.size()/2 - 1);
                 int best;
 
-                for (int i = 0; i < this.input.size(); i += 2){
+                for (int i = 0; i < this.input.size() - 2; i += 2){
                     evalFiles.add(this.input.get(i));
                 }
 
                 // select the best settings and find out if this is the last round
                 best = this.evalRound(evalFiles);
 
-                // copy the best settings to the destination location
-                if (this.round == this.end){
+                Logger.getInstance().message(this.id + ": best result: " + best
+                        + " - " + this.measure + " : " + this.lastBest
+                        + " with attributes " + this.lastBestAttributesList, Logger.V_INFO);
+
+                // just copy the best settings to the destination location
+                if (this.round > this.end){
                     FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
                     FileUtils.copyFile(this.input.get(best*2 + 1), this.output.get(0));
                 }
                 else {
+
+                    Logger.getInstance().message(this.id +
+                            ": this is the final round. Copying files to their final destination.", Logger.V_INFO);
+
                     FileUtils.copyFile(this.input.get(best*2),
-                            this.tempFilePattern.replace("*", "(" + round + "-best)") + STATS_EXT);
+                            this.getFileName(FileTypes.BEST_STATS, this.round - 1, 0));
                     FileUtils.copyFile(this.input.get(best*2 + 1),
-                            this.tempFilePattern.replace("*", "(" + round + "-best)") + CLASS_EXT);
+                            this.getFileName(FileTypes.BEST_CLASSIF, this.round - 1, 0));
                 }
             }
             // create the next round
-            if (this.round < this.end){
-               Vector<TaskDescription> subTasks = this.createNextRound();
+            if (this.round <= this.end){
+                
+               Hashtable<String, String> [] paramSets = this.round == this.start
+                       ? this.prepareFirstParams() : this.prepareRoundParams();
+               String idBase = this.round == this.start  // prevent the "#"-like ids from nesting
+                       ? this.id : this.id.substring(0, this.id.lastIndexOf("#") - 1);
+               Vector<TaskDescription> subTasks = this.createNextRound(idBase, paramSets);
 
+               Logger.getInstance().message(this.id + ": assigning tasks for the next round ...", Logger.V_INFO);
                Plan.getInstance().appendToTask(this.id, subTasks);
             }
         }
@@ -260,11 +313,17 @@ public class GreedyAttributeSearch extends Task {
 
 
     /**
-     * TODO najde nejlepší výsledek, zkontroluje splnění zlepšovací podmínky (nastaví round = end?) a uloží
-     * do členské proměnné vítěznou množinu atributů.
+     * This finds the best result from the last round and stores its value and the attributes
+     * used to achieveit, then checks if the improvement was big enough for the algorithm to
+     * continue.
+     *
+     * @param evalFiles the statistics files from the last round
      */
     private int evalRound(Vector<String> evalFiles) throws IOException {
 
+        RandomAccessFile lastRoundStats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, 
+                this.round - 1, 0), "rw");
+        String lastBestInfo = lastRoundStats.readLine();        
         int bestIndex = -1;
         double bestVal = -1.0;
 
@@ -295,69 +354,92 @@ public class GreedyAttributeSearch extends Task {
             stats.close();
         }
 
+        // find the best value of the round BEFORE the previous one
+        this.lastBest = Double.parseDouble(lastBestInfo.split(":")[1].trim());
+
+        for (int i = 0; i < bestIndex; ++i){
+            lastRoundStats.readLine();
+        }
+
+        // store the current best attributes
+        this.lastBestAttributesList = lastRoundStats.readLine();
+        this.createMask(this.lastBestAttributesList.split("\\s+"));
+
+        // test if the previous round improved the results
+        if (bestVal < this.lastBest + this.minImprovement){
+            this.round = this.end + 1;
+        }
+        // store the last best value
+        this.lastBest = bestVal;
+
+        // write down the selected option
+        lastRoundStats.seek(lastRoundStats.length());
+        lastRoundStats.write(("Selected: " + bestIndex + LF).getBytes());
+        lastRoundStats.close();
+        
         return bestIndex;
     }
 
     /**
-     * This creates all the {@link TaskDescription}s that are needed to test the classifier under
-     * the given conditions. The last task is the evaluation mode of this class itself.
+     * This creates a bit mask from the list of used attributes. The class attribute number
+     * is always true in the mask (since this attribute is always used).
      *
-     * TODO rewrite for next round
-     * @return the list of all needed tasks
+     * @param attribs the list of used attributes numbers
      */
-    private Vector<TaskDescription> createMeasuringTasks() throws TaskException {
+    private void createMask(String [] attribs) {
 
-        Vector<TaskDescription> newTasks = new Vector<TaskDescription>();
-        Hashtable<String, String> [] paramSets = null;
-        Vector<String> lastTaskInput = new Vector<String>();
-        Hashtable<String, String> lastTaskParams = new Hashtable<String, String>();
-        TaskDescription lastTask;
+        this.lastBestAttributes = new boolean [this.attribCount + 1];
 
-        // differentiate the needed sets of classifier parameters
-        for (String paramName : this.parameters.keySet()){
-
-            String [] paramVals = this.parameters.get(paramName).split("\\s+");
-
-            if (paramSets == null){
-                paramSets = new Hashtable[paramVals.length];
-            }
-            if (paramVals.length != paramSets.length){ // different numbers of parameters
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
-            }
-            for (int i = 0; i < paramSets.length; ++i){
-
-                if (paramSets[i] == null){
-                    paramSets[i] = new Hashtable<String, String>(this.parameters.size());
-
-                    paramSets[i].put(CLASS_ARG, this.classArg);
-                    paramSets[i].put(WEKA_CLASS, this.wekaClass);
-                }
-                paramSets[i].put(paramName, paramVals[i]);
-            }
+        for (int i = 0; i < attribs.length; ++i){
+            int attribNo = Integer.parseInt(attribs[i]);
+            this.lastBestAttributes[attribNo] = true;
         }
 
-        // create the classifier tasks and evaluation tasks that are connected to them
+        this.lastBestAttributes[this.classAttribNum] = true;
+    }
+
+
+    /**
+     * This creates all the {@link TaskDescription}s that are needed for the next round
+     * of tests (just tries to add all the remaining attributes, one at a time). The last
+     * task is the evaluation and the start of the next round of the algorithm.
+     *
+     * @param idBase the beginning of the ID for all the next tasks
+     * @param paramSets all the parameter sets that will be used in the classification tasks in the next round
+     * @return the list of all needed tasks
+     */
+    private Vector<TaskDescription> createNextRound(String idBase, Hashtable<String, String> [] paramSets) throws TaskException {
+
+        Vector<TaskDescription> newTasks = new Vector<TaskDescription>();     
+        Vector<String> nextRoundInput = new Vector<String>();
+        Hashtable<String, String> nextRoundParams = new Hashtable<String, String>();
+        TaskDescription nextRoundTask;        
+
+        // create the classifier tasks and evaluation tasks that are connected to the given parameter sets
         for (int i = 0; i < paramSets.length; ++i){
 
             TaskDescription classifTask, evalTask;
-            Vector<String> classifOutput = new Vector<String>(1),
+            Vector<String> classifInput = new Vector<String>(2), classifOutput = new Vector<String>(1),
                     evalInput = new Vector<String>(2), evalOutput = new Vector<String>(1);
             Hashtable<String, String> evalParams = new Hashtable<String, String>();
 
             // set all parameters, inputs and outputs
+            classifInput.addAll(this.input.subList(this.input.size() - 2, this.input.size()));
+            classifOutput.add(this.getFileName(FileTypes.CLASSIF, this.round, i));
+
             evalParams.put(CLASS_ARG, this.classArg);
-            classifOutput.add(this.tempFilePattern.replace("*", "(" + i + ")") + CLASS_EXT);
-            evalInput.add(this.input.get(1));
+            evalInput.add(this.input.get(this.input.size() - 1));
             evalInput.add(classifOutput.get(0));
-            evalOutput.add(this.tempFilePattern.replace("*", "(" + i + ")") + STATS_EXT);
-            lastTaskInput.add(evalOutput.get(0));
-            lastTaskInput.add(classifOutput.get(0));
+            evalOutput.add(this.getFileName(FileTypes.STATS, this.round, i));
+
+            nextRoundInput.add(evalOutput.get(0));
+            nextRoundInput.add(classifOutput.get(0));
 
             // create the tasks
-            classifTask = new TaskDescription(this.id + "#classif" + i, WekaClassifier.class.getName(),
-                    paramSets[i], (Vector<String>) this.input.clone(), classifOutput);
-            evalTask = new TaskDescription(this.id + "#eval" + i, EvalClassification.class.getName(),
-                    evalParams, evalInput, evalOutput);
+            classifTask = new TaskDescription(idBase + "#classif" + this.round + "-" + i,
+                    WekaClassifier.class.getName(), paramSets[i], classifInput, classifOutput);
+            evalTask = new TaskDescription(idBase + "#eval" + this.round + "-" + i,
+                    EvalClassification.class.getName(), evalParams, evalInput, evalOutput);
 
             // set their dependencies
             classifTask.setStatus(TaskStatus.WAITING);
@@ -368,18 +450,187 @@ public class GreedyAttributeSearch extends Task {
             newTasks.add(evalTask);
         }
 
-        // create the last task that will select the best result
-        lastTaskParams.put(MEASURE, this.measure);
-        lastTaskParams.put(EVAL, "1");
-        lastTask = new TaskDescription(this.id + "#select", GreedyAttributeSearch.class.getName(),
-                lastTaskParams, lastTaskInput, (Vector<String>) this.output.clone());
+        // create the task for the next round
+        nextRoundParams.put(MEASURE, this.measure);
+        nextRoundParams.put(START, Integer.toString(this.start));
+        nextRoundParams.put(END, Integer.toString(this.end));
+        nextRoundParams.put(CLASS_ARG, this.classArg);
+        nextRoundParams.put(WEKA_CLASS, this.wekaClass);
+        nextRoundParams.put(MIN_IMPROVEMENT, Double.toString(this.minImprovement));
+        nextRoundParams.put(ROUND, Integer.toString(this.round + 1));
+        nextRoundParams.put(ATTRIB_COUNT, Integer.toString(this.attribCount));
+        nextRoundParams.put(CLASS_ATTR_NO, Integer.toString(this.classAttribNum));
+        nextRoundParams.put(TEMPFILE, this.tempFilePattern);
         
+        nextRoundInput.addAll(this.input.subList(this.input.size() - 2, this.input.size()));
+
+        nextRoundTask = new TaskDescription(idBase + "#round" + (this.round + 1), GreedyAttributeSearch.class.getName(),
+                nextRoundParams, nextRoundInput, (Vector<String>) this.output.clone());
+
+        // set its dependencies
         for (TaskDescription t : newTasks){
-            lastTask.setDependency(t);
+            nextRoundTask.setDependency(t);
         }
-        newTasks.add(lastTask);
+        newTasks.add(nextRoundTask);
 
         return newTasks;
     }
 
+    /**
+     * Creates a file name out of the {@link #tempFilePattern} and the given
+     * {@link GreedyAttributeSearch.FileTypes type}.
+     *
+     * @param type the type of the file
+     * @param round the round for which the file is ment
+     * @param order the number of the file (not used for ROUND_STATS)
+     * @return the file name
+     */
+    private String getFileName(FileTypes type, int round, int order){
+
+        switch (type){
+            case CLASSIF:
+                return Process.getInstance().getWorkDir()
+                        + this.tempFilePattern.replace("*", "(" + round + "-" + order + ")") + CLASS_EXT;
+            case STATS:
+                return Process.getInstance().getWorkDir()
+                        + this.tempFilePattern.replace("*", "(" + round + "-" + order + ")") + STATS_EXT;
+            case ROUND_STATS:
+                return Process.getInstance().getWorkDir()
+                        + this.tempFilePattern.replace("*", "(" + round + "-stats)") + STATS_EXT;
+            case BEST_STATS:
+                return Process.getInstance().getWorkDir()
+                        + this.tempFilePattern.replace("*", "(" + round + "-best)") + STATS_EXT;
+            case BEST_CLASSIF:
+                return Process.getInstance().getWorkDir()
+                        + this.tempFilePattern.replace("*", "(" + round + "-best)") + CLASS_EXT;
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * Prepares the parameters for the current round trials, using the last round parameters
+     * plus one additional at a time. Marks all the selections in the round statistics file.
+     *
+     * @return the sets of parameters for the current round
+     */
+    private Hashtable<String, String> [] prepareRoundParams() throws IOException {
+
+        Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
+        PrintStream roundStatsFile = new PrintStream(this.getFileName(FileTypes.ROUND_STATS, this.round, 0));
+
+        roundStatsFile.println("Last best:" + this.lastBest);
+
+        // prepare the parameter sets for the individual trials of this round
+        for (int i = 0; i < this.lastBestAttributes.length; ++i) {
+            if (!this.lastBestAttributes[i]) {
+                paramSets.add(this.prepareParamSet(this.lastBestAttributesList + " " + i));
+
+                roundStatsFile.println(this.lastBestAttributesList + " " + i);
+            }
+        }
+
+        roundStatsFile.close();
+        return paramSets.toArray(new Hashtable [0]);
+    }
+
+
+    /**
+     * Prepares the parameters for the first round, attribList.e. all n-tuples of parameters. Marks the
+     * order in the round statistics file.
+     *
+     * @return sets of parameters for the first round
+     */
+    private Hashtable<String, String> [] prepareFirstParams() throws Exception {
+
+        Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
+        PrintStream roundStatsFile = new PrintStream(this.getFileName(FileTypes.ROUND_STATS, this.round, 0));
+        Vector<String> combinations;
+
+        this.checkAttributes();
+
+        combinations = MathUtils.combinations(this.round, this.attribCount);
+
+        roundStatsFile.println("Last best:" + 0);
+
+        for (int i = 0; i < combinations.size(); ++i){
+
+            String combination = this.moveAttribs(combinations.get(i));
+
+            paramSets.add(this.prepareParamSet(combination));
+            roundStatsFile.println(combination);
+        }
+        
+        roundStatsFile.close();
+        return paramSets.toArray(new Hashtable [0]);
+    }
+
+
+    /**
+     * This finds out the number of available arguments and the order of the class argument
+     * and saves it to {@link #classAttribNum} and {@link #attribCount}.
+     */
+    private void checkAttributes() throws Exception {
+
+        ConverterUtils.DataSource dataIn = new ConverterUtils.DataSource(this.input.get(0));
+        Instances train = dataIn.getStructure();
+        dataIn.reset();
+
+        if (train.attribute(this.classArg) == null){
+            Logger.getInstance().message(this.id + ": couldn't find the class attribute " + this.classArg +
+                    " in the training data file.", Logger.V_IMPORTANT);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+
+        this.attribCount = train.numAttributes() - 1;
+        this.classAttribNum = train.attribute(this.classArg).index();
+    }
+
+    /**
+     * Moves all the attributes numbers within the string past the class attribute one to the right
+     * (attribList.e\. adds one to them).
+     * @param list list of attributes
+     * @return
+     */
+    private String moveAttribs(String list) {
+
+        String [] attribNums = list.split("\\s+");
+        StringBuilder ret = new StringBuilder();
+
+        for (String attribNum : attribNums){
+
+            int n = Integer.parseInt(attribNum);
+
+            if (ret.length() != 0){
+                ret.append(" ");
+            }
+            if (n >= this.classAttribNum){
+                ret.append(n+1);
+            }
+            else {
+                ret.append(n);
+            }
+        }
+
+        return ret.toString();
+    }
+
+    /**
+     * This prepares the parameter set for a classification task with the given list of attributes to use.
+     *
+     * @param attribList the list of attributes to be used
+     * @return the full parameter set for a classification task
+     */
+    private Hashtable<String, String> prepareParamSet(String attribList) {
+
+        Hashtable<String, String> paramSet = new Hashtable<String, String>();
+
+        paramSet.put(CLASS_ARG, this.classArg);
+        paramSet.put(WEKA_CLASS, this.wekaClass);
+        paramSet.put(TEMPFILE, this.tempFilePattern);
+        paramSet.put(WekaClassifier.SELECT_ARGS, attribList);
+        paramSet.putAll(this.parameters); // these are just the classifier parameters
+
+        return paramSet;
+    }
 }

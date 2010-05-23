@@ -55,10 +55,10 @@ public class WekaClassifier extends Task {
     static final String WEKA_CLASS = "weka_class";
 
     /** Name of the class_arg parameter */
-    static final String CLASS_ARG = "class_arg";
+    public static final String CLASS_ARG = "class_arg";
 
     /** Name of the select_args parameter */
-    private static final String SELECT_ARGS = "select_args";
+    static final String SELECT_ARGS = "select_args";
 
     /* DATA */
 
@@ -360,7 +360,7 @@ public class WekaClassifier extends Task {
         selectionMask[train.classIndex()] = true;
 
         // remove the selected attributes
-        for (int i = 0; i < selectionMask.length; ++i){
+        for (int i = selectionMask.length - 1; i >= 0; --i){
             if (!selectionMask[i]){
 
                 String attrName = train.attribute(i).name();

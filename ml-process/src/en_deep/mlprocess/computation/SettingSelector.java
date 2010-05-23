@@ -166,12 +166,16 @@ public class SettingSelector extends Task {
                 Vector<String> evalFiles = new Vector<String>(this.input.size()/2);
                 int best;
 
+                Logger.getInstance().message(this.id + ": Selecting the best result ...", Logger.V_INFO);
+
                 for (int i = 0; i < this.input.size(); i += 2){
                     evalFiles.add(this.input.get(i));
                 }
 
                 // select the best settings
                 best = this.selectBest(evalFiles);
+
+                Logger.getInstance().message(this.id + ": Best result: " + best, Logger.V_INFO);
 
                 // copy the best settings to the destination location
                 FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
@@ -182,6 +186,7 @@ public class SettingSelector extends Task {
             else {
                Vector<TaskDescription> subTasks = this.createMeasuringTasks();
 
+               Logger.getInstance().message(this.id + ": assigning tasks for computation ...", Logger.V_INFO);
                Plan.getInstance().appendToTask(this.id, subTasks);
             }
         }
