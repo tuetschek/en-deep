@@ -68,6 +68,8 @@ public class GreedyAttributeSearch extends Task {
 
     /** The name of the "start" parameter */
     private static final String START = "start";
+    /** The name of the "start_attrib" parameter */
+    private static final String START_ATTRIB = "start_attrib";
     /** The name of the "end" parameter */
     private static final String END = "end";
     /** The minimal improvement that is possible */
@@ -126,6 +128,8 @@ public class GreedyAttributeSearch extends Task {
     private int attribCount = -1;
     /** The number of the class attribute */
     private int classAttribNum = -1;
+    /** A list of attributes the process should start with (if set) */
+    private String [] startAttrib;
 
     /* METHODS */
 
@@ -138,12 +142,14 @@ public class GreedyAttributeSearch extends Task {
      * <p>
      * There are the same parameters as in {@link WekaClassifier}, plus two that are same
      * as in {@link SettingSelector} -- <tt>measure</tt> and <tt>tempfile</tt>.
-     * There are additional compulsory parameters:
+     * There are additional compulsory parameters (<tt>start</tt> and <tt>start_attrib</tt> are
+     * mutualy exclusive):
      * </p>
      * <ul>
      * <li><tt>start</tt> -- the starting number of attributes (should be very small, for all
      * possible combinations will be tried)</li>
-     * <li><tt>end</tt>The maximum number of attributes that are to be tried</li>
+     * <li><tt>start_arttrib</tt> -- the (space-separated) list of starting attributes</li>
+     * <li><tt>end</tt> -- the maximum number of attributes that are to be tried</li>
      * </ul>
      * <p>
      * There must be exactly two inputs (first of which is the training data and second the
@@ -177,11 +183,19 @@ public class GreedyAttributeSearch extends Task {
         super(id, parameters, input, output);
 
         // check all parameters related to the round of the task
-        if (this.parameters.get(START) == null || this.parameters.get(END) == null){
+        if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
+                || (this.parameters.get(START) != null && this.parameters.get(START_ATTRIB) != null)
+                || this.parameters.get(END) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
         try {
-            this.start = Integer.parseInt(this.parameters.remove(START));
+            if (this.parameters.get(START) != null){
+                this.start = Integer.parseInt(this.parameters.remove(START));
+            }
+            else {
+                this.startAttrib = this.parameters.get(START_ATTRIB).split("\\s+");
+                this.start = this.startAttrib.length;
+            }
             this.end = Integer.parseInt(this.parameters.remove(END));
         }
         catch (NumberFormatException e){
@@ -273,16 +287,14 @@ public class GreedyAttributeSearch extends Task {
                         + " - " + this.measure + " : " + this.lastBest
                         + " with attributes " + this.lastBestAttributesList, Logger.V_INFO);
 
-                // just copy the best settings to the destination location
+                // copy the best settings to the destination location (final or temporary)
                 if (this.round > this.end){
+                    Logger.getInstance().message(this.id +
+                            ": this is the final round. Copying files to their final destination.", Logger.V_INFO);
                     FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
                     FileUtils.copyFile(this.input.get(best*2 + 1), this.output.get(0));
                 }
                 else {
-
-                    Logger.getInstance().message(this.id +
-                            ": this is the final round. Copying files to their final destination.", Logger.V_INFO);
-
                     FileUtils.copyFile(this.input.get(best*2),
                             this.getFileName(FileTypes.BEST_STATS, this.round - 1, 0));
                     FileUtils.copyFile(this.input.get(best*2 + 1),
@@ -295,7 +307,7 @@ public class GreedyAttributeSearch extends Task {
                Hashtable<String, String> [] paramSets = this.round == this.start
                        ? this.prepareFirstParams() : this.prepareRoundParams();
                String idBase = this.round == this.start  // prevent the "#"-like ids from nesting
-                       ? this.id : this.id.substring(0, this.id.lastIndexOf("#") - 1);
+                       ? this.id : this.id.substring(0, this.id.lastIndexOf("#"));
                Vector<TaskDescription> subTasks = this.createNextRound(idBase, paramSets);
 
                Logger.getInstance().message(this.id + ": assigning tasks for the next round ...", Logger.V_INFO);
@@ -402,7 +414,8 @@ public class GreedyAttributeSearch extends Task {
     /**
      * This creates all the {@link TaskDescription}s that are needed for the next round
      * of tests (just tries to add all the remaining attributes, one at a time). The last
-     * task is the evaluation and the start of the next round of the algorithm.
+     * task is the evaluation and the start of the next round of the algorithm (or the
+     * final evaluation).
      *
      * @param idBase the beginning of the ID for all the next tasks
      * @param paramSets all the parameter sets that will be used in the classification tasks in the next round
@@ -464,7 +477,8 @@ public class GreedyAttributeSearch extends Task {
         
         nextRoundInput.addAll(this.input.subList(this.input.size() - 2, this.input.size()));
 
-        nextRoundTask = new TaskDescription(idBase + "#round" + (this.round + 1), GreedyAttributeSearch.class.getName(),
+        nextRoundTask = new TaskDescription(idBase + (this.round < this.end ? "#round" + (this.round + 1) : "#finalize"),
+                GreedyAttributeSearch.class.getName(),
                 nextRoundParams, nextRoundInput, (Vector<String>) this.output.clone());
 
         // set its dependencies
@@ -546,10 +560,15 @@ public class GreedyAttributeSearch extends Task {
         Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
         PrintStream roundStatsFile = new PrintStream(this.getFileName(FileTypes.ROUND_STATS, this.round, 0));
         Vector<String> combinations;
+        String startAttribs = this.getStartAttributes();
 
-        this.checkAttributes();
-
-        combinations = MathUtils.combinations(this.round, this.attribCount);
+        if (startAttribs != null){
+            combinations = new Vector<String>(1);
+            combinations.add(startAttribs);
+        }
+        else {
+            combinations = MathUtils.combinations(this.round, this.attribCount);
+        }
 
         roundStatsFile.println("Last best:" + 0);
 
@@ -568,9 +587,13 @@ public class GreedyAttributeSearch extends Task {
 
     /**
      * This finds out the number of available arguments and the order of the class argument
-     * and saves it to {@link #classAttribNum} and {@link #attribCount}.
+     * and saves it to {@link #classAttribNum} and {@link #attribCount} and select the start
+     * attributes by number, if the {@link #startAttrib} member is set.
+     *
+     * @return the space-separated list of starting attributes, or null if their names haven't been set-up \
+     *      in the parameters of this {@link Task}
      */
-    private void checkAttributes() throws Exception {
+    private String getStartAttributes() throws Exception {
 
         ConverterUtils.DataSource dataIn = new ConverterUtils.DataSource(this.input.get(0));
         Instances train = dataIn.getStructure();
@@ -584,6 +607,27 @@ public class GreedyAttributeSearch extends Task {
 
         this.attribCount = train.numAttributes() - 1;
         this.classAttribNum = train.attribute(this.classArg).index();
+
+        if (this.startAttrib != null){
+
+            StringBuilder startAttribNums = new StringBuilder();
+
+            for (String attrib: this.startAttrib){
+
+                if (train.attribute(attrib) == null){
+                    Logger.getInstance().message(this.id + ": couldn't find the startin attribute " + attrib,
+                            Logger.V_IMPORTANT);
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                }
+                if (startAttribNums.length() != 0){
+                    startAttribNums.append(" ");
+                }
+                startAttribNums.append(train.attribute(attrib).index());
+            }
+
+            return startAttribNums.toString();
+        }
+        return null;
     }
 
     /**
