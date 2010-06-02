@@ -130,6 +130,8 @@ public class GreedyAttributeSearch extends Task {
     private int classAttribNum = -1;
     /** A list of attributes the process should start with (if set) */
     private String [] startAttrib;
+    /** The part of the id that resulted from task expansions, needed for tempfiles */
+    private String expandedId;
 
     /* METHODS */
 
@@ -181,6 +183,13 @@ public class GreedyAttributeSearch extends Task {
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
+
+        // set the expandedId parameter
+        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
+        if (this.expandedId.substring(this.expandedId.lastIndexOf('#')).matches("#round[0-9]+")
+                || this.expandedId.endsWith("#finalize")){
+            this.expandedId = this.expandedId.substring(0, this.expandedId.lastIndexOf('#'));
+        }
 
         // check all parameters related to the round of the task
         if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
@@ -318,6 +327,7 @@ public class GreedyAttributeSearch extends Task {
             throw te;
         }
         catch (Exception e){
+            e.printStackTrace();
             Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
@@ -504,19 +514,19 @@ public class GreedyAttributeSearch extends Task {
         switch (type){
             case CLASSIF:
                 return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", "(" + round + "-" + order + ")") + CLASS_EXT;
+                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-" + order + ")") + CLASS_EXT;
             case STATS:
                 return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", "(" + round + "-" + order + ")") + STATS_EXT;
+                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-" + order + ")") + STATS_EXT;
             case ROUND_STATS:
                 return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", "(" + round + "-stats)") + STATS_EXT;
+                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-stats)") + STATS_EXT;
             case BEST_STATS:
                 return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", "(" + round + "-best)") + STATS_EXT;
+                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-best)") + STATS_EXT;
             case BEST_CLASSIF:
                 return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", "(" + round + "-best)") + CLASS_EXT;
+                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-best)") + CLASS_EXT;
             default:
                 return "";
         }
