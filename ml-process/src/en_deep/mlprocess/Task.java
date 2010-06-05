@@ -130,4 +130,24 @@ public abstract class Task implements Serializable {
     public String getId(){
         return this.id;
     }
+
+    /**
+     * Returns a boolean value of a class {@link parameters parameter}, which is false if the parameter
+     * value is "0" or "false" and true otherwise
+     *
+     * @param paramName the name of the parameter to be examined
+     * @return the boolean value of the parameter
+     */
+    protected boolean getBooleanParameterVal(String paramName) {
+
+        if (this.parameters.get(paramName) != null){
+            return (this.parameters.get(paramName).equals("0")
+                    || this.parameters.get(paramName).equalsIgnoreCase("false"))
+                    ? false : true;
+        }
+        else {
+            return false;
+        }
+    }
+
 }

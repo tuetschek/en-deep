@@ -136,6 +136,7 @@ public class SettingSelector extends Task {
         // check the compulsory parameters for the evaluation case
         if (this.parameters.get(EVAL) != null){
             if (this.parameters.get(MEASURE) == null){
+                Logger.getInstance().message(this.id + " : no measure specified.", Logger.V_IMPORTANT);
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
             }
             this.evalMode = true;
@@ -148,6 +149,7 @@ public class SettingSelector extends Task {
         if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
                 || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
                 || this.parameters.get(TEMPFILE).indexOf("*") == -1){
+            Logger.getInstance().message(this.id + " : some parameters are missing.", Logger.V_IMPORTANT);
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
         this.classArg = this.parameters.remove(CLASS_ARG);
@@ -265,7 +267,8 @@ public class SettingSelector extends Task {
             if (paramSets == null){
                 paramSets = new Hashtable[paramVals.length];
             }
-            if (paramVals.length != paramSets.length){ // different numbers of parameters
+            if (paramVals.length != paramSets.length){
+                Logger.getInstance().message(this.id + " : numbers of the individual parameters vary.", Logger.V_IMPORTANT);
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
             }
             for (int i = 0; i < paramSets.length; ++i){

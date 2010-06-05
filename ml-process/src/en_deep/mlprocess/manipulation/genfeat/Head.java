@@ -37,7 +37,7 @@ import java.util.Vector;
  */
 public class Head extends Feature {
 
-    Head(StToArffConfig config){
+    public Head(StToArffConfig config){
         super(config);
     }
 

@@ -39,6 +39,13 @@ import java.util.Vector;
  */
 public class Neighbors extends Feature {
 
+    /* CONSTANTS */
+
+    /** Word separator for bigrams */
+    private static final String BIGRAM_SEPARATOR = "|";
+
+    /* METHODS */
+
     public Neighbors(StToArffConfig config){
         super(config);
     }
@@ -62,10 +69,10 @@ public class Neighbors extends Feature {
                 + this.config.escape(wordNo >= 2 ? sentence.get(wordNo - 2)[this.config.IDXI_FORM] : "")  + "\",\""
                 + this.config.escape(wordNo >= 1 ? sentence.get(wordNo - 1)[this.config.IDXI_FORM] : "") + "\",\""
                 + this.config.escape(wordNo >= 2 ? sentence.get(wordNo - 2)[this.config.IDXI_FORM]
-                    + sentence.get(wordNo - 1)[this.config.IDXI_FORM] :
+                    + BIGRAM_SEPARATOR + sentence.get(wordNo - 1)[this.config.IDXI_FORM] :
                     (wordNo >= 1 ? sentence.get(wordNo - 1)[this.config.IDXI_FORM] : ""))  + "\",\""
                 + this.config.escape(wordNo < sentence.size() - 2 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM]
-                    + sentence.get(wordNo + 2)[this.config.IDXI_FORM] :
+                    + BIGRAM_SEPARATOR + sentence.get(wordNo + 2)[this.config.IDXI_FORM] :
                     (wordNo < sentence.size() - 1 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM] : ""))  + "\",\""
                 + this.config.escape(wordNo < sentence.size() - 1 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM]
                     : "") + "\",\""

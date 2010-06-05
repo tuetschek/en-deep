@@ -292,12 +292,20 @@ public class GreedyAttributeSearch extends Task {
                 // select the best settings and find out if this is the last round
                 best = this.evalRound(evalFiles);
 
-                Logger.getInstance().message(this.id + ": best result: " + best
-                        + " - " + this.measure + " : " + this.lastBest
-                        + " with attributes " + this.lastBestAttributesList, Logger.V_INFO);
+                if (best >= 0){
+                    Logger.getInstance().message(this.id + ": best result: " + best
+                            + " - " + this.measure + " : " + this.lastBest
+                            + " with attributes " + this.lastBestAttributesList, Logger.V_INFO);
+                }
 
                 // copy the best settings to the destination location (final or temporary)
-                if (this.round > this.end){
+                if (best < 0){
+                    Logger.getInstance().message(this.id +
+                            ": copying the best results from previous round to the final destination.", Logger.V_INFO);
+                    FileUtils.copyFile(this.getFileName(FileTypes.BEST_STATS, this.round - 2, 0), this.output.get(1));
+                    FileUtils.copyFile(this.getFileName(FileTypes.BEST_CLASSIF, this.round - 2, 0), this.output.get(0));
+                }
+                else if (this.round > this.end){
                     Logger.getInstance().message(this.id +
                             ": this is the final round. Copying files to their final destination.", Logger.V_INFO);
                     FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
@@ -389,14 +397,24 @@ public class GreedyAttributeSearch extends Task {
 
         // test if the previous round improved the results
         if (bestVal < this.lastBest + this.minImprovement){
-            this.round = this.end + 1;
+
+            if (bestVal >= this.lastBest){
+                Logger.getInstance().message(this.id + " : convergency criterion met.", Logger.V_INFO);
+            }
+            else { // worse than the previous round -- will revert to last results
+                Logger.getInstance().message(this.id + " : worse than previous round, reverting.", Logger.V_INFO);
+                bestIndex = -1;
+            }
+            this.end = this.round - 1;
         }
         // store the last best value
-        this.lastBest = bestVal;
+        if (bestVal >= this.lastBest){
+            this.lastBest = bestVal;
+        }
 
         // write down the selected option
         lastRoundStats.seek(lastRoundStats.length());
-        lastRoundStats.write(("Selected: " + bestIndex + LF).getBytes());
+        lastRoundStats.write(("Selected: " + bestIndex + " with " + this.measure + " of " + bestVal + LF).getBytes());
         lastRoundStats.close();
         
         return bestIndex;
@@ -506,7 +524,7 @@ public class GreedyAttributeSearch extends Task {
      *
      * @param type the type of the file
      * @param round the round for which the file is ment
-     * @param order the number of the file (not used for ROUND_STATS)
+     * @param order the number of the file (not used for ROUND_STATS, BEST_STATS and BEST_CLASSIF)
      * @return the file name
      */
     private String getFileName(FileTypes type, int round, int order){

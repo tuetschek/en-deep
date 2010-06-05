@@ -404,10 +404,12 @@ public class TaskExpander {
         // go deeper only if there are "*"s ("**" and pure-"***" cannot be expanded yet)
         Vector<TaskDescription> deps = task.getDependent();
 
-        for (TaskDescription dep : deps){
+        if (deps != null){
+            for (TaskDescription dep : deps){
 
-            if (dep.hasInputPattern("*")){
-                this.expandDependent(task, dep);
+                if (dep.hasInputPattern("*")){
+                    this.expandDependent(task, dep);
+                }
             }
         }
 

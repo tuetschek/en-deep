@@ -165,6 +165,9 @@ public class StToArff extends Task {
      * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, ommiting all other words in a sentence</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * </ul>
+     * <p>
+     * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
+     * </p>
      *
      * @todo no need for possible list of POS, FEAT and DEPREL in the lang_conf file, exclude it
      * @param id the task id
@@ -187,7 +190,7 @@ public class StToArff extends Task {
         if (!new File(configFile).exists()){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
         }
-        this.config = new StToArffConfig(configFile, this.getBooleanParameterVal(PREDICTED));
+        this.config = new StToArffConfig(this);
 
         // initialize boolean parameters
         this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
@@ -468,25 +471,6 @@ public class StToArff extends Task {
     }
 
     /**
-     * Returns a boolean value of a class {@link parameters parameter}, which is false if the parameter
-     * value is "0" or "false" and true otherwise
-     *
-     * @param paramName the name of the parameter to be examined
-     * @return the boolean value of the parameter
-     */
-    private boolean getBooleanParameterVal(String paramName) {
-
-        if (this.parameters.get(paramName) != null){
-            return (this.parameters.get(paramName).equals("0")
-                    || this.parameters.get(paramName).equalsIgnoreCase("false"))
-                    ? false : true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    /**
      * Parse the parameter with generated features setting and initialize all needed.
      */
     private void initGenFeats() {
@@ -586,7 +570,6 @@ public class StToArff extends Task {
      */
     private Instances getAllData(Set<String> files) throws Exception {
 
-        Instances data = null;
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         boolean first = true;
 
@@ -708,11 +691,19 @@ public class StToArff extends Task {
          */
         private final int predictedNon;
 
+        /** The parameters of the {@link StToArff} task. */
+        private final Hashtable<String, String> taskParameters;
+        /** The id of the {@link StToArff} task */
+        private final String taskId;
+
         /* METHODS */
 
-        StToArffConfig(String configFile, boolean usePredicted){
-            this.configFile = configFile;
-            this.usePredicted = usePredicted;
+        StToArffConfig(StToArff task){
+
+            this.taskParameters = task.parameters;
+            this.configFile = this.taskParameters.get(StToArff.LANG_CONF);
+            this.usePredicted = task.getBooleanParameterVal(StToArff.PREDICTED);
+            this.taskId = task.getId();
 
             if (this.usePredicted){
                 IDXI_POS = 5;
@@ -762,7 +753,7 @@ public class StToArff extends Task {
          * Return a comma-separated list of possible semantic roles
          * @return list of semantic roles
          */
-        public String getSemRoles(){
+        String getSemRoles(){
             return this.listMembers(this.semRoles);
         }
 
@@ -794,6 +785,23 @@ public class StToArff extends Task {
          */
         public String escape(String str){
             return str.replace("\\", "\\\\").replace("\"", "\\\"");
+        }
+
+        /**
+         * Returns the value of the given task parameter.
+         * @param paramName the desired parameter name
+         * @return the value of the given task parameter
+         */
+        public String getTaskParameter(String paramName){
+            return this.taskParameters.get(paramName);
+        }
+
+        /**
+         * Returns the id of the current task.
+         * @return the id of the current task
+         */
+        public String getTaskId(){
+            return this.taskId;
         }
     }
 }

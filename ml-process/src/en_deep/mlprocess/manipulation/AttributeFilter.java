@@ -123,7 +123,7 @@ public class AttributeFilter extends Task {
                 this.mostCommon = Integer.parseInt(this.parameters.get(MOST_COMMON));
             }
             if (this.parameters.get(MIN_OCCURRENCES) != null){
-                this.mostCommon = Integer.parseInt(this.parameters.get(MIN_OCCURRENCES));
+                this.minOccurrences = Integer.parseInt(this.parameters.get(MIN_OCCURRENCES));
             }
         }
         catch (NumberFormatException e){
@@ -185,11 +185,19 @@ public class AttributeFilter extends Task {
                 for (int j = 0; j < this.attributes.length; ++j){
                     this.filterAttribute(allData.toArray(new Instances[0]), this.attributes[j]);
                 }
+
+                for (int i = 0; i < this.output.size(); ++i){
+                    this.writeArff(this.output.get(i), allData.get(i));
+                }
             }
+        }
+        catch (TaskException e){
+            Logger.getInstance().message(this.id + " : task error : " + e.getMessage(), Logger.V_IMPORTANT);
+            throw e;
         }
         catch (Exception e){
             e.printStackTrace();
-            Logger.getInstance().message(this.id + " : runtime error" + e.getMessage(), Logger.V_IMPORTANT);
+            Logger.getInstance().message(this.id + " : runtime error : " + e.getMessage(), Logger.V_IMPORTANT);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
         }
     }
@@ -219,7 +227,9 @@ public class AttributeFilter extends Task {
     private Instances readArff(String fileName) throws Exception {
 
         ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
-        return reader.getDataSet();
+        Instances data = reader.getDataSet();
+        reader.reset();
+        return data;
     }
 
     /**
@@ -262,20 +272,27 @@ public class AttributeFilter extends Task {
             }
         }
 
-        // collect statistics about the given attribute and add its filtered version
+        // collect statistics about the given attribute and create its filtered version
         int [] stats = this.collectStatistics(data, attrName);
-        boolean [] allowedValues = this.filterValues(stats);
+        boolean [] allowedIndexes = this.filterValues(stats);
+        Vector<String> allowedValues = new Vector<String>();
 
-        Attribute newAttr = new Attribute(newName, new Vector<String>());
+        for (int i = 0; i < allowedIndexes.length; ++i){
+            if (allowedIndexes[i]){
+                allowedValues.add(data[0].attribute(attrName).value(i));
+            }
+        }
+        allowedValues.add(OTHER_VALUE);
+
+        Attribute newAttr = new Attribute(newName, allowedValues);
+
         for (int i = 0; i < data.length; ++i){
-            this.addFiltered(data[i], attrName, newAttr, allowedValues);
+            this.addFiltered(data[i], attrName, newAttr, allowedIndexes);
             
             if (this.delOrig){ // delete the old attribute if necessary
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
         }
-
-
     }
 
 
@@ -345,6 +362,7 @@ public class AttributeFilter extends Task {
                     while (j > 0 && (top[j] == -1 || stats[i] > stats[top[j-1]])){
                         --j;
                     }
+                    System.arraycopy(top, j, top, j + 1, top.length - j - 1);
                     top[j] = i;
                 }
             }
@@ -369,12 +387,14 @@ public class AttributeFilter extends Task {
      * @param data the data where the attribute is to be inserted
      * @param attrName the name of the old attribute
      * @param newAttr the new attribute
-     * @param allowedValues indexes of the allowed values of the old attribute
+     * @param allowedIndexes indexes of the allowed values of the old attribute
      */
     private void addFiltered(Instances data, String attrName, Attribute newAttr, boolean [] allowedIndexes) {
 
         int oldIndex = data.attribute(attrName).index();
+        
         data.insertAttributeAt(newAttr, oldIndex + 1);
+        newAttr = data.attribute(oldIndex + 1);
 
         for (int i = 0; i < data.numInstances(); ++i){
             int value = (int) data.instance(i).value(oldIndex);
