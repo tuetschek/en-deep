@@ -84,7 +84,7 @@ public class AttributeSelector extends Task {
         
         super(id, parameters, input, output);
         if (parameters.size() != 1 || (!parameters.containsKey(SELECT) && !parameters.containsKey(OMIT))){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter select OR omit must be set.");
         }
 
         // parse the settings
@@ -123,12 +123,11 @@ public class AttributeSelector extends Task {
             }
         }
         catch (TaskException e){
-            e.printStackTrace();
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 

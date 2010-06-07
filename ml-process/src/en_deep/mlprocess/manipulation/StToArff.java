@@ -182,13 +182,13 @@ public class StToArff extends Task {
 
         // check parameters
         if (this.parameters.get(LANG_CONF) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter lang_conf is missing.");
         }
 
         // find the config file
         String configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
         if (!new File(configFile).exists()){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
         }
         this.config = new StToArffConfig(this);
 
@@ -211,7 +211,7 @@ public class StToArff extends Task {
         // ensures that there are no unwanted "*"'s.
         for (String outputFile: this.output){
             if (!outputFile.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id);
+                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "Outputs must contain '**' pattern.");
             }
         }
     }
@@ -241,13 +241,12 @@ public class StToArff extends Task {
             }
         }
         catch (TaskException e){
-            e.printStackTrace();
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
-            Logger.getInstance().message("ERROR: " + e.getMessage(), Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -267,10 +266,10 @@ public class StToArff extends Task {
 
         while (sentence != null){
 
-            predNums = this.findPredicates(sentence); // find predicate positions
+            sentenceId = generateSentenceId();
+            predNums = this.findPredicates(sentence, sentenceId, st); // find predicate positions
             outFiles = this.findOutputs(sentence, predNums, arff); // find correpsonding output file names
             this.writeHeaders(outFiles); // prepare output file headers
-            sentenceId = generateSentenceId();
 
             // for all predicates, write the sentence to an output file
             for (int i = 0; i < predNums.length; ++i){
@@ -501,11 +500,14 @@ public class StToArff extends Task {
 
 
     /**
-     * Returns a list of positions where the predicates in this sentence are
+     * Returns a list of positions where the predicates in this sentence are.
+     *
      * @param sentence the sentence to be processed
+     * @param sentenceId the current sentence id
+     * @param fileName the file name
      * @return the list of predicate positions in the sentence
      */
-    private int[] findPredicates(Vector<String[]> sentence) throws TaskException {
+    private int[] findPredicates(Vector<String[]> sentence, int sentenceId, String fileName) throws TaskException {
 
         int [] ret = new int [sentence.get(0).length - COMPULSORY_FIELDS];
         int pos = 0;
@@ -517,7 +519,9 @@ public class StToArff extends Task {
             }
         }
         if (pos != ret.length){ // check their number
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id,
+                    "Predicate and fillpred column numbers mismatch in " + fileName + " at sentence "
+                    + sentenceId + ".");
         }
         return ret;
     }
@@ -618,7 +622,7 @@ public class StToArff extends Task {
             line = in.readLine();
         }
         if (line == null){
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, "Cannot find data in " + file + ".");
         }
 
         // correct file length

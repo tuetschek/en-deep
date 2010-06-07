@@ -195,7 +195,7 @@ public class GreedyAttributeSearch extends Task {
         if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
                 || (this.parameters.get(START) != null && this.parameters.get(START_ATTRIB) != null)
                 || this.parameters.get(END) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
         try {
             if (this.parameters.get(START) != null){
@@ -208,7 +208,8 @@ public class GreedyAttributeSearch extends Task {
             this.end = Integer.parseInt(this.parameters.remove(END));
         }
         catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + START + " and "
+                    + END + " must be numeric.");
         }
 
         // first round
@@ -222,8 +223,9 @@ public class GreedyAttributeSearch extends Task {
                 this.attribCount = Integer.parseInt(this.parameters.remove(ATTRIB_COUNT));
                 this.classAttribNum = Integer.parseInt(this.parameters.remove(CLASS_ATTR_NO));
             }
-            catch (Exception e){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + ROUND + ", "
+                        + ATTRIB_COUNT + " and " + CLASS_ATTR_NO + " must be numeric.");
             }
         }
         if (this.attribCount > 0 && this.end > this.attribCount){ // limit the task by number of attributes (if known)
@@ -232,7 +234,7 @@ public class GreedyAttributeSearch extends Task {
         // check round constraints (round must be within [start, end + 1])
         if (this.start > this.end || this.start <= 0 || this.end <= 0
                 || this.round < this.start || this.round > this.end + 1){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Round number constraints violated.");
         }
 
         // check the number of inputs and outputs
@@ -246,7 +248,7 @@ public class GreedyAttributeSearch extends Task {
         // final round -- do not check some parameters
         if (this.round > this.end){
             if (this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
             }
             this.measure = this.parameters.remove(MEASURE);
             this.tempFilePattern = this.parameters.remove(TEMPFILE);
@@ -257,7 +259,7 @@ public class GreedyAttributeSearch extends Task {
         if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
                 || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
                 || this.parameters.get(TEMPFILE).indexOf("*") == -1){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.measure = this.parameters.remove(MEASURE);
@@ -270,7 +272,8 @@ public class GreedyAttributeSearch extends Task {
                 this.minImprovement = Double.parseDouble(this.parameters.remove(MIN_IMPROVEMENT));
             }
             catch(NumberFormatException e){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter " + MIN_IMPROVEMENT
+                        + " must be numeric.");
             }
         }
     }
@@ -335,9 +338,8 @@ public class GreedyAttributeSearch extends Task {
             throw te;
         }
         catch (Exception e){
-            e.printStackTrace();
-            Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_IMPORTANT);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -628,9 +630,8 @@ public class GreedyAttributeSearch extends Task {
         dataIn.reset();
 
         if (train.attribute(this.classArg) == null){
-            Logger.getInstance().message(this.id + ": couldn't find the class attribute " + this.classArg +
-                    " in the training data file.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Couldn't find the class attribute "
+                    + this.classArg + " in the training data file.");
         }
 
         this.attribCount = train.numAttributes() - 1;
@@ -643,9 +644,8 @@ public class GreedyAttributeSearch extends Task {
             for (String attrib: this.startAttrib){
 
                 if (train.attribute(attrib) == null){
-                    Logger.getInstance().message(this.id + ": couldn't find the startin attribute " + attrib,
-                            Logger.V_IMPORTANT);
-                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                            "Couldn't find the starting attribute " + attrib + ".");
                 }
                 if (startAttribNums.length() != 0){
                     startAttribNums.append(" ");

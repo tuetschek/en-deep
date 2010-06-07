@@ -84,7 +84,8 @@ public class FileMerger extends Task {
         int ratio = this.input.size() / this.output.size();
 
         if (this.input.size() % this.output.size() !=  0){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Number of outputs must be divisible" +
+                    "by the number of inputs.");
         }
 
         for (int j = 0; j < this.output.size(); ++j){
@@ -93,8 +94,8 @@ public class FileMerger extends Task {
                 this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
             }
             catch(IOException e){
-                Logger.getInstance().message(this.id + ": I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+                Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
             }
         }
     }

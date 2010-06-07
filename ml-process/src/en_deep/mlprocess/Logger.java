@@ -101,11 +101,27 @@ public class Logger {
      * @param importance the importance of the message (1 - important ... 4 - debug)
      * @param text the actual text of the message
      */
-    public void message(String text, int importance){
+    public synchronized void message(String text, int importance){
 
         if (importance <= this.verbosity){
             System.err.print(this.dateFormatter.format(new Date()));
             System.err.println(text);
+        }
+    }
+
+    /**
+     * Outputs an exception stack trace, if the current verbosity setting meets the importance.
+     *
+     * @param stackTrace the stack trace of an exception
+     * @param importance the given importance
+     */
+    public synchronized void logStackTrace(StackTraceElement[] stackTrace, int importance) {
+
+        if (importance < this.verbosity){
+            System.err.println(this.dateFormatter.format(new Date()) + " -- EXCEPTION:");
+            for (int i = 0; i < stackTrace.length; ++i){
+                System.err.println("\t" + stackTrace[i].toString());
+            }
         }
     }
 }

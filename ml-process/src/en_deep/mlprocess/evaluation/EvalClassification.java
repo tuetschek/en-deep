@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.evaluation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.computation.WekaClassifier;
@@ -80,13 +81,13 @@ public class EvalClassification extends Task {
         super(id, parameters, input, output);
 
         if (this.parameters.get(CLASS_ARG) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter class_arg is missing.");
         }
         if (this.input.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be 2 inputs.");
         }
         if (this.output.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
         }
     }
 
@@ -100,8 +101,8 @@ public class EvalClassification extends Task {
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -130,7 +131,9 @@ public class EvalClassification extends Task {
         if ((attrGold = gold.attribute(attr)) == null || (attrTest = test.attribute(attr)) == null
                 || !attrGold.isNominal() || !attrTest.isNominal()
                 || gold.numInstances() != test.numInstances()){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                    "Attribute for evaluation not found or not nominal, or the numbers of instances in gold " +
+                    "and evaluation data mismatch.");
         }
 
         // test everything

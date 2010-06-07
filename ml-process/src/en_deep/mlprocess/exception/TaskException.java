@@ -62,6 +62,8 @@ public class TaskException extends GeneralException {
 
     /** Id of the task that triggered the exception */
     String taskId;
+    /** Additional message */
+    String message;
 
     /* METHODS */
 
@@ -75,6 +77,21 @@ public class TaskException extends GeneralException {
     public TaskException(int code, String taskId){
         super(code);
         this.taskId = taskId;
+        this.message = "";
+    }
+
+    /**
+     * Creates a new {@link Task} exception with the given code, according
+     * to the in-class constants, and an additional error message.
+     *
+     * @param taskId  the id of the {@link Task} that triggered the exception
+     * @param message an additional specifying error message
+     * @param code the exception code
+     */
+    public TaskException(int code, String taskId, String message){
+        super(code);
+        this.taskId = taskId;
+        this.message = message;
     }
 
     /**
@@ -86,29 +103,29 @@ public class TaskException extends GeneralException {
 
         switch(this.code){
             case ERR_OK:
-                return this.taskId + ": No error.";
+                return this.taskId + ": No error. " + this.message;
             case ERR_WRONG_NUM_OUTPUTS:
-                return this.taskId + ": Wrong number of outputs.";
+                return this.taskId + ": Wrong number of outputs. " + this.message;
             case ERR_WRONG_NUM_INPUTS:
-                return this.taskId + ": Wrong number of inputs.";
+                return this.taskId + ": Wrong number of inputs. " + this.message;
             case ERR_TASK_CLASS_NOT_FOUND:
-                return this.taskId + ": Task class not found.";
+                return this.taskId + ": Task class not found. " + this.message;
             case ERR_TASK_CLASS_INCORRECT:
-                return this.taskId + ": The Task class does not conform to specifications.";
+                return this.taskId + ": The Task class does not conform to specifications. " + this.message;
             case ERR_IO_ERROR:
-                return this.taskId + ": I/O error during task operation.";
+                return this.taskId + ": I/O error during task operation. " + this.message;
             case ERR_INVALID_PARAMS:
-                return this.taskId + ": Invalid task parameters were specified.";
+                return this.taskId + ": Invalid task parameters were specified. " + this.message;
             case ERR_OUTPUT_PATTERNS:
-                return this.taskId + ": The expansion patterns in output file names are not specified correctly.";
+                return this.taskId + ": The expansion patterns in output file names are not specified correctly. " + this.message;
             case ERR_PATTERN_SPECS:
-                return this.taskId + ": Wrong pattern specifications.";
+                return this.taskId + ": Wrong pattern specifications. " + this.message;
             case ERR_TASK_INIT_ERR:
-                return this.taskId + ": Task initialization error.";
+                return this.taskId + ": Task initialization error. " + this.message;
             case ERR_INVALID_DATA:
-                return this.taskId + ": Invalid input data.";
-        default:
-                return "Unknown error.";
+                return this.taskId + ": Invalid input data. " + this.message;
+            default:
+                return "Unknown error. " + this.message;
         }
     }
 

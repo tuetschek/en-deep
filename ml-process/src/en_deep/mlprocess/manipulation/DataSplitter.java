@@ -83,16 +83,19 @@ public class DataSplitter extends Task {
         
         super(id, parameters, input, output);
         if (parameters.size() != 1 || (!parameters.containsKey(BY_ATTRIBUTE) && !parameters.containsKey(NUM_PARTS))){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter by_attribute OR num_parts" +
+                    "must be set.");
         }
         if (input.size() != output.size()){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Numbers of inputs and outputs" +
+                    "don't match.");
         }
         // checks if there are "**" patterns in outputs (just simple string check is sufficient, Task expansion
         // ensures that there are no unwanted "*"'s.
         for (String outputFile: this.output){
             if (!outputFile.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id);
+                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "There must be '**' patterns" +
+                        "in all outputs.");
             }
         }
     }
@@ -119,7 +122,8 @@ public class DataSplitter extends Task {
             throw e;
         }
         catch (Exception e){
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -141,9 +145,8 @@ public class DataSplitter extends Task {
         if ((splitAttrib = data.attribute(this.parameters.get(BY_ATTRIBUTE))) == null
                 || (values = splitAttrib.enumerateValues()) == null){
 
-            Logger.getInstance().message(this.id + ": attribute " + this.parameters.get(BY_ATTRIBUTE)
-                    + " not found or not string.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Attribute "
+                    + this.parameters.get(BY_ATTRIBUTE) + " not found or not string.");
         }
 
         // filter out all attribute values and create output files for them
@@ -189,7 +192,8 @@ public class DataSplitter extends Task {
             parts = Integer.parseInt(this.parameters.get(NUM_PARTS));
         }
         catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter " + NUM_PARTS + " must be" 
+                    + " numberic.");
         }
 
         // write all the subsequent parts

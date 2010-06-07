@@ -136,8 +136,7 @@ public class SettingSelector extends Task {
         // check the compulsory parameters for the evaluation case
         if (this.parameters.get(EVAL) != null){
             if (this.parameters.get(MEASURE) == null){
-                Logger.getInstance().message(this.id + " : no measure specified.", Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "No measure specified.");
             }
             this.evalMode = true;
             this.measure = this.parameters.get(MEASURE);
@@ -149,8 +148,7 @@ public class SettingSelector extends Task {
         if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
                 || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
                 || this.parameters.get(TEMPFILE).indexOf("*") == -1){
-            Logger.getInstance().message(this.id + " : some parameters are missing.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.measure = this.parameters.remove(MEASURE);
@@ -195,9 +193,8 @@ public class SettingSelector extends Task {
         catch (TaskException te){
             throw te;
         }
-        catch (Exception e){
-            Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+        catch (Exception e){            
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -268,8 +265,7 @@ public class SettingSelector extends Task {
                 paramSets = new Hashtable[paramVals.length];
             }
             if (paramVals.length != paramSets.length){
-                Logger.getInstance().message(this.id + " : numbers of the individual parameters vary.", Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Numbers of the individual parameters vary.");
             }
             for (int i = 0; i < paramSets.length; ++i){
 

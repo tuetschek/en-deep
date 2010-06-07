@@ -109,7 +109,8 @@ public class TaskExpander {
 
             // can't have "*"-patterns in outputs since there are none in inputs
             if (this.outputTrans != null){
-               throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId());
+               throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
+                       "No '*' patterns in inputs but some in outputs.");
             }
             // expand "**" here if needed
             if (this.inputHere != null){
@@ -119,7 +120,8 @@ public class TaskExpander {
         }
         // "**" are not compatible with other types
         else if (this.inputHere != null){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, Process.getInstance().getInputFile());
+            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
+                    "'**' patterns cannot be combined with other patterns.");
         }
         // if there are "*"s, expand them all at a time
         else if (this.inputTrans != null){
@@ -141,7 +143,8 @@ public class TaskExpander {
 
         // check if all the outputs have "*"s (otherwise, there's no point in using "*" or "***" for inputs)
         if (this.outputTrans == null || this.outputTrans.size() != task.getOutput().size()){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId());
+            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
+                    "Some outputs have '*' patterns and some don't.");
         }
 
         // expand outputs and dependent tasks using the expanded task name
@@ -391,7 +394,8 @@ public class TaskExpander {
 
         // if there are some pattern and some non-pattern outputs, something is wrong
         if (task.getOutputPatternPos("*").size() != outputs.size()){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId());
+            throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId(),
+                    "Some outputs have '*' patterns and some don't.");
         }
 
         for (TaskDescription exp : exps){

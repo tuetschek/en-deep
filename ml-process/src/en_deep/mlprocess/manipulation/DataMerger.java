@@ -92,9 +92,12 @@ public class DataMerger extends Task {
             try {
                 this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
             }
+            catch(TaskException e){
+                throw e;
+            }
             catch(Exception e){
-                Logger.getInstance().message(this.id + ": I/O Error:" + e.getMessage(), Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+                Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
             }
         }
     }
@@ -134,8 +137,8 @@ public class DataMerger extends Task {
 
             // check for equal data format
             if ((errMsg = structure.equalHeadersMsg(firstStructure)) != null){
-                Logger.getInstance().message(this.id + ": cannot merge -- headers differ: " + errMsg, Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                        "Cannot merge -- headers differ: " + errMsg);
             }
 
             while (data.hasMoreElements(structure)){

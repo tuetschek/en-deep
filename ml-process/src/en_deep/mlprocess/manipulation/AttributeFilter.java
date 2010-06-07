@@ -127,8 +127,7 @@ public class AttributeFilter extends Task {
             }
         }
         catch (NumberFormatException e){
-            Logger.getInstance().message(this.id + ": invalid number specification.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid number specification.");
         }
         if (this.parameters.get(ATTRIBUTES) != null){
             this.attributes = this.parameters.get(ATTRIBUTES).split("\\s+");
@@ -142,8 +141,7 @@ public class AttributeFilter extends Task {
         }
 
         if (this.attributes == null || (this.mostCommon == -1 && this.minOccurrences == -1)){
-            Logger.getInstance().message(this.id + ": missing parameters.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
 
         // check inputs and outputs
@@ -192,13 +190,11 @@ public class AttributeFilter extends Task {
             }
         }
         catch (TaskException e){
-            Logger.getInstance().message(this.id + " : task error : " + e.getMessage(), Logger.V_IMPORTANT);
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
-            Logger.getInstance().message(this.id + " : runtime error : " + e.getMessage(), Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -211,8 +207,7 @@ public class AttributeFilter extends Task {
     private void eliminatePatterns(Vector<String> whereFrom) throws TaskException {
         for (String str : whereFrom) {
             if (str.contains("*")) {
-                Logger.getInstance().message(this.id + ": Patterns in I/O specs.", Logger.V_IMPORTANT);
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id);
+                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id, "Patterns in I/O specs.");
             }
         }
     }
@@ -253,9 +248,8 @@ public class AttributeFilter extends Task {
         if (data.length > 1){
             for (int i = 1; i < data.length; ++i){
                 if (!data[i].equalHeaders(data[0])){
-                    Logger.getInstance().message(this.id + " : data from different files are not compatible.",
-                            Logger.V_IMPORTANT);
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                            "Data from different files are not compatible.");
                 }
             }
         }

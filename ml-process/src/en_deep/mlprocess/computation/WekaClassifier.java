@@ -109,7 +109,7 @@ public class WekaClassifier extends Task {
 
         // check for parameters
         if (this.parameters.get(WEKA_CLASS) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
 
         // initialize the classifier and set its parameters
@@ -125,11 +125,13 @@ public class WekaClassifier extends Task {
 
         // check if there are no patterns in inputs and outputs
         if (this.output.get(0).contains("*")){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id);
+            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
+                    "No patterns allowed in output file name.");
         }
         for (String inputFile: this.input){
             if (inputFile.contains("*")){
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id);
+                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
+                        "No patterns allowed in input file names.");
             }
         }        
     }
@@ -145,8 +147,8 @@ public class WekaClassifier extends Task {
             throw e;
         }
         catch (Exception e){
-            e.printStackTrace();
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id);
+            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -167,9 +169,8 @@ public class WekaClassifier extends Task {
             this.classif = (AbstractClassifier) classifConstructor.newInstance();
         }
         catch (Exception e) {
-            Logger.getInstance().message(this.id + ": WEKA class not found or not valid: "
-                    + this.parameters.get(WEKA_CLASS), Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                    "WEKA class not found or not valid: " + this.parameters.get(WEKA_CLASS));
         }
 
         // set-up the classifier parameters
@@ -201,8 +202,7 @@ public class WekaClassifier extends Task {
             this.classif.setOptions((String []) classifParams.toArray(new String[0]));
         }
         catch (Exception e){
-            Logger.getInstance().message(this.id + ": could not set classifier parameters.", Logger.V_IMPORTANT);
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Could not set classifier parameters.");
         }
     }
 
@@ -282,7 +282,7 @@ public class WekaClassifier extends Task {
                     missing = att;
                 }
                 else {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id);
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Cannot find target attribute.");
                 }
             }
         }
@@ -291,10 +291,11 @@ public class WekaClassifier extends Task {
         if (this.parameters.get(CLASS_ARG) != null){
 
             if (missing != null && !missing.name().equals(this.parameters.get(CLASS_ARG))){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
             }
             if (train.attribute(this.parameters.get(CLASS_ARG)) == null){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                        "Target attribute not found in training data.");
             }
             if (missing == null){
                 train.setClass(train.attribute(this.parameters.get(CLASS_ARG)));
