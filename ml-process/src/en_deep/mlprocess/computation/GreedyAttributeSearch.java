@@ -338,7 +338,7 @@ public class GreedyAttributeSearch extends Task {
             throw te;
         }
         catch (Exception e){
-            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_IMPORTANT);
+            Logger.getInstance().logStackTrace(e, Logger.V_IMPORTANT);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }

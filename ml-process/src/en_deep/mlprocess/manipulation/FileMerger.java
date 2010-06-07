@@ -94,7 +94,7 @@ public class FileMerger extends Task {
                 this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
             }
             catch(IOException e){
-                Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+                Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
                 throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
             }
         }

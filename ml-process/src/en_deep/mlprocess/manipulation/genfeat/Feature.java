@@ -27,9 +27,11 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Vector;
 
 /**
@@ -89,7 +91,12 @@ public abstract class Feature {
             featureConstructor = featureClass.getConstructor(StToArffConfig.class);
             res = (Feature) featureConstructor.newInstance(config);
         }
-        catch(Exception ex){
+        catch (InvocationTargetException e){
+            Logger.getInstance().logStackTrace(e.getCause(), Logger.V_DEBUG);
+            return null;
+        }
+        catch (Exception ex){
+            Logger.getInstance().logStackTrace(ex, Logger.V_DEBUG);
             return null;
         }
 

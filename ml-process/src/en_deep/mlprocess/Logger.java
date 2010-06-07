@@ -112,15 +112,19 @@ public class Logger {
     /**
      * Outputs an exception stack trace, if the current verbosity setting meets the importance.
      *
-     * @param stackTrace the stack trace of an exception
+     * @param ex the exception
      * @param importance the given importance
      */
-    public synchronized void logStackTrace(StackTraceElement[] stackTrace, int importance) {
+    public synchronized void logStackTrace(Throwable ex, int importance) {
 
-        if (importance < this.verbosity){
-            System.err.println(this.dateFormatter.format(new Date()) + " -- EXCEPTION:");
+        if (importance <= this.verbosity){
+
+            System.err.println(this.dateFormatter.format(new Date()) + ex.getClass().getName() + ":");
+
+            StackTraceElement [] stackTrace = ex.getStackTrace();
+
             for (int i = 0; i < stackTrace.length; ++i){
-                System.err.println("\t" + stackTrace[i].toString());
+                System.err.println("\tat " + stackTrace[i].toString());
             }
         }
     }

@@ -122,7 +122,7 @@ public class DataSplitter extends Task {
             throw e;
         }
         catch (Exception e){
-            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }

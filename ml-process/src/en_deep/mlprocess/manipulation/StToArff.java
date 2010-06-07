@@ -190,6 +190,7 @@ public class StToArff extends Task {
         if (!new File(configFile).exists()){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
         }
+        this.parameters.put(LANG_CONF, configFile); // set-up the LANG_CONF path
         this.config = new StToArffConfig(this);
 
         // initialize boolean parameters
@@ -241,11 +242,11 @@ public class StToArff extends Task {
             }
         }
         catch (TaskException e){
-            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw e;
         }
         catch (Exception e){
-            Logger.getInstance().logStackTrace(e.getStackTrace(), Logger.V_DEBUG);
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
