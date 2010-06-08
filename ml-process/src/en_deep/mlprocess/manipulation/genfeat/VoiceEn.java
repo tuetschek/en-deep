@@ -28,8 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
 
 /**
  * This feature indicates the word's voice in English (as a verb), if applicable. It depends
@@ -41,8 +40,8 @@ public class VoiceEn extends Feature {
 
     /* METHODS */
 
-    public VoiceEn(StToArffConfig config) {
-        super(config);
+    public VoiceEn(StReader reader) {
+        super(reader);
     }
 
     @Override
@@ -51,29 +50,25 @@ public class VoiceEn extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
-        String wordPos = sentence.get(wordNo)[this.config.IDXI_POS];
-        String headPos = null;
-        int head = Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]);
-
-        if (head > 0){
-            headPos = sentence.get(head-1)[this.config.IDXI_POS];
-        }
+        String wordPOS = this.reader.getWordInfo(wordNo, this.reader.IDXI_POS);
+        // head POS -- will be "" for root node
+        String headPOS = this.reader.getWordInfo(this.reader.getHeadPos(wordNo), this.reader.IDXI_POS);
 
         // we need to deal with a verb
-        if (wordPos.startsWith("VB") || wordPos.equals("MD")){
+        if (wordPOS.startsWith("VB") || wordPOS.equals("MD")){
 
-            if (!wordPos.equals("VBN") || headPos == null){
-                if (wordPos.equals("VB")){ // infinite verb form
+            if (!wordPOS.equals("VBN") || headPOS.equals("")){
+                if (wordPOS.equals("VB")){ // infinite verb form
                     return "Infinite";
                 }
                 return "Active";
             }
-            if (headPos.startsWith("VB")){ // VBN dependens on another verb form -> passive
+            if (headPOS.startsWith("VB")){ // VBN dependens on another verb form -> passive
                 return "Passive";
             }
-            else if (headPos.startsWith("N")){ // VBN depends on a noun - adjectively used passive
+            else if (headPOS.startsWith("N")){ // VBN depends on a noun - adjectively used passive
                 return "Passive";
             }
             return "Active";

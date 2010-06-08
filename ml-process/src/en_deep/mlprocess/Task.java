@@ -133,13 +133,13 @@ public abstract class Task implements Serializable {
     }
 
     /**
-     * Returns a boolean value of a class {@link parameters parameter}, which is false if the parameter
+     * Returns a boolean value of a class {@link #parameters parameter}, which is false if the parameter
      * value is "0" or "false" and true otherwise
      *
      * @param paramName the name of the parameter to be examined
      * @return the boolean value of the parameter
      */
-    protected boolean getBooleanParameterVal(String paramName) {
+    public boolean getBooleanParameterVal(String paramName) {
 
         if (this.parameters.get(paramName) != null){
             return (this.parameters.get(paramName).equals("0")
@@ -149,6 +149,16 @@ public abstract class Task implements Serializable {
         else {
             return false;
         }
+    }
+
+    /**
+     * Returns a string value of a class {@link #parameters parameter}.
+     * 
+     * @param paramName the name of the desired parameter
+     * @return the value of the given parameter, or null
+     */
+    public String getParameterVal(String paramName) {
+        return this.parameters.get(paramName);
     }
 
 }

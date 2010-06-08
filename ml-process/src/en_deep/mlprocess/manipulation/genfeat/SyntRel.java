@@ -28,8 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
 
 /**
  * This feature indicates several following relations:
@@ -39,8 +38,8 @@ import java.util.Vector;
  */
 public class SyntRel extends Feature {
 
-    public SyntRel(StToArffConfig config) {
-        super(config);
+    public SyntRel(StReader reader) {
+        super(reader);
     }
 
     @Override
@@ -50,26 +49,27 @@ public class SyntRel extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
         boolean siblChild = false;
         boolean syntDep = false;
-        int curPos = wordNo + 1;
+        int curPos = wordNo;
 
         while (curPos != 0){ // find out the syntactical dependency (a predicate doesn't depend on itself)
-            curPos = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
-            if (curPos == predNo + 1){
+            curPos = this.reader.getHeadPos(curPos);
+
+            if (curPos == predNo){
                 syntDep = true;
                 break;
             }
         }
 
         // siblings (a predicate is it's own sibling)
-        if (sentence.get(wordNo)[this.config.IDXI_HEAD].equals(sentence.get(predNo)[this.config.IDXI_HEAD])){
+        if (this.reader.getHeadPos(wordNo) == this.reader.getHeadPos(predNo)){
             siblChild = true;
         }
-        // child
-        else if (Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]) == predNo + 1) {
+        // direct child
+        else if (this.reader.getHeadPos(wordNo) == predNo) {
             siblChild = true;
         }
 

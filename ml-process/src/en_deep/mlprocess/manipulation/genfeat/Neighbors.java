@@ -28,8 +28,8 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This encapsulates several features containing the topological neighbors of the given word.
@@ -46,8 +46,8 @@ public class Neighbors extends Feature {
 
     /* METHODS */
 
-    public Neighbors(StToArffConfig config){
-        super(config);
+    public Neighbors(StReader reader){
+        super(reader);
     }
 
     @Override
@@ -62,24 +62,32 @@ public class Neighbors extends Feature {
                 + StToArff.ATTRIBUTE + " Right3 " + StToArff.STRING;
     }
 
+
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
         
-        return "\"" + this.config.escape(wordNo >= 3 ? sentence.get(wordNo - 3)[this.config.IDXI_FORM] : "") + "\",\""
-                + this.config.escape(wordNo >= 2 ? sentence.get(wordNo - 2)[this.config.IDXI_FORM] : "")  + "\",\""
-                + this.config.escape(wordNo >= 1 ? sentence.get(wordNo - 1)[this.config.IDXI_FORM] : "") + "\",\""
-                + this.config.escape(wordNo >= 2 ? sentence.get(wordNo - 2)[this.config.IDXI_FORM]
-                    + BIGRAM_SEPARATOR + sentence.get(wordNo - 1)[this.config.IDXI_FORM] :
-                    (wordNo >= 1 ? sentence.get(wordNo - 1)[this.config.IDXI_FORM] : ""))  + "\",\""
-                + this.config.escape(wordNo < sentence.size() - 2 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM]
-                    + BIGRAM_SEPARATOR + sentence.get(wordNo + 2)[this.config.IDXI_FORM] :
-                    (wordNo < sentence.size() - 1 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM] : ""))  + "\",\""
-                + this.config.escape(wordNo < sentence.size() - 1 ? sentence.get(wordNo + 1)[this.config.IDXI_FORM]
-                    : "") + "\",\""
-                + this.config.escape(wordNo < sentence.size() - 2 ? sentence.get(wordNo + 2)[this.config.IDXI_FORM]
-                    : "") + "\",\""
-                + this.config.escape(wordNo < sentence.size() - 3 ? sentence.get(wordNo + 3)[this.config.IDXI_FORM]
-                    : "") + "\"";
+        return this.getNeighborsField(wordNo, this.reader.IDXI_FORM);
+    }
+
+    /**
+     * Returns all the neighbors' values for the given field.
+     * 
+     * @param wordNo The word to compute the relative distance from.
+     * @param field The field to get.
+     * @return All the neighbors' values for the given field.
+     */
+    private String getNeighborsField(int wordNo, int field){
+
+        return "\"" + StringUtils.escape(this.reader.getWordInfo(wordNo - 3, field)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field))  + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo - 1, field)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field)
+                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo - 1, field))  + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field)
+                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo + 2, field))  + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field))  + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo + 2, field))  + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(wordNo + 3, field))  + "\"";
     }
 
 }

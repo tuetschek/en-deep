@@ -60,20 +60,17 @@ public class StToArff extends Task {
     /* CONSTANTS */
 
     /** The lang_conf parameter name */
-    private static final String LANG_CONF = "lang_conf";
+    static final String LANG_CONF = "lang_conf";
     /** The multiclass parameter name */
     private static final String MULTICLASS = "multiclass";
     /** The predicted parameter name */
-    private static final String PREDICTED = "predicted";
+    static final String PREDICTED = "predicted";
     /** The pred_only parameter name */
     private static final String PRED_ONLY = "pred_only";
     /** The generate parameter name */
     private static final String GENERATE = "generate";
     /** The omit_semclass parameter name */
     private static final String OMIT_SEMCLASS = "omit_semclass";
-
-    /** Number of compulsory fields that are in each sentence */
-    private static final int COMPULSORY_FIELDS = 14;
 
     /** Output file suffix for noun predicates */
     private static final String NOUN = ".n";
@@ -132,14 +129,11 @@ public class StToArff extends Task {
     /** Omit semantic class in the ouptut ? */
     private boolean omitSemClass;
 
-    /** Sentence ID generation -- last used value */
-    private static int lastId = 0;
-
     /** Features to be generated */
     private Vector<Feature> genFeats;
 
-    /** The input configuration */
-    private StToArffConfig config;
+    /** The input reader */
+    private StReader reader;
 
     /** Used output files (for reprocessing) */
     private HashMultimap<String, String> usedFiles;
@@ -156,7 +150,7 @@ public class StToArff extends Task {
      * <strong>Parameters:</strong>
      * </p>
      * <ul>
-     * <li><tt>lang_conf</tt> -- path to the language config file, that contains a FEAT usage indication ("1"/empty line), followed
+     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains a FEAT usage indication ("1"/isEmpty line), followed
      * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (one line, space-separated).</li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
@@ -185,13 +179,12 @@ public class StToArff extends Task {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter lang_conf is missing.");
         }
 
-        // find the config file
+        // find the reader file
         String configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
         if (!new File(configFile).exists()){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
         }
         this.parameters.put(LANG_CONF, configFile); // set-up the LANG_CONF path
-        this.config = new StToArffConfig(this);
 
         // initialize boolean parameters
         this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
@@ -226,8 +219,8 @@ public class StToArff extends Task {
     public void perform() throws TaskException {
 
         try {
-            // read the list of possible POS, FEAT and DEPREL tags
-            this.config.init();
+            
+            this.reader = new StReader(this);
 
             for (int i = 0; i < this.input.size(); ++i){
                 // convert the files
@@ -251,6 +244,7 @@ public class StToArff extends Task {
         }
     }
 
+
     /**
      * Performs one file conversion.
      * @param st the input file name
@@ -259,17 +253,15 @@ public class StToArff extends Task {
      */
     private void convert(String st, String arff) throws TaskException, FileNotFoundException, IOException {
 
-        RandomAccessFile in = new RandomAccessFile(st, "r");
-        Vector<String []> sentence = this.readSentence(in);
         int [] predNums;
         Vector<String> outFiles;
-        int sentenceId;
 
-        while (sentence != null){
+        this.reader.setInputFile(st);
 
-            sentenceId = generateSentenceId();
-            predNums = this.findPredicates(sentence, sentenceId, st); // find predicate positions
-            outFiles = this.findOutputs(sentence, predNums, arff); // find correpsonding output file names
+        while (this.reader.loadNextSentence()){
+
+            predNums = this.reader.getPredicates();
+            outFiles = this.findOutputs(predNums, arff); // find correpsonding output file names
             this.writeHeaders(outFiles); // prepare output file headers
 
             // for all predicates, write the sentence to an output file
@@ -278,9 +270,9 @@ public class StToArff extends Task {
                 FileOutputStream os = new FileOutputStream(outFiles.get(i), true);
                 PrintStream out = new PrintStream(os);
 
-                for (int j = 0; j < sentence.size(); ++j){
+                for (int j = 0; j < this.reader.length(); ++j){
 
-                    String [] word = sentence.get(j);
+                    String [] word = this.reader.getWord(j);
 
                     // skip non-predicate lines if such setting is imposed
                     if (this.predOnly && j != predNums[i]){
@@ -288,15 +280,15 @@ public class StToArff extends Task {
                     }
 
                     // print the compulsory fields
-                    out.print(sentenceId);
+                    out.print(this.reader.getSentenceId());
 
-                    for (int k = 0; k < COMPULSORY_FIELDS; ++k){
-                        if (this.config.posFeat == false &&
-                                (k == this.config.IDXI_FEAT || k == this.config.IDXI_FEAT + this.config.predictedNon)){
+                    for (int k = 0; k < this.reader.COMPULSORY_FIELDS; ++k){
+                        if (this.reader.posFeat == false &&
+                                (k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon)){
                             continue; // skip FEAT if we're not using them
                         }
-                        if (k == this.config.IDXI_WORDID || k == this.config.IDXI_HEAD
-                                || k == this.config.IDXI_HEAD + this.config.predictedNon){
+                        if (k == this.reader.IDXI_WORDID || k == this.reader.IDXI_HEAD
+                                || k == this.reader.IDXI_HEAD + this.reader.predictedNon){
                             out.print("," + word[k]);
                         }
                         else { // quote non-numeric fields
@@ -306,14 +298,14 @@ public class StToArff extends Task {
                     
                     // add generated features
                     for (Feature f : this.genFeats){
-                        out.print("," + f.generate(sentence, j, predNums[i]));
+                        out.print("," + f.generate(j, predNums[i]));
                     }
 
                     // print the resulting semantic relation to the given predicate
                     if (!this.omitSemClass){
                         if (!this.useMulticlass){
-                            for (String role : this.config.semRoles){
-                                if (word[this.config.IDXI_SEMROLE + i].equals(role)){
+                            for (String role : this.reader.semRoles){
+                                if (word[this.reader.IDXI_SEMROLE + i].equals(role)){
                                     out.print(",1");
                                 }
                                 else {
@@ -322,7 +314,7 @@ public class StToArff extends Task {
                             }
                         }
                         else {
-                            out.print(",\"" + word[this.config.IDXI_SEMROLE + i] + "\"");
+                            out.print(",\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");
                         }
                     }
 
@@ -333,28 +325,13 @@ public class StToArff extends Task {
                 out = null;
             }
 
-            sentence = this.readSentence(in); // read next sentence
-
-            if (sentenceId % 1000 == 0){
-                Logger.getInstance().message(this.id + ": Input: " + st + ", sentence: " + sentenceId, Logger.V_DEBUG);
+            if (this.reader.getSentenceId() % 1000 == 0){
+                Logger.getInstance().message(this.id + ": Input: " + st + ", sentence: " + this.reader.getSentenceId(),
+                        Logger.V_DEBUG);
             }
         }
-
-        in.close();
-        in = null;
     }
  
-
-    /**
-     * Returns a unique sentence ID.
-     *
-     * @return the generated ID
-     */
-    private static synchronized int generateSentenceId(){
-
-        lastId++;
-        return lastId;
-    }
 
     /**
      * Writes output ARFF files headers for the given file names. Heeds the "multiclass" parameter
@@ -377,7 +354,7 @@ public class StToArff extends Task {
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
 
-                if (this.config.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
+                if (this.reader.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
                     out.println(HEADER[i]);
                 }
                 else if (i == IDXO_FEAT || i == IDXO_FEAT + 1){ // do not print FEAT headers if we're not using them
@@ -397,13 +374,13 @@ public class StToArff extends Task {
             // if supposed to do so at all (heed the "omit_semclass" parameter)
             if (!this.omitSemClass){
                 if (!this.useMulticlass){
-                    for (String role : this.config.semRoles){
+                    for (String role : this.reader.semRoles){
                         out.println(ATTRIBUTE + " " + role + " " + INTEGER);
                     }
                 }
                 else {
                     out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
-                    out.print(this.config.getSemRoles());
+                    out.print(this.reader.getSemRoles());
                     out.println("}");
                 }
             }
@@ -424,24 +401,25 @@ public class StToArff extends Task {
      * @param pattern output file name pattern
      * @return
      */
-    private Vector<String> findOutputs(Vector<String[]> sentence, int [] predNums, String pattern) {
+    private Vector<String> findOutputs(int [] predNums, String pattern) {
 
         Vector<String> out = new Vector<String>(predNums.length);
 
         for (int i = 0; i < predNums.length; ++i){ // search for predicates
 
-            if (sentence.get(predNums[i])[this.config.IDXI_FILLPRED].equals("Y")){ // a predicate has been found -> fill output file details
+            // a predicate has been found -> fill output file details
+            if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_FILLPRED).equals("Y")){ 
 
                 String posSuffix = TAG_ERR;
                 String predicate, fileName;
 
-                if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.nounPat)){
+                if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS).matches(this.reader.nounPat)){
                     posSuffix = NOUN;
                 }
-                else if (sentence.get(predNums[i])[this.config.IDXI_POS].matches(this.config.verbPat)){
+                else if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS).matches(this.reader.verbPat)){
                     posSuffix = VERB;
                 }
-                predicate = sentence.get(predNums[i])[this.config.IDXI_LEMMA] + posSuffix;
+                predicate = this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA) + posSuffix;
                 fileName = pattern.replace("**", predicate);
                 this.usedFiles.put(predicate, fileName); // store the used file name
                 out.add(fileName);
@@ -449,25 +427,6 @@ public class StToArff extends Task {
         }
 
         return out;
-    }
-
-    /**
-     * Reads one sentence from the input ST file.
-     * @param in the input ST file, already open
-     * @return the next sentence or null upon EOF
-     */
-    private Vector<String[]> readSentence(RandomAccessFile in) throws IOException {
-
-        Vector<String []> res = new Vector<String []>();
-        String word = in.readLine();
-
-        while (word != null && !word.matches("^\\s*$")){
-
-            res.add(word.split("\\t"));
-            word = in.readLine();
-        }
-
-        return res.size() > 0 ? res : null;
     }
 
     /**
@@ -487,7 +446,7 @@ public class StToArff extends Task {
 
         for (String featName : featList){
 
-            Feature feat = Feature.createFeature(featName.trim(), this.config);
+            Feature feat = Feature.createFeature(featName.trim(), this.reader);
 
             if (feat == null){
                 Logger.getInstance().message(this.id + ": Feature " + featName + " has not been found, skipping.",
@@ -497,34 +456,6 @@ public class StToArff extends Task {
                 this.genFeats.add(feat);
             }
         }
-    }
-
-
-    /**
-     * Returns a list of positions where the predicates in this sentence are.
-     *
-     * @param sentence the sentence to be processed
-     * @param sentenceId the current sentence id
-     * @param fileName the file name
-     * @return the list of predicate positions in the sentence
-     */
-    private int[] findPredicates(Vector<String[]> sentence, int sentenceId, String fileName) throws TaskException {
-
-        int [] ret = new int [sentence.get(0).length - COMPULSORY_FIELDS];
-        int pos = 0;
-
-        for (int i = 0; i < sentence.size(); ++i){ // collect all predicate positions
-            if (sentence.get(i)[this.config.IDXI_FILLPRED].equals("Y")){
-                ret[pos] = i;
-                pos++;
-            }
-        }
-        if (pos != ret.length){ // check their number
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id,
-                    "Predicate and fillpred column numbers mismatch in " + fileName + " at sentence "
-                    + sentenceId + ".");
-        }
-        return ret;
     }
 
 
@@ -542,7 +473,7 @@ public class StToArff extends Task {
         StringBuilder toConvert = new StringBuilder();
         String newHeader;
 
-        // get the list of attributes to be converted
+        // getWord the list of attributes to be converted
         for (int i = 0; i < bulk.numAttributes(); ++i){
             if (bulk.attribute(i).isString()){
                 if (toConvert.length() != 0){
@@ -644,169 +575,5 @@ public class StToArff extends Task {
         in.close();
         in = null;
     }
-
-
-    /**
-     * This stores all the configuration needed for the conversion an the generated
-     * features as well.
-     */
-    public class StToArffConfig {
-
-        /* CONSTANTS */
-
-        /** Index of the word id in the ST file */
-        public final int IDXI_WORDID = 0;
-        /** Index of the FORM attribute in the ST file */
-        public final int IDXI_FORM = 1;
-        /** Index of the FILLPRED attribute in the ST file */
-        public final int IDXI_FILLPRED = 12;
-        /** Starting index of the semantic roles (APRED) in the ST file */
-        public final int IDXI_SEMROLE = 14;
-        /** Index of the POS attribute in the ST file */
-        public final int IDXI_POS;
-        /** Index of the lemma attribute in the ST file */
-        public final int IDXI_LEMMA;
-        /** Index of the HEAD attribute in the ST file */
-        public final int IDXI_HEAD;
-        /** Index of the DEPREL attribute in the ST file */
-        public final int IDXI_DEPREL;
-        /** Index of the DEPREL attribute in the ST file */
-        public final int IDXI_FEAT;
-
-        /* VARIABLES */
-
-        /** Will be FEAT values used for this language? */
-        public boolean posFeat;
-        /** Possible semantic roles */
-        public String [] semRoles;
-
-        /** Tag pattern for verbs in the ST file */
-        public String nounPat;
-        /** Tag pattern for nouns in the ST file */
-        public String verbPat;
-
-        /** Path to config file */
-        private final String configFile;
-
-        /** Use predicted POS and DEPREL values ? */
-        private final boolean usePredicted;
-        /** 
-         * Always -1, if usePredicted is true, 1 otherwise -- in order to cover the second 
-         * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
-         */
-        private final int predictedNon;
-
-        /** The parameters of the {@link StToArff} task. */
-        private final Hashtable<String, String> taskParameters;
-        /** The id of the {@link StToArff} task */
-        private final String taskId;
-
-        /* METHODS */
-
-        StToArffConfig(StToArff task){
-
-            this.taskParameters = task.parameters;
-            this.configFile = this.taskParameters.get(StToArff.LANG_CONF);
-            this.usePredicted = task.getBooleanParameterVal(StToArff.PREDICTED);
-            this.taskId = task.getId();
-
-            if (this.usePredicted){
-                IDXI_POS = 5;
-                IDXI_LEMMA = 3;
-                IDXI_HEAD = 9;
-                IDXI_DEPREL = 11;
-                IDXI_FEAT = 7;
-                this.predictedNon = -1;
-            }
-            else {
-                IDXI_POS = 4;
-                IDXI_LEMMA = 2;
-                IDXI_HEAD = 8;
-                IDXI_DEPREL = 10;
-                IDXI_FEAT = 6;
-                this.predictedNon = 1;
-            }
-        }
-
-        /**
-         * Reads the language configuration from a file, i.e\. all SEMREL values,
-         * noun and verb POS tag pattern and usage of FEAT for the current ST file language.
-         *
-         * @throws FileNotFoundException
-         * @throws IOException
-         * @throws TaskException
-         */
-        private void init() throws FileNotFoundException, IOException {
-
-            RandomAccessFile in = new RandomAccessFile(this.configFile, "r");
-            this.posFeat = in.readLine().matches("\\s*") ? false : true;
-            this.nounPat = in.readLine();
-            this.verbPat = in.readLine();
-            String semRolesStr = in.readLine();
-
-            in.close();
-            in = null;
-
-            if (semRolesStr == null || this.nounPat == null || this.verbPat == null){
-                throw new IOException();
-            }
-
-            this.semRoles = semRolesStr.split("\\s+");
-        }
-
-        /**
-         * Return a comma-separated list of possible semantic roles
-         * @return list of semantic roles
-         */
-        String getSemRoles(){
-            return this.listMembers(this.semRoles);
-        }
-
-        /**
-         * Return a comma-separated list of items from an array
-         * @param arr the array to be transformed to a string
-         * @return a comma-separated list in string form
-         */
-        private String listMembers(String [] arr){
-
-            StringBuilder sb = new StringBuilder();
-
-            if (arr == null || arr.length == 0){
-                return "";
-            }
-
-            sb.append("\"" + this.escape(arr[0]) + "\"");
-            for (int j = 1; j < arr.length; ++j){
-                sb.append(",\"" + this.escape(arr[j]) + "\"");
-            }
-            return sb.toString();
-        }
-
-        /**
-         * Escapes a string to be used in quotes in an ARFF file.
-         * 
-         * @param str the input string
-         * @return the escaped version
-         */
-        public String escape(String str){
-            return str.replace("\\", "\\\\").replace("\"", "\\\"");
-        }
-
-        /**
-         * Returns the value of the given task parameter.
-         * @param paramName the desired parameter name
-         * @return the value of the given task parameter
-         */
-        public String getTaskParameter(String paramName){
-            return this.taskParameters.get(paramName);
-        }
-
-        /**
-         * Returns the id of the current task.
-         * @return the id of the current task
-         */
-        public String getTaskId(){
-            return this.taskId;
-        }
-    }
+    
 }

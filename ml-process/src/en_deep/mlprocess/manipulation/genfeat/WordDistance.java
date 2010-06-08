@@ -28,8 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
 
 /**
  * This feature indicates the topological distance from the predicate to the given word.
@@ -37,8 +36,8 @@ import java.util.Vector;
  */
 public class WordDistance extends Feature {
 
-    public WordDistance(StToArffConfig config) {
-        super(config);
+    public WordDistance(StReader reader) {
+        super(reader);
     }
 
     @Override
@@ -47,7 +46,7 @@ public class WordDistance extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
         return Integer.toString(Math.abs(wordNo - predNo));
     }

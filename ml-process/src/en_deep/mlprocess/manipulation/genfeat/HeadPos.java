@@ -28,8 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
 
 /**
  * This generated feature indicates the relative position of the given word to
@@ -39,8 +38,8 @@ import java.util.Vector;
  */
 public class HeadPos extends Feature {
 
-    public HeadPos(StToArffConfig config) {
-        super(config);
+    public HeadPos(StReader reader) {
+        super(reader);
     }
 
 
@@ -50,15 +49,15 @@ public class HeadPos extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
-        int headPos = Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]);
+        int headPos = this.reader.getHeadPos(wordNo);
 
         if (headPos == 0){
             return "_";
         }
 
-        if (wordNo - 1 < headPos){
+        if (wordNo < headPos){
             return "Before";
         }
         else {

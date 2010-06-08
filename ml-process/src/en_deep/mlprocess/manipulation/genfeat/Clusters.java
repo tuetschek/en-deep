@@ -29,21 +29,21 @@ package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
+import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.StReader.Direction;
 import en_deep.mlprocess.manipulation.StToArff;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
-import java.util.Vector;
 
 /**
  * This class adds the number(s) of the clusters for the individual words to the list of
  * usable features. It needs an additional parameter to the {@link StToArff} class:
  * <ul>
- * <li><tt>clusters_file</tt> -- a space-separated list of filenames in the working directory that contain the
- *      cluster associations</li>
+ * <li><tt>cluster_file</tt> -- a space-separated list of filenames in the working directory that contain the
+ *      clusterType associations</li>
  * </ul>
- * The cluster file must contain the list of words in one cluster on each line.
+ * The clusterType file must contain the list of words in one clusterType on each line.
  * @author Ondrej Dusek
  */
 public class Clusters extends Feature {
@@ -57,31 +57,33 @@ public class Clusters extends Feature {
 
     /** Separator for different data types within one clustering definition */
     private static final char DATA_TYPE_SEP = '^';
-    /** Separator for data types in cluster feature names */
+    /** Separator for data types in clusterType feature names */
     private static final String FEAT_NAME_SEP = "_";
-    /** Number of the cluster that contains not-associated tokens */
+    /** Number of the clusterType that contains not-associated tokens */
     private static final String NO_CLUSTER = "-1";
+    /** Separator for data values in bigrams etc. */
+    private static final String DATA_SEP = "|";
 
     /* DATA */
     
-    /** The names of all the given cluster files */
+    /** The names of all the given clusterType files */
     private String [] clusterFileNames;
     /** The data types used for all the individual clusters */
     private int [] [] clusterDataTypes;
     /** The names of the features (corresponding to {@link #clusterFileNames} */
     private String [] featNames;
 
-    /** The cluster information variants for all words and all cluster files */
+    /** The clusterType information variants for all words and all clusterType files */
     private Hashtable<String, Integer> [] clusters;
     
     /* METHODS */
 
 
     /**
-     * Just the initialization -- reads the cluster files and saves the clusters for later use.
-     * @param config
+     * Just the initialization -- reads the clusterType files and saves the clusters for later use.
+     * @param reader
      */
-    public Clusters(StToArffConfig config) throws TaskException {
+    public Clusters(StReader config) throws TaskException {
 
         super(config);
 
@@ -93,12 +95,12 @@ public class Clusters extends Feature {
         this.clusterDataTypes = new int [this.clusterFileNames.length] [];
         this.featNames = new String [this.clusterFileNames.length];
 
-        // select the cluster file names
+        // select the clusterType file names
         for (int i = 0; i < this.clusterFileNames.length; ++i){
             this.clusterFileNames[i] = Process.getInstance().getWorkDir() + this.clusterFileNames[i];
         }
 
-        // create the clusters -- load the contents of the cluster files and create the names of new features
+        // create the clusters -- load the contents of the clusterType files and create the names of new features
         try {
             this.loadClusters();
         }
@@ -115,7 +117,20 @@ public class Clusters extends Feature {
 
         for (int i = 0; i < this.featNames.length; ++i){
 
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left3" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left2" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left1" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left12" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right12" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right1" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right2" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right3" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Parent" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Children" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_LeftSibling" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_RightSibling" + LF);
+
             if (i < this.featNames.length - 1){
                 text.append(LF);
             }
@@ -125,43 +140,113 @@ public class Clusters extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
         StringBuilder text = new StringBuilder();
 
-        for (int i = 0; i < this.clusters.length; ++i){
+        for (int clusterType = 0; clusterType < this.clusters.length; ++clusterType){
 
-            StringBuilder token = new StringBuilder();
-            Integer clusterNo;
-
-            for (int j = 0; j < this.clusterDataTypes[i].length; ++j){
-                if (j > 0){
-                    token.append(DATA_TYPE_SEP);
-                }
-                token.append(sentence.get(wordNo)[this.clusterDataTypes[i][j]]);
-            }
-
-            if (i > 0){
+            if (clusterType > 0){
                 text.append(",");
             }
-            clusterNo = this.clusters[i].get(token.toString());
-            if (clusterNo != null){
-                text.append(clusterNo.toString());
+            // the word itself
+            text.append(this.getCluster(clusterType, wordNo) + ",");
+
+            // left3 ... right3
+            text.append(this.getCluster(clusterType, wordNo-3) + ",");
+            text.append(this.getCluster(clusterType, wordNo-2) + ",");
+            text.append(this.getCluster(clusterType, wordNo-1) + ",");
+            text.append(this.getCluster(clusterType, wordNo-2)
+                    + DATA_SEP + this.getCluster(clusterType, wordNo-1) + ",");
+            text.append(this.getCluster(clusterType, wordNo+1)
+                    + DATA_SEP + this.getCluster(clusterType, wordNo+2) + ",");
+            text.append(this.getCluster(clusterType, wordNo+1) + ",");
+            text.append(this.getCluster(clusterType, wordNo+2) + ",");
+            text.append(this.getCluster(clusterType, wordNo+3) + ",");
+
+            // parent
+            text.append(this.getCluster(clusterType, this.reader.getHeadPos(wordNo)) + ",");
+
+            // children
+            int [] childrenPos = this.reader.getChildrenPos(wordNo);
+            if (childrenPos.length == 0){
+                text.append("-");
             }
             else {
-                text.append(NO_CLUSTER);
+                for (int j = 0; j < childrenPos.length; ++j){
+                    if (j > 0){
+                        text.append(DATA_SEP);
+                    }
+                    text.append(this.getCluster(clusterType, childrenPos[j]));
+                }
             }
+            text.append(",");
+
+            // left & right sibling
+            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.LEFT)) + ",");
+            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.RIGHT)));
         }
         return text.toString();
     }
 
+    
+    /**
+     * Returns the ID of clusterType for the given word and clusterType data type. Returns "-" for
+     * out-of-range requests.
+     *
+     * @param dataTypeNo Order of the chosen clusterType file.
+     * @param token The number of the desired word.
+     * @return The clusterType ID for the token, or {@link #NO_CLUSTER} if not applicable.
+     */
+    private String getCluster(int dataTypeNo, int wordNo) {
+
+        String token = this.getToken(dataTypeNo, wordNo);
+
+        if (token.equals("")){
+            return "-";
+        }
+
+        Integer clusterNo = this.clusters[dataTypeNo].get(token);
+
+        if (clusterNo != null) {
+            return clusterNo.toString();
+        } else {
+            return NO_CLUSTER;
+        }
+    }
+
+    /**
+     * Returns a token that may have been assigned a clusterType for the given clusterType type
+     * (clusterType file). For out-of-range requests, an empty string is returned.
+     * 
+     * @param dataTypeNo Order of the chosen clusterType file.
+     * @param word The number of the desired word in the current sentence.
+     * @return The token that identifies a clusterType.
+     */
+    private String getToken(int dataTypeNo, int wordNo) {
+
+        if (wordNo < 0 || wordNo >= this.reader.length()){
+            return "";
+        }
+
+        StringBuilder token = new StringBuilder();
+
+        for (int j = 0; j < this.clusterDataTypes[dataTypeNo].length; ++j) {
+            if (j > 0) {
+                token.append(DATA_TYPE_SEP);
+            }
+            token.append(this.reader.getWordInfo(wordNo, this.clusterDataTypes[dataTypeNo][j]));
+        }
+        return token.toString();
+    }
+
     /**
      * Load the files that contain the word clustering information. According to that information,
-     * create the corresponding cluster feature names.
+     * create the corresponding clusterType feature names.
      * <p>
-     * The input cluster file must contain space-separated column numbers from the ST-file that
-     * were used to generate the clusters on the first line, followed by the cluster associations
-     * on the next lines. The cluster associations must have the following format:
+     * The input clusterType file must contain space-separated column numbers from the ST-file that
+     * were used to generate the clusters on the first line, followed by the clusterType associations
+     * on the next lines. The clusterType associations must have the following format:
      * </p>
      * <tt>cluster_number: word1 word2 word3 ...\n</tt>
      */
@@ -181,7 +266,7 @@ public class Clusters extends Feature {
                     this.clusterDataTypes[i][j] = Integer.parseInt(usedCols[j]);
                 }
                 catch(NumberFormatException e){
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, config.getTaskId(),
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, reader.getTaskId(),
                             "Invalid data types specification in " + this.clusterFileNames[i] + ".");
                 }
                 this.featNames[i] += FEAT_NAME_SEP + this.clusterDataTypes[i][j];
@@ -193,10 +278,10 @@ public class Clusters extends Feature {
     }
 
     /**
-     * Reads all the cluster associations from one text file (format: see {@link #loadClusters()}).
+     * Reads all the clusterType associations from one text file (format: see {@link #loadClusters()}).
      * @param in the opened input file
      * @param name the name of the opened input file
-     * @return the cluster assoctiations.
+     * @return the clusterType assoctiations.
      */
     private Hashtable<String, Integer> readClusters(RandomAccessFile in, String name) throws IOException, TaskException {
 
@@ -211,14 +296,14 @@ public class Clusters extends Feature {
             int clusterId;
             
             if (lineParts.length != 2){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, config.getTaskId(), "Clustering file error in "
+                throw new TaskException(TaskException.ERR_INVALID_DATA, reader.getTaskId(), "Clustering file error in "
                         + name + " at line " + lineNo);
             }
             try {
                 clusterId = Integer.parseInt(lineParts[0].trim());
             }
             catch (NumberFormatException e){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, config.getTaskId(), "Clustering file error in "
+                throw new TaskException(TaskException.ERR_INVALID_DATA, reader.getTaskId(), "Clustering file error in "
                         + name + " at line " + lineNo);
             }
 

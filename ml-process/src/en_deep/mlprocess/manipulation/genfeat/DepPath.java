@@ -28,8 +28,8 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This feature contains the complete path in DEPREL and POS values from the argument candidate
@@ -40,8 +40,8 @@ import java.util.Vector;
  */
 public class DepPath extends Feature {
 
-    public DepPath(StToArffConfig config) {
-        super(config);
+    public DepPath(StReader reader) {
+        super(reader);
     }
 
     @Override
@@ -52,9 +52,9 @@ public class DepPath extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
-        int [] pathBack = new int [sentence.size()];
+        int [] pathBack = new int [this.reader.length()];
         int curPos = predNo + 1;
         StringBuilder pathRel = new StringBuilder(), pathPos = new StringBuilder();
         int pathLength = 0;
@@ -64,7 +64,7 @@ public class DepPath extends Feature {
         }
 
         while(curPos > 0){ // find the way from the predicate to the root
-            int head = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
+            int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_HEAD));
             if (head > 0){
                 pathBack[head-1] = curPos;
             }
@@ -74,11 +74,11 @@ public class DepPath extends Feature {
         // find the way up from the argument to the predicate-root path
         curPos = wordNo + 1;
         while (curPos != 0 && curPos != predNo + 1 && pathBack[curPos-1] == 0){
-            int head = Integer.parseInt(sentence.get(curPos - 1)[this.config.IDXI_HEAD]);
+            int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1,this.reader.IDXI_HEAD));
 
             if (curPos != wordNo + 1){
-                pathRel.append("/" + sentence.get(curPos - 1)[this.config.IDXI_DEPREL]);
-                pathPos.append("/" + sentence.get(curPos - 1)[this.config.IDXI_POS]);
+                pathRel.append("/" + this.reader.getWordInfo(curPos - 1,this.reader.IDXI_DEPREL));
+                pathPos.append("/" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
             }
             curPos = head;
             pathLength++;
@@ -86,15 +86,15 @@ public class DepPath extends Feature {
 
         if (curPos != predNo + 1){
             if (curPos != wordNo + 1){ // end the way up
-                pathRel.append("/" + sentence.get(curPos - 1)[this.config.IDXI_DEPREL]);
-                pathPos.append("/" + sentence.get(curPos - 1)[this.config.IDXI_POS]);
+                pathRel.append("/" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
+                pathPos.append("/" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
                 pathLength++;
             }
             curPos = pathBack[curPos-1];
             // follow the predicate-root path down to the predicate
             while (curPos != 0 && curPos != predNo + 1){
-                pathRel.append("\\" + sentence.get(curPos - 1)[this.config.IDXI_DEPREL]);
-                pathPos.append("\\" + sentence.get(curPos - 1)[this.config.IDXI_POS]);
+                pathRel.append("\\" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
+                pathPos.append("\\" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
                 curPos = pathBack[curPos-1];
                 pathLength++;
             }
@@ -106,8 +106,8 @@ public class DepPath extends Feature {
             pathPos.append("/");
         }
 
-        return "\"" + this.config.escape(pathRel.toString()) + "\",\""
-                + this.config.escape(pathPos.toString()) + "\"," + Integer.toString(pathLength);
+        return "\"" + StringUtils.escape(pathRel.toString()) + "\",\""
+                + StringUtils.escape(pathPos.toString()) + "\"," + Integer.toString(pathLength);
     }
 
 }

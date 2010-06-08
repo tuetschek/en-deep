@@ -28,8 +28,8 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
-import java.util.Vector;
+import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This feature returns the lemma, pos and form of the parent node.
@@ -37,8 +37,8 @@ import java.util.Vector;
  */
 public class Head extends Feature {
 
-    public Head(StToArffConfig config){
-        super(config);
+    public Head(StReader reader){
+        super(reader);
     }
 
     @Override
@@ -49,16 +49,16 @@ public class Head extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
         
-        Integer headPos = Integer.parseInt(sentence.get(wordNo)[this.config.IDXI_HEAD]);
+        Integer headPos = this.reader.getHeadPos(wordNo);
 
         if (headPos == 0){ // the root node
             return "\"\",\"\",\"\"";
         }
-        return "\"" + this.config.escape(sentence.get(headPos - 1)[this.config.IDXI_POS]) + "\",\""
-                + this.config.escape(sentence.get(headPos - 1)[this.config.IDXI_LEMMA]) + "\",\""
-                + this.config.escape(sentence.get(headPos - 1)[this.config.IDXI_FORM]) + "\"";
+        return "\"" + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_POS)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_LEMMA)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_FORM)) + "\"";
     }
 
 }

@@ -29,10 +29,9 @@ package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StToArff.StToArffConfig;
+import en_deep.mlprocess.manipulation.StReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Vector;
 
 /**
  * This is the super-class for all generated features, which are used
@@ -48,18 +47,18 @@ public abstract class Feature {
 
     /* DATA */
 
-    /** The used ST-file format setting */
-    StToArffConfig config;
+    /** The used ST-file reader */
+    StReader reader;
 
 
     /* METHODS */
 
     /**
      * Constructor, to be used by subclasses only
-     * @param config the language-specific ST-file configuration
+     * @param reader the language-specific ST-file configuration
      */
-    protected Feature(StToArffConfig config){
-        this.config = config;
+    protected Feature(StReader reader){
+        this.reader = reader;
     }
 
     /**
@@ -69,7 +68,7 @@ public abstract class Feature {
      * @param name the desired class name (within the {@link en_deep.mlprocess.manipulation.genfeat} package)
      * @return the {@link Feature} object to use with the {@link StToArff} class.
      */
-    public static Feature createFeature(String name, StToArffConfig config) {
+    public static Feature createFeature(String name, StReader config) {
 
         Feature res = null;
         Class featureClass = null;
@@ -88,7 +87,7 @@ public abstract class Feature {
 
         // try to call a constructor with no parameters
         try {
-            featureConstructor = featureClass.getConstructor(StToArffConfig.class);
+            featureConstructor = featureClass.getConstructor(StReader.class);
             res = (Feature) featureConstructor.newInstance(config);
         }
         catch (InvocationTargetException e){
@@ -112,13 +111,12 @@ public abstract class Feature {
 
     /**
      * The main method -- generates the feature value for the given word
-     * in a sentence, relative to the given predicate.
+     * relative to the given predicate, in the sentence that is currently loaded in the {@link #reader}.
      *
-     * @param sentence the whole sentence, where the value is computed
      * @param wordNo the number of the word to which the value applies
      * @param predNo the number of the word which is a predicate and to which the value of the feature is related
      * @return the value of the generated feature, in a string representation
      */
-    public abstract String generate(Vector<String []> sentence, int wordNo, int predNo);
+    public abstract String generate(int wordNo, int predNo);
 
 }

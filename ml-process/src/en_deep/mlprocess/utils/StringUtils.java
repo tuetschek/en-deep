@@ -25,47 +25,44 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.genfeat;
-
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.utils.StringUtils;
+package en_deep.mlprocess.utils;
 
 /**
- * This feature lists all the PsOS, lemmas and tags of the children of the given
- * word.
+ * This class comprises several useful string functions, which do not pertain to a specific object type.
+ *
  * @author Ondrej Dusek
  */
-public class Children extends Feature {
+public class StringUtils {
 
-    /** The separator for the individual children */
-    private static final String SEP = "|";
+    /**
+     * Concatenates all the strings from a given field, separating them with the
+     * given string.
+     * @param data the strings to be joined
+     * @param sep field separator
+     * @return the concatenation of all strings using the given separator
+     */
+    public static String join(String [] data, String sep){
 
-    public Children(StReader reader){
-        super(reader);
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < data.length; ++i){
+            if (i > 0){
+                sb.append(sep);
+            }
+            sb.append(data[i]);
+        }
+
+        return sb.toString();
     }
 
-    @Override
-    public String getHeader() {
-        return StToArff.ATTRIBUTE + " ChildrenPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenLemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING;
+    /**
+     * Escapes a string to be used in quotes in an ARFF file.
+     *
+     * @param str the input string
+     * @return the escaped version
+     * @todo move to {@link Feature}
+     */
+    public static String escape(String str) {
+        return str.replace("\\", "\\\\").replace("\"", "\\\"");
     }
-
-    @Override
-    public String generate(int wordNo, int predNo) {
-
-
-        int [] children = this.reader.getChildrenPos(wordNo);
-        String [] pos = this.reader.getWordsInfo(children, this.reader.IDXI_POS);
-        String [] lemma = this.reader.getWordsInfo(children, this.reader.IDXI_LEMMA);
-        String [] form = this.reader.getWordsInfo(children, this.reader.IDXI_FORM);
-
-        // output the result
-        return "\"" + StringUtils.escape(StringUtils.join(pos, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(lemma, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(form, SEP)) + "\"";
-    }
-
-
 }

@@ -27,8 +27,10 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
+import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.StReader.Direction;
 import en_deep.mlprocess.manipulation.StToArff;
-import java.util.Vector;
+import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This generated feature adds the POS of the left and right sibling of
@@ -41,8 +43,8 @@ public class SiblingPOS extends Feature {
 
     /* METHODS */
 
-    public SiblingPOS(StToArff.StToArffConfig config){
-        super(config);
+    public SiblingPOS(StReader reader){
+        super(reader);
     }
 
     @Override
@@ -52,27 +54,13 @@ public class SiblingPOS extends Feature {
     }
 
     @Override
-    public String generate(Vector<String[]> sentence, int wordNo, int predNo) {
+    public String generate(int wordNo, int predNo) {
 
-        // find the mother node number
-        String motherNo = sentence.get(wordNo)[this.config.IDXI_HEAD];
-        int leftNo = -1, rightNo = -1;
-
-        // search for the siblings
-        for (int i = 0; i < sentence.size(); ++i){
-            if (sentence.get(i)[this.config.IDXI_HEAD].equals(motherNo)){
-                if (i < wordNo){
-                    leftNo = i;
-                }
-                else if (i > wordNo && rightNo == -1){
-                    rightNo = i;
-                }
-            }
-        }
-
-        // produce output -- find the POS's of the both siblings, if applicable
-        return "\"" + this.config.escape(leftNo != -1 ? sentence.get(leftNo)[this.config.IDXI_POS] : "_") + "\",\""
-                + this.config.escape(rightNo != -1 ? sentence.get(rightNo)[this.config.IDXI_POS] : "_") + "\"";
+        // produce output -- find the PsOS of the both siblings, if applicable
+        return "\"" + StringUtils.escape(this.reader.getWordInfo(
+                this.reader.getSiblingPos(wordNo, Direction.LEFT), this.reader.IDXI_POS)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(
+                this.reader.getSiblingPos(wordNo, Direction.RIGHT), this.reader.IDXI_POS)) + "\"";
     }
 
 }
