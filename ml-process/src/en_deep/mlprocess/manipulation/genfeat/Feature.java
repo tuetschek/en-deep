@@ -66,9 +66,10 @@ public abstract class Feature {
      * the process fails.
      *
      * @param name the desired class name (within the {@link en_deep.mlprocess.manipulation.genfeat} package)
+     * @param reader the ST-format input reader, providing all the data and settings
      * @return the {@link Feature} object to use with the {@link StToArff} class.
      */
-    public static Feature createFeature(String name, StReader config) {
+    public static Feature createFeature(String name, StReader reader) {
 
         Feature res = null;
         Class featureClass = null;
@@ -88,7 +89,7 @@ public abstract class Feature {
         // try to call a constructor with no parameters
         try {
             featureConstructor = featureClass.getConstructor(StReader.class);
-            res = (Feature) featureConstructor.newInstance(config);
+            res = (Feature) featureConstructor.newInstance(reader);
         }
         catch (InvocationTargetException e){
             Logger.getInstance().logStackTrace(e.getCause(), Logger.V_DEBUG);

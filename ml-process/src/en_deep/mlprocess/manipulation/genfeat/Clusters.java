@@ -83,15 +83,15 @@ public class Clusters extends Feature {
      * Just the initialization -- reads the clusterType files and saves the clusters for later use.
      * @param reader
      */
-    public Clusters(StReader config) throws TaskException {
+    public Clusters(StReader reader) throws TaskException {
 
-        super(config);
+        super(reader);
 
-        if (config.getTaskParameter(CLUSTER_FILE) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, config.getTaskId(),
+        if (reader.getTaskParameter(CLUSTER_FILE) == null){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, reader.getTaskId(),
                     "Parameter cluster_file is missing.");
         }
-        this.clusterFileNames = config.getTaskParameter(CLUSTER_FILE).split("\\s+");
+        this.clusterFileNames = reader.getTaskParameter(CLUSTER_FILE).split("\\s+");
         this.clusterDataTypes = new int [this.clusterFileNames.length] [];
         this.featNames = new String [this.clusterFileNames.length];
 
@@ -105,7 +105,7 @@ public class Clusters extends Feature {
             this.loadClusters();
         }
         catch(IOException e){
-            throw new TaskException(TaskException.ERR_IO_ERROR, config.getTaskId(), 
+            throw new TaskException(TaskException.ERR_IO_ERROR, reader.getTaskId(),
                     "Error reading cluster files: " + e.getMessage());
         }
     }
@@ -118,18 +118,18 @@ public class Clusters extends Feature {
         for (int i = 0; i < this.featNames.length; ++i){
 
             text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left3" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left2" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left1" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Left12" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right12" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right1" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right2" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Right3" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Parent" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_Children" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_LeftSibling" + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + "_RightSibling" + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left3 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left2 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left1 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left12 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right12 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right1 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right2 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right3 " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Parent " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Children " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_LeftSibling " + StToArff.STRING + LF);
+            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_RightSibling " + StToArff.STRING);
 
             if (i < this.featNames.length - 1){
                 text.append(LF);

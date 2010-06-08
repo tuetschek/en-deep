@@ -192,6 +192,13 @@ public class StToArff extends Task {
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);       
 
         // initialize features to be generated
+        try {
+            this.reader = new StReader(this);
+        }
+        catch (IOException e){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, 
+                    "Cannot initialize ST reader, probably lang_conf file error:" + e.getMessage());
+        }
         this.initGenFeats();
 
         // initialize the list of used output files
@@ -218,9 +225,7 @@ public class StToArff extends Task {
     @Override
     public void perform() throws TaskException {
 
-        try {
-            
-            this.reader = new StReader(this);
+        try {            
 
             for (int i = 0; i < this.input.size(); ++i){
                 // convert the files

@@ -52,21 +52,32 @@ public class Neighbors extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " Left3 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left2 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left1 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left12 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right12 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right1 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right2 " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right3 " + StToArff.STRING;
+        return this.getHeaderText("_Form") + LF + this.getHeaderText("_Lemma") + LF + this.getHeaderText("_POS");
+    }
+
+    /**
+     * Returns the whole text of one type of headers, with the given suffix
+     * @param suffix the suffix to be appended to the new features' names
+     * @return the text of one type of headers
+     */
+    private String getHeaderText(String suffix){
+        return StToArff.ATTRIBUTE + " Left3" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Left2" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Left1" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Left12" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Right12" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Right1" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Right2" + suffix + " " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " Right3" + suffix + " " + StToArff.STRING;
     }
 
 
     @Override
     public String generate(int wordNo, int predNo) {
         
-        return this.getNeighborsField(wordNo, this.reader.IDXI_FORM);
+        return this.getNeighborsField(wordNo, this.reader.IDXI_FORM) + ","
+                + this.getNeighborsField(wordNo, this.reader.IDXI_LEMMA) + ","
+                + this.getNeighborsField(wordNo, this.reader.IDXI_POS);
     }
 
     /**

@@ -29,6 +29,8 @@ package en_deep.mlprocess.utils;
 
 import java.io.*;
 import java.nio.channels.*;
+import weka.core.Instances;
+import weka.core.converters.ConverterUtils;
 
 /**
  * A class that unites some basic file manipulation functions.
@@ -81,6 +83,54 @@ public class FileUtils{
                 outChannel.close();
             }
         }
+    }
+
+    /**
+     * This reads the contents of an ARFF (or convertible) data file, using WEKA code.
+     *
+     * @param fileName the name of the file to read
+     * @return the file contents
+     * @throws Exception if an I/O error occurs
+     */
+    public static Instances readArff(String fileName) throws Exception {
+
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
+        Instances data = reader.getDataSet();
+        reader.reset();
+        return data;
+    }
+
+    /**
+     * This reads just the internal structure of a given ARFF file.
+     *
+     * @param fileName the name of the file to read
+     * @return the file structure
+     * @throws Exception if an I/O error occurs
+     */
+    public static Instances readArffStructure(String fileName) throws Exception {
+
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
+        Instances data = reader.getStructure();
+        reader.reset();
+        return data;
+    }
+
+
+    /**
+     * This writes the given data into an ARFF file using WEKA code and closes the file
+     * afterwards.
+     *
+     * @param fileName the file to write into
+     * @param data the data to be written
+     * @throws Exception if an I/O error occurs
+     */
+    public static void writeArff(String fileName, Instances data) throws Exception {
+
+        FileOutputStream os = new FileOutputStream(fileName);
+        ConverterUtils.DataSink writer = new ConverterUtils.DataSink(os);
+
+        writer.write(data);
+        os.close();
     }
 
 }

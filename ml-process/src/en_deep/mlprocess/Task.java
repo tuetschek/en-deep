@@ -112,7 +112,7 @@ public abstract class Task implements Serializable {
             if (ex.getCause().getClass().equals(TaskException.class)){
                 throw (TaskException) ex.getCause();
             }
-            Logger.getInstance().logStackTrace(ex, Logger.V_DEBUG);
+            Logger.getInstance().logStackTrace(ex.getCause(), Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_TASK_INIT_ERR, desc.getId(), ex.getMessage());
         }
         catch(Exception ex){

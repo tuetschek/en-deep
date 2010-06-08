@@ -55,7 +55,7 @@ public class SyntRel extends Feature {
         boolean syntDep = false;
         int curPos = wordNo;
 
-        while (curPos != 0){ // find out the syntactical dependency (a predicate doesn't depend on itself)
+        while (curPos != -1){ // find out the syntactical dependency (a predicate doesn't depend on itself)
             curPos = this.reader.getHeadPos(curPos);
 
             if (curPos == predNo){

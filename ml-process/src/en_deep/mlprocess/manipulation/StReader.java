@@ -231,7 +231,7 @@ public class StReader {
         else { // create an ID for the new valid sentence
             this.sentenceId = generateSentenceId();
         }
-        return (this.words.isEmpty());
+        return (!this.words.isEmpty());
     }
 
     /**
@@ -244,7 +244,7 @@ public class StReader {
      */
     int[] getPredicates() throws TaskException {
 
-        int [] ret = new int [this.length() - COMPULSORY_FIELDS];
+        int [] ret = new int [this.words.get(0).length - COMPULSORY_FIELDS];
         int pos = 0;
 
         for (int i = 0; i < this.length(); ++i){ // collect all predicate positions
@@ -362,6 +362,10 @@ public class StReader {
      * @return the position of the syntactic head of the given word, or -1 for the root node
      */
     public int getHeadPos(int wordNo) {
+
+        if (wordNo < 0 || wordNo >= this.length()){
+            return -1;
+        }
 
         int pos = Integer.parseInt(this.getWordInfo(wordNo, IDXI_HEAD));
 

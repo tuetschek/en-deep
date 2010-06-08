@@ -30,16 +30,17 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import java.io.FileOutputStream;
+import en_deep.mlprocess.utils.FileUtils;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 
 /**
- * This creates new attributes that contain only the most common values. Everything else is
- * filtered out of them.
+ * This creates new attributes that contain only the most common values of the old ones. Everything else is
+ * filtered out of the old attributes.
+ *
  * @author Ondrej Dusek
  */
 public class AttributeFilter extends Task {
@@ -58,14 +59,14 @@ public class AttributeFilter extends Task {
     private static final String MERGE_INPUTS = "merge_inputs";
 
     /** The string that is appended to all filtered attribute names */
-    private static final String ATTR_NAME_SUFF = "filt";
+    private static final String ATTR_NAME_SUFF = "_filt";
 
     /** The attribute value to replace all the filtered-out values */
     private static final String OTHER_VALUE = "[OTHER]";
 
     /* DATA */
 
-    /** Delete the original attributes ? */
+    /** Delete the original attributePrefixes ? */
     private boolean delOrig;
     /** Merge the inputs before processing ? */
     private boolean mergeInputs;
@@ -73,8 +74,8 @@ public class AttributeFilter extends Task {
     private int mostCommon = -1;
     /** What's the minimum number of occurrences a value should have to be preserved ? (-1 = not applied) */
     private int minOccurrences = -1;
-    /** The names of the attributes to be filtered */
-    private String [] attributes;
+    /** The names of the attributePrefixes to be filtered */
+    private String [] attributePrefixes;
 
 
     /* METHODS */
@@ -86,7 +87,7 @@ public class AttributeFilter extends Task {
      * There is one compulsory parameter:
      * </p>
      * <ul>
-     * <li><tt>attributes</tt> -- space-separated list of attributes that should be filtered</li>
+     * <li><tt>attributes</tt> -- space-separated list of prefixes of attributes that should be filtered</li>
      * </ul>
      * <p>
      * There are two parameters, one of which must be set:
@@ -102,7 +103,7 @@ public class AttributeFilter extends Task {
      * There are additional parameters:
      * <p>
      * <ul>
-     * <li><tt>del_orig</tt> -- delete the original attributes and keep only the filtered</li>
+     * <li><tt>del_orig</tt> -- delete the original attributePrefixes and keep only the filtered</li>
      * <li><tt>merge_inputs</tt> -- merge all the inputs before processing (inputs are assumed to have the same format,
      *      including the possible values</li>
      * </ul>
@@ -130,7 +131,8 @@ public class AttributeFilter extends Task {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid number specification.");
         }
         if (this.parameters.get(ATTRIBUTES) != null){
-            this.attributes = this.parameters.get(ATTRIBUTES).split("\\s+");
+            this.attributePrefixes = this.parameters.get(ATTRIBUTES).split("\\s+");
+            this.checkPrefixes();
         }
 
         if (this.parameters.get(DEL_ORIG) != null){
@@ -140,7 +142,7 @@ public class AttributeFilter extends Task {
             this.mergeInputs = true;
         }
 
-        if (this.attributes == null || (this.mostCommon == -1 && this.minOccurrences == -1)){
+        if (this.attributePrefixes == null || (this.mostCommon == -1 && this.minOccurrences == -1)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
 
@@ -165,27 +167,27 @@ public class AttributeFilter extends Task {
 
                     Instances [] data = new Instances[1];
 
-                    data[0] = this.readArff(this.input.get(i));
+                    data[0] = FileUtils.readArff(this.input.get(i));
 
-                    for (int j = 0; j < this.attributes.length; ++j){
-                        this.filterAttribute(data, this.attributes[j]);
+                    for (int j = 0; j < this.attributePrefixes.length; ++j){
+                        this.filterAttributePrefix(data, this.attributePrefixes[j]);
                     }
 
-                    this.writeArff(this.output.get(i), data[0]);
+                    FileUtils.writeArff(this.output.get(i), data[0]);
                 }
             }
             else {
                 Vector<Instances> allData = new Vector<Instances>();
 
                 for (int i = 0; i < this.input.size(); ++i){
-                    allData.add(this.readArff(this.input.get(i)));
+                    allData.add(FileUtils.readArff(this.input.get(i)));
                 }
-                for (int j = 0; j < this.attributes.length; ++j){
-                    this.filterAttribute(allData.toArray(new Instances[0]), this.attributes[j]);
+                for (int j = 0; j < this.attributePrefixes.length; ++j){
+                    this.filterAttributePrefix(allData.toArray(new Instances[0]), this.attributePrefixes[j]);
                 }
 
                 for (int i = 0; i < this.output.size(); ++i){
-                    this.writeArff(this.output.get(i), allData.get(i));
+                    FileUtils.writeArff(this.output.get(i), allData.get(i));
                 }
             }
         }
@@ -213,104 +215,97 @@ public class AttributeFilter extends Task {
     }
 
     /**
-     * This reads the contents of an ARFF (or convertible) data file, using WEKA code.
+     * This filters just one attribute of the given name, which must be present in the data
+     * and nominal.
      *
-     * @param fileName the name of the file to read
-     * @return the file contents
-     * @throws Exception if an I/O error occurs
+     * @param attrPrefix the name of the attribute
+     * @param data the data for which the filtering should apply
+     * @throws NumberFormatException
+     * @throws TaskException
      */
-    private Instances readArff(String fileName) throws Exception {
-
-        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
-        Instances data = reader.getDataSet();
-        reader.reset();
-        return data;
-    }
-
-    /**
-     * This performs the filtering on the attribute with the given name, if applicable.
-     * Applies this to all data that may be from different files.
-     *
-     * @param data the data to be filtered
-     * @param attrName the name of the feature to be filtered
-     */
-    private void filterAttribute(Instances [] data, String attrName) throws TaskException {
+    private void filterAttribute(String attrName, Instances[] data) throws NumberFormatException, TaskException {
 
         String newName = attrName + ATTR_NAME_SUFF;
 
-        // attribute must be found and must be nominal
-        if (data[0].attribute(attrName) == null || !data[0].attribute(attrName).isNominal()){
-            Logger.getInstance().message(this.id + " : attribute " + attrName + " not found in data "
-                    + data[0].relationName(), Logger.V_WARNING);
-            return;
-        }
-        // check data compatibility
-        if (data.length > 1){
-            for (int i = 1; i < data.length; ++i){
-                if (!data[i].equalHeaders(data[0])){
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                            "Data from different files are not compatible.");
-                }
-            }
-        }
-
         // create a unique name for the new attribute
-        while (data[0].attribute(newName) != null){
-            if (newName.endsWith(ATTR_NAME_SUFF)){
+        while (data[0].attribute(newName) != null) {
+            if (newName.endsWith(ATTR_NAME_SUFF)) {
                 newName += "1";
-            }
-            else {
-                int num = Integer.parseInt(newName.substring(
-                        newName.lastIndexOf(ATTR_NAME_SUFF) + ATTR_NAME_SUFF.length()));
+            } else {
+                int num = Integer.parseInt(newName.substring(newName.lastIndexOf(ATTR_NAME_SUFF) + ATTR_NAME_SUFF.length()));
                 newName.replaceFirst("[0-9]+$", Integer.toString(num + 1));
             }
         }
-
         // collect statistics about the given attribute and create its filtered version
-        int [] stats = this.collectStatistics(data, attrName);
-        boolean [] allowedIndexes = this.filterValues(stats);
+        int[] stats = this.collectStatistics(data, attrName);
+        boolean[] allowedIndexes = this.filterValues(stats);
         Vector<String> allowedValues = new Vector<String>();
-
-        for (int i = 0; i < allowedIndexes.length; ++i){
-            if (allowedIndexes[i]){
+        for (int i = 0; i < allowedIndexes.length; ++i) {
+            if (allowedIndexes[i]) {
                 allowedValues.add(data[0].attribute(attrName).value(i));
             }
         }
         allowedValues.add(OTHER_VALUE);
-
         Attribute newAttr = new Attribute(newName, allowedValues);
-
-        for (int i = 0; i < data.length; ++i){
+        for (int i = 0; i < data.length; ++i) {
             this.addFiltered(data[i], attrName, newAttr, allowedIndexes);
-            
-            if (this.delOrig){ // delete the old attribute if necessary
+            if (this.delOrig) {
+                // delete the old attribute if necessary
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
+        }
+        return;
+    }
+
+
+    /**
+     * This performs the filtering on all nominal attributes with the given prefix, if applicable.
+     * Applies this to all data that may be from different files.
+     *
+     * @param data the data to be filtered
+     * @param attrPrefix the prefix of attributes to be filtered
+     */
+    private void filterAttributePrefix(Instances [] data, String attrPrefix) throws TaskException {
+
+        // check data compatibility
+        if (data.length > 1) {
+            for (int i = 1; i < data.length; ++i) {
+                if (!data[i].equalHeaders(data[0])) {
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Data from different files are not compatible.");
+                }
+            }
+        }
+
+        Vector<String> matches = new Vector<String>();
+        Enumeration<Attribute> allAttribs = data[0].enumerateAttributes();
+
+        // find all matching nominal attributes
+        while (allAttribs.hasMoreElements()){
+            Attribute a = allAttribs.nextElement();
+            if (a.name().startsWith(attrPrefix) && a.isNominal()){
+                matches.add(a.name());
+            }
+        }
+
+        // no matching attribute found
+        if (matches.isEmpty()) {
+            // attribute must be found and must be nominal
+            Logger.getInstance().message(this.id + " : No attribute matching " + attrPrefix + " found in data "
+                    + data[0].relationName(), Logger.V_WARNING);
+            return;
+        }
+
+        // filter all matching attributes
+        for (String attrName : matches){
+            this.filterAttribute(attrName, data);
         }
     }
 
 
     /**
-     * This writes the given data into an ARFF file using WEKA code and closes the file
-     * afterwards.
-     *
-     * @param fileName the file to write into
-     * @param data the data to be written
-     * @throws Exception if an I/O error occurs
-     */
-    private void writeArff(String fileName, Instances data) throws Exception {
-        
-        FileOutputStream os = new FileOutputStream(fileName);
-        ConverterUtils.DataSink writer = new ConverterUtils.DataSink(os);
-
-        writer.write(data);
-        os.close();
-    }
-
-    /**
      * This collects the statistics about how often the individual values of an attribute appear.
      * @param data the data to be examined
-     * @param attrName the attribute to collect the statistics about
+     * @param attrPrefix the attribute to collect the statistics about
      * @return the occurrence counts for all values of the given attribute in the given data
      */
     private int [] collectStatistics(Instances[] data, String attrName) {
@@ -379,7 +374,7 @@ public class AttributeFilter extends Task {
      * Add the filtered attribute and filter the data.
      *
      * @param data the data where the attribute is to be inserted
-     * @param attrName the name of the old attribute
+     * @param attrPrefix the name of the old attribute
      * @param newAttr the new attribute
      * @param allowedIndexes indexes of the allowed values of the old attribute
      */
@@ -400,5 +395,44 @@ public class AttributeFilter extends Task {
             }
         }
     }
+
+    /**
+     * Check that some of the attribute prefixes are not prefixes of others, so that the filtering is not
+     * processed twice.
+     */
+    private void checkPrefixes() {
+
+        Vector<Integer> banned = new Vector<Integer>();
+
+        for (int i = 0; i < this.attributePrefixes.length; ++i){
+            for (int j = 0; j < i; ++j){
+                if (this.attributePrefixes[i].startsWith(this.attributePrefixes[j])){
+                    banned.add(i);
+                }
+                else if (this.attributePrefixes[j].startsWith(this.attributePrefixes[i])){
+                    banned.add(j);
+                }
+            }
+        }
+
+        if (banned.size() > 0){
+            Logger.getInstance().message(this.id + " : Some prefixes in the 'attributes' parameter overlap.",
+                    Logger.V_WARNING);
+
+            String [] uniquePrefixes = new String [this.attributePrefixes.length - banned.size()];
+            int pos = 0;
+
+            for (int i = 0; i < this.attributePrefixes.length; ++i){
+
+                if (!banned.contains(i)){
+                    uniquePrefixes[pos] = this.attributePrefixes[i];
+                    pos++;
+                }
+            }
+            this.attributePrefixes = uniquePrefixes;
+        }
+    }
+
+
 
 }

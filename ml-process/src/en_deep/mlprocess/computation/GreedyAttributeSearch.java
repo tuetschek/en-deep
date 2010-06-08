@@ -186,8 +186,9 @@ public class GreedyAttributeSearch extends Task {
 
         // set the expandedId parameter
         this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
-        if (this.expandedId.substring(this.expandedId.lastIndexOf('#')).matches("#round[0-9]+")
-                || this.expandedId.endsWith("#finalize")){
+        if (this.expandedId.length() > 0
+                && (this.expandedId.substring(this.expandedId.lastIndexOf('#')).matches("#round[0-9]+")
+                || this.expandedId.endsWith("#finalize"))){
             this.expandedId = this.expandedId.substring(0, this.expandedId.lastIndexOf('#'));
         }
 
@@ -351,7 +352,7 @@ public class GreedyAttributeSearch extends Task {
      *
      * @param evalFiles the statistics files from the last round
      */
-    private int evalRound(Vector<String> evalFiles) throws IOException {
+    private int evalRound(Vector<String> evalFiles) throws IOException, Exception {
 
         RandomAccessFile lastRoundStats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, 
                 this.round - 1, 0), "rw");
@@ -417,6 +418,7 @@ public class GreedyAttributeSearch extends Task {
         // write down the selected option
         lastRoundStats.seek(lastRoundStats.length());
         lastRoundStats.write(("Selected: " + bestIndex + " with " + this.measure + " of " + bestVal + LF).getBytes());
+        lastRoundStats.write((this.getLastBestNames() + LF).getBytes());
         lastRoundStats.close();
         
         return bestIndex;
@@ -625,9 +627,7 @@ public class GreedyAttributeSearch extends Task {
      */
     private String getStartAttributes() throws Exception {
 
-        ConverterUtils.DataSource dataIn = new ConverterUtils.DataSource(this.input.get(0));
-        Instances train = dataIn.getStructure();
-        dataIn.reset();
+        Instances train = FileUtils.readArff(this.input.get(0));
 
         if (train.attribute(this.classArg) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Couldn't find the class attribute "
@@ -705,4 +705,26 @@ public class GreedyAttributeSearch extends Task {
 
         return paramSet;
     }
+
+    /**
+     * Returns the space-separated list of names of the {@link #lastBestAttributes}.
+     * @return the space-separated list of names of the selected attributes
+     */
+    private String getLastBestNames() throws Exception {
+
+        Instances structure = FileUtils.readArffStructure(this.input.get(this.input.size()-2));
+        StringBuilder text = new StringBuilder();
+
+        for (int i = 0; i < this.lastBestAttributes.length; ++i){
+            if (this.lastBestAttributes[i] && i != this.classAttribNum){
+                if (text.length() > 0){
+                    text.append(" ");
+                }
+                text.append(structure.attribute(i).name());
+            }
+        }
+
+        return text.toString();
+    }
+
 }
