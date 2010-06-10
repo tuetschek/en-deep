@@ -65,4 +65,27 @@ public class StringUtils {
     public static String escape(String str) {
         return str.replace("\\", "\\\\").replace("\"", "\\\"");
     }
+
+    /**
+     * This returns the numeric value of a variable that is contained somewhere in the string.
+     * The value is recognized as a number following the variable name and a colon.
+     * @param str The string which is searched
+     * @param var The name of the desired variable
+     * @return The value of the given variable
+     * @throws NumberFormatException if the value is not found
+     */
+    public static int findVariableVal(String str, String var) throws NumberFormatException {
+
+        int pos = str.indexOf(var + ":");
+        int end;
+        if (pos == -1){
+            throw new NumberFormatException(var + " not found");
+        }
+        pos += var.length() + 1;
+        end = str.indexOf(" ", pos);
+        if (end == -1){
+            end = str.length();
+        }
+        return Integer.parseInt(str.substring(pos, end));
+    }
 }

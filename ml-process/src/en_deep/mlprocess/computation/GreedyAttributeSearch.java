@@ -43,7 +43,6 @@ import java.io.RandomAccessFile;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 
 
 /**
@@ -191,6 +190,10 @@ public class GreedyAttributeSearch extends Task {
                 || this.expandedId.endsWith("#finalize"))){
             this.expandedId = this.expandedId.substring(0, this.expandedId.lastIndexOf('#'));
         }
+        if (this.expandedId.startsWith("#")){
+            this.expandedId = this.expandedId.substring(1);
+        }
+        this.expandedId = this.expandedId.replace('#', '_');
 
         // check all parameters related to the round of the task
         if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
@@ -417,8 +420,13 @@ public class GreedyAttributeSearch extends Task {
 
         // write down the selected option
         lastRoundStats.seek(lastRoundStats.length());
-        lastRoundStats.write(("Selected: " + bestIndex + " with " + this.measure + " of " + bestVal + LF).getBytes());
-        lastRoundStats.write((this.getLastBestNames() + LF).getBytes());
+        if (bestIndex == -1){
+            lastRoundStats.write(("Best " + bestVal + " worse than previous, reverting." + LF).getBytes());
+        }
+        else {
+            lastRoundStats.write(("Selected: " + bestIndex + " with " + this.measure + " of " + bestVal + LF).getBytes());
+            lastRoundStats.write((this.getLastBestNames() + LF).getBytes());
+        }
         lastRoundStats.close();
         
         return bestIndex;

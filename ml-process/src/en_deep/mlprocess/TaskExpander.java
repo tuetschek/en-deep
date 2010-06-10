@@ -144,7 +144,7 @@ public class TaskExpander {
         // check if all the outputs have "*"s (otherwise, there's no point in using "*" or "***" for inputs)
         if (this.outputTrans == null || this.outputTrans.size() != task.getOutput().size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
-                    "Some outputs have '*' patterns and some don't.");
+                    "All outputs must have '*' patterns if inputs have '*' or '***' patterns.");
         }
 
         // expand outputs and dependent tasks using the expanded task name
@@ -194,13 +194,13 @@ public class TaskExpander {
     /**
      * Expands all the "**"s in the task inputs specification.
      *
-     * TODO it would be better to create a completely new task object, so that it doesn't get confusing
+     * @todo it would be better to create a completely new task object, so that it doesn't get confusing
      */
     private void expandHere() {
         
         Vector<String> taskInput = this.task.getInput();
         
-        for (int i = this.inputHere.size() - 1; i <= 0; ++i) {
+        for (int i = this.inputHere.size() - 1; i >= 0; --i) {
 
             int pos = this.inputHere.get(i);
             Vector<String> files = this.expandPattern(taskInput.get(pos), false);

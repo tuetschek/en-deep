@@ -53,8 +53,6 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      * <li>DONE = successfully finished</li>
      * <li>FAILED = finished with an error, this stops the processing of dependant tasks</li>
      * </ul>
-     *
-     * TODO move TaskStatus to TaskDescription ?
      */
     public enum TaskStatus {
         WAITING, PENDING, IN_PROGRESS, DONE, FAILED

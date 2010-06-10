@@ -32,12 +32,13 @@ import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.computation.WekaClassifier;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.PrintStream;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 
 /**
  * This computes accuracy, precision, recall and F1 (labeled and unlabeled) for the
@@ -116,13 +117,9 @@ public class EvalClassification extends Task {
     private void eval(String goldFile, String testFile, String outFile) throws Exception {
         
         // read the gold data
-        ConverterUtils.DataSource dataIn = new ConverterUtils.DataSource(goldFile);
-        Instances gold = dataIn.getDataSet();
-        dataIn.reset();
+        Instances gold = FileUtils.readArff(goldFile);
         // read the test data
-        dataIn = new ConverterUtils.DataSource(testFile);
-        Instances test = dataIn.getDataSet();
-        dataIn.reset();
+        Instances test = FileUtils.readArff(testFile);
 
         // find the attribute to evaluate
         String attr = this.parameters.get(CLASS_ARG);
@@ -137,50 +134,30 @@ public class EvalClassification extends Task {
         }
 
         // test everything
-        double acc = this.accuracy(gold.attributeToDoubleArray(attrGold.index()),
-                test.attributeToDoubleArray(attrTest.index()));
-
-        Pair<Double, Double> labeled = this.precRec(gold.attributeToDoubleArray(attrGold.index()),
+        Stats labelled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
                 test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), true);
-
-        Pair<Double, Double> unlabeled = this.precRec(gold.attributeToDoubleArray(attrGold.index()),
+        Stats unlabelled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
                 test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), false);
 
         // output the results
         PrintStream out = new PrintStream(outFile);
 
-        out.println("accuracy:" + acc);
-        out.println("labelled precision:" + labeled.first);
-        out.println("labelled recall:" + labeled.second);
-        out.println("labelled f1:" + ((labeled.second + labeled.second) / 2));
-        out.println("unlabelled precision:" + unlabeled.first);
-        out.println("unlabelled recall:" + unlabeled.second);
-        out.println("unlabelled f1:" + ((unlabeled.first + unlabeled.second) / 2));
+        out.println(labelled.toString());
+        out.println(unlabelled.toString());
+        out.println("accuracy:" + labelled.getAcc());
+        out.println("labelled precision:" + labelled.getPrec());
+        out.println("labelled recall:" + labelled.getRecall());
+        out.println("labelled f1:" + labelled.getF1());
+        out.println("unlabelled precision:" + unlabelled.getPrec());
+        out.println("unlabelled recall:" + unlabelled.getRecall());
+        out.println("unlabelled f1:" + unlabelled.getF1());
 
         out.close();
     }
 
-    /**
-     * Computes the accuracy, given the data as arrays.
-     * @param gold the gold standard values
-     * @param eval the test data values
-     * @return the accuracy
-     */
-    private double accuracy(double[] gold, double[] eval) {
-
-        int good = 0;
-
-        for (int i = 0; i < gold.length; ++i){
-            if (gold[i] == eval[i]){
-                ++good;
-            }
-        }
-        return (double) good / (double) gold.length;
-    }
-
 
     /**
-     * Computes precision and recall, given the data as arrays. Works for labeled and unlabeled version
+     * Collects the {@link Stats} values, given the data as arrays. Works for labeled and unlabeled version
      * (unlabeled checks against the EMPTY value only, labeled checks for wrong values, too).
      *
      * @param gold the gold standard values
@@ -189,31 +166,31 @@ public class EvalClassification extends Task {
      * @param labeled should we consider labels ?
      * @return the precision and recall values, respectively
      */
-    private Pair<Double, Double> precRec(double[] gold, double[] test, int emptyVal, boolean labeled) {
+    private Stats getStats(double[] gold, double[] test, int emptyVal, boolean labeled) {
 
-        int tp = 0, fp = 0, tn = 0, fn = 0;
+        Stats stats = new Stats();
         
+        stats.n = gold.length;
 
         for (int i = 0; i < gold.length; ++i){
             if (gold[i] == emptyVal && test[i] == emptyVal){
-                ++tn;
+                ++stats.tn;
             }
             else if (gold[i] == emptyVal && test[i] != emptyVal){
-                ++fp;
+                ++stats.fp;
             }
             else if (gold[i] != emptyVal && test[i] == emptyVal){
-                ++fn;
+                ++stats.fn;
             }
             else if (!labeled || gold[i] == test[i]){
-                ++tp;
+                ++stats.tp;
             }
             else { // same as CoNLL evaluation: wrong label on a right place is a false positive AND negative
-                ++fp; ++fn;
+                ++stats.fp; ++stats.fn;
             }
         }
 
         // first - precision, second - recall
-        return new Pair<Double, Double>((double) tp / (tp + fp), (double) tp / (tp + fn));
+        return stats;
     }
-
 }
