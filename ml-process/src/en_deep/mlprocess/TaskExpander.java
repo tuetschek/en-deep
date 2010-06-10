@@ -328,10 +328,12 @@ public class TaskExpander {
             }
         }
 
-        // expand dependent tasks
+        // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**' and '***', yet)
         if (deps != null){
             for (TaskDescription dep : deps){
-                this.expandDependent(this.task, dep);
+                if (dep.hasInputPattern("*")){
+                    this.expandDependent(this.task, dep);
+                }
             }
         }
     }

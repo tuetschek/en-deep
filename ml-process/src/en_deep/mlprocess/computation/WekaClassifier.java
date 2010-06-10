@@ -28,15 +28,14 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
 import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.classifiers.AbstractClassifier;
-import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
@@ -47,7 +46,7 @@ import weka.core.converters.ConverterUtils;
  *
  * @author Ondrej Dusek
  */
-public class WekaClassifier extends Task {
+public class WekaClassifier extends GeneralClassifier {
 
     /* CONSTANTS */
 
@@ -115,41 +114,6 @@ public class WekaClassifier extends Task {
         // initialize the classifier and set its parameters
         this.initClassifier();
 
-        // check the number of inputs and outputs
-        if (this.input.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
-        }
-        if (this.output.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
-        }
-
-        // check if there are no patterns in inputs and outputs
-        if (this.output.get(0).contains("*")){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
-                    "No patterns allowed in output file name.");
-        }
-        for (String inputFile: this.input){
-            if (inputFile.contains("*")){
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
-                        "No patterns allowed in input file names.");
-            }
-        }        
-    }
-
-
-    @Override
-    public void perform() throws TaskException {
-
-        try {
-            this.classify(this.input.get(0), this.input.get(1), this.output.get(0));
-        }
-        catch (TaskException e){
-            throw e;
-        }
-        catch (Exception e){
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
-        }
     }
 
     /**
@@ -213,20 +177,16 @@ public class WekaClassifier extends Task {
      * @param evalFile the evaluation train file name
      * @param outFile the output file name
      */
-    private void classify(String trainFile, String evalFile, String outFile) throws Exception {
+    protected void classify(String trainFile, String evalFile, String outFile) throws Exception {
 
         Logger.getInstance().message(this.id + ": training " + trainFile + " for eval on " + evalFile + "...",
                 Logger.V_DEBUG);
 
         // read the training data
-        ConverterUtils.DataSource dataIn = new ConverterUtils.DataSource(trainFile);
-        Instances train = dataIn.getDataSet();
-        dataIn.reset();
+        Instances train = FileUtils.readArff(trainFile);
 
         // read the evaluation train and find out the target class
-        dataIn = new ConverterUtils.DataSource(evalFile);
-        Instances eval = dataIn.getDataSet();
-        dataIn.reset();
+        Instances eval = FileUtils.readArff(evalFile);
 
         this.findTargetFeature(train, eval);
 
@@ -256,68 +216,6 @@ public class WekaClassifier extends Task {
         os.close();
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
-    }
-
-    /**
-     * Finds out which of the features is the target one and sets it as "class" in the evaluation data.
-     * It is THE one feature that is present in the train dataset and missing in eval dataset.
-     * If the train and eval datasets have equal features, it's the last feature in train.
-     * If two or more features from train are missing in eval, an error is raised.
-     *
-     * @param train
-     * @param eval
-     */
-    private void findTargetFeature(Instances train, Instances eval) throws TaskException {
-
-        Enumeration trainAtts = train.enumerateAttributes();
-        Attribute missing = null;
-
-        // find out which attribute is missing
-        while (trainAtts.hasMoreElements()){
-
-            Attribute att = (Attribute) trainAtts.nextElement();
-
-            if (eval.attribute(att.name()) == null){
-                if (missing == null){
-                    missing = att;
-                }
-                else {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Cannot find target attribute.");
-                }
-            }
-        }
-
-        // an attribute name was given in parameters -- try to find it
-        if (this.parameters.get(CLASS_ARG) != null){
-
-            if (missing != null && !missing.name().equals(this.parameters.get(CLASS_ARG))){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
-            }
-            if (train.attribute(this.parameters.get(CLASS_ARG)) == null){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                        "Target attribute not found in training data.");
-            }
-            if (missing == null){
-                train.setClass(train.attribute(this.parameters.get(CLASS_ARG)));
-                eval.setClass(eval.attribute(this.parameters.get(CLASS_ARG)));
-                return;
-            }
-            missing = train.attribute(this.parameters.get(CLASS_ARG));
-        }
-
-        // no attribute from train is missing in eval
-        if (missing == null){
-            train.setClassIndex(train.numAttributes()-1);
-            eval.setClass(eval.attribute(train.attribute(train.numAttributes()-1).name()));
-        }
-        // there's just one attribute from train that's missing in eval
-        else {
-            Attribute att = missing.copy(missing.name());
-
-            eval.insertAttributeAt(att, eval.numAttributes());
-            eval.setClass(att);
-            train.setClass(missing);
-        }
     }
 
     /**
