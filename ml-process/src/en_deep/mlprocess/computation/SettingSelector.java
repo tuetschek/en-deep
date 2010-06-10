@@ -86,6 +86,8 @@ public class SettingSelector extends Task {
 
     /** Are we running in the evaluation mode ? */
     private boolean evalMode;
+    /** The part of the task ID that originated in task expansions, used in tempfile naming */
+    private String expandedId;
 
     /* METHODS */
 
@@ -154,6 +156,13 @@ public class SettingSelector extends Task {
         this.measure = this.parameters.remove(MEASURE);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = Process.getInstance().getWorkDir() + this.parameters.remove(TEMPFILE);
+
+        // find out the expanded ID part in order to create tempfile names
+        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
+        if (this.expandedId.startsWith("#")){
+            this.expandedId = this.expandedId.substring(1);
+        }
+        this.expandedId = this.expandedId.replace('#', '_');
     }
 
     @Override
@@ -289,10 +298,10 @@ public class SettingSelector extends Task {
 
             // set all parameters, inputs and outputs
             evalParams.put(CLASS_ARG, this.classArg);
-            classifOutput.add(this.tempFilePattern.replace("*", "(" + i + ")") + CLASS_EXT);
+            classifOutput.add(this.tempFilePattern.replace("*", this.expandedId +  "(" + i + ")") + CLASS_EXT);
             evalInput.add(this.input.get(1));
             evalInput.add(classifOutput.get(0));
-            evalOutput.add(this.tempFilePattern.replace("*", "(" + i + ")") + STATS_EXT);
+            evalOutput.add(this.tempFilePattern.replace("*", this.expandedId + "(" + i + ")") + STATS_EXT);
             lastTaskInput.add(evalOutput.get(0));
             lastTaskInput.add(classifOutput.get(0));
 

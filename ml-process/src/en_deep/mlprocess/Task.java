@@ -161,4 +161,17 @@ public abstract class Task implements Serializable {
         return this.parameters.get(paramName);
     }
 
+    /**
+     * This eliminates the posibility that the given Vector contains patterns by throwing an exception.
+     * @param whereFrom the Vector to be tested
+     * @throws TaskException if the given Vector contains patterns
+     */
+    protected void eliminatePatterns(Vector<String> whereFrom) throws TaskException {
+        for (String str : whereFrom) {
+            if (str.contains("*")) {
+                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id, "Patterns in I/O specs.");
+            }
+        }
+    }
+
 }

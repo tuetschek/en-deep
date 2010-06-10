@@ -57,6 +57,8 @@ public class TaskException extends GeneralException {
     public static final int ERR_TASK_INIT_ERR = 9;
     /** Error code: "Invalid input data." */
     public static final int ERR_INVALID_DATA = 10;
+    /** Error code: "No files found for the pattern." */
+    public static final int ERR_NO_FILES = 11;
 
     /* DATA */
 
@@ -124,6 +126,8 @@ public class TaskException extends GeneralException {
                 return this.taskId + ": Task initialization error. " + this.message;
             case ERR_INVALID_DATA:
                 return this.taskId + ": Invalid input data. " + this.message;
+            case ERR_NO_FILES:
+                return this.taskId + ": No files found for the pattern." + this.message;
             default:
                 return "Unknown error. " + this.message;
         }

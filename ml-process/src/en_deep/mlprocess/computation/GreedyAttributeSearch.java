@@ -195,51 +195,8 @@ public class GreedyAttributeSearch extends Task {
         }
         this.expandedId = this.expandedId.replace('#', '_');
 
-        // check all parameters related to the round of the task
-        if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
-                || (this.parameters.get(START) != null && this.parameters.get(START_ATTRIB) != null)
-                || this.parameters.get(END) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
-        }
-        try {
-            if (this.parameters.get(START) != null){
-                this.start = Integer.parseInt(this.parameters.remove(START));
-            }
-            else {
-                this.startAttrib = this.parameters.get(START_ATTRIB).split("\\s+");
-                this.start = this.startAttrib.length;
-            }
-            this.end = Integer.parseInt(this.parameters.remove(END));
-        }
-        catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + START + " and "
-                    + END + " must be numeric.");
-        }
-
-        // first round
-        if (this.parameters.get(ROUND) == null){
-            this.round = this.start;
-        }
-        // other rounds -- need more paramters
-        else {
-            try {
-                this.round = Integer.parseInt(this.parameters.remove(ROUND));
-                this.attribCount = Integer.parseInt(this.parameters.remove(ATTRIB_COUNT));
-                this.classAttribNum = Integer.parseInt(this.parameters.remove(CLASS_ATTR_NO));
-            }
-            catch (NumberFormatException e){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + ROUND + ", "
-                        + ATTRIB_COUNT + " and " + CLASS_ATTR_NO + " must be numeric.");
-            }
-        }
-        if (this.attribCount > 0 && this.end > this.attribCount){ // limit the task by number of attributes (if known)
-            this.end = this.attribCount;
-        }
-        // check round constraints (round must be within [start, end + 1])
-        if (this.start > this.end || this.start <= 0 || this.end <= 0
-                || this.round < this.start || this.round > this.end + 1){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Round number constraints violated.");
-        }
+        // determine the current round and check all the round-related constraints
+        this.checkRound();
 
         // check the number of inputs and outputs
         if (this.round == this.start && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
@@ -249,38 +206,112 @@ public class GreedyAttributeSearch extends Task {
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
 
-        // final round -- do not check some parameters
-        if (this.round > this.end){
-            if (this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null){
+        // check all round-related compulsory and optional parameters
+        this.checkParameters();
+    }
+
+
+    /**
+     * This checks if all the needed parameters are present and saves all their values. If some parameters are incorrect
+     * or missing, it throws an exception.
+     *
+     * @throws TaskException if some of the parameters are wrong or missing
+     */
+    private void checkParameters() throws TaskException {
+
+        // final round -- special case: some parameters are not needed.
+        if (this.round > this.end) {
+
+            if (this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
             }
+
             this.measure = this.parameters.remove(MEASURE);
             this.tempFilePattern = this.parameters.remove(TEMPFILE);
             return;
         }
-
-        // check the compulsory parameters for the normal case and save them
-        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
+        
+        // normal case: check the compulsory parameters and save them
+        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null 
                 || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
-                || this.parameters.get(TEMPFILE).indexOf("*") == -1){
+                || this.parameters.get(TEMPFILE).indexOf("*") == -1) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
+
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.measure = this.parameters.remove(MEASURE);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
-        // check the optional parameter
-        if (this.parameters.get(MIN_IMPROVEMENT) != null){
+        // normal case: check the optional parameter
+        if (this.parameters.get(MIN_IMPROVEMENT) != null) {
             try {
                 this.minImprovement = Double.parseDouble(this.parameters.remove(MIN_IMPROVEMENT));
             }
-            catch(NumberFormatException e){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter " + MIN_IMPROVEMENT
-                        + " must be numeric.");
+            catch (NumberFormatException e) {
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                        "Parameter " + MIN_IMPROVEMENT + " must be numeric.");
             }
         }
     }
+
+    /**
+     * This checks all the round-related constraints and determines the number of the current, staring and ending round.
+     * @throws TaskException if some of the needed parameters is missing or errorneous
+     */
+    private void checkRound() throws TaskException {
+
+        // check if all needed parameters are present
+        if ((this.parameters.get(START) == null && this.parameters.get(START_ATTRIB) == null)
+                || (this.parameters.get(START) != null && this.parameters.get(START_ATTRIB) != null)
+                || this.parameters.get(END) == null) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
+        }
+
+        // convert the numeric parameters for starting and ending round
+        try {
+            if (this.parameters.get(START) != null) {
+                this.start = Integer.parseInt(this.parameters.remove(START));
+            }
+            else {
+                this.startAttrib = this.parameters.get(START_ATTRIB).split("\\s+");
+                this.start = this.startAttrib.length;
+            }
+            this.end = Integer.parseInt(this.parameters.remove(END));
+        }
+        catch (NumberFormatException e) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + START + " and "
+                    + END + " must be numeric.");
+        }
+
+        // this is the first round -- set the necessary parameter
+        if (this.parameters.get(ROUND) == null) {
+            this.round = this.start;
+        } 
+        // for all next rounds, get the needed parameters
+        else {
+            try {
+                this.round = Integer.parseInt(this.parameters.remove(ROUND));
+                this.attribCount = Integer.parseInt(this.parameters.remove(ATTRIB_COUNT));
+                this.classAttribNum = Integer.parseInt(this.parameters.remove(CLASS_ATTR_NO));
+            }
+            catch (NumberFormatException e) {
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters " + ROUND 
+                        + ", " + ATTRIB_COUNT + " and " + CLASS_ATTR_NO + " must be present and numeric.");
+            }
+        }
+
+        // limit the task by number of attributes (if known)
+        if (this.attribCount > 0 && this.end > this.attribCount) {
+            this.end = this.attribCount;
+        }
+        // check round constraints (round must be within [start, end + 1])
+        if (this.start > this.end || this.start <= 0 || this.end <= 0
+                || this.round < this.start || this.round > this.end + 1) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Round number constraints violated.");
+        }
+    }
+
 
     @Override
     public void perform() throws TaskException {

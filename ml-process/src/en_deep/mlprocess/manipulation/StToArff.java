@@ -474,7 +474,8 @@ public class StToArff extends Task {
     private void stringToNominal(String predicate) throws Exception {
 
         Instances bulk = this.getAllData(this.usedFiles.get(predicate)); // read all instances
-        StringToNominal filter = new StringToNominal();        
+        String oldName = bulk.relationName();
+        StringToNominal filter = new StringToNominal();
         StringBuilder toConvert = new StringBuilder();
         String newHeader;
 
@@ -495,6 +496,7 @@ public class StToArff extends Task {
 
         // write the new nominal header into the old files
         bulk.delete();
+        bulk.setRelationName(oldName);
         newHeader = bulk.toString();
         newHeader = newHeader.substring(0, newHeader.indexOf("\n@data\n") + 1);
         for (String file : this.usedFiles.get(predicate)){

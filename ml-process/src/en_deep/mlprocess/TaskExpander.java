@@ -98,7 +98,7 @@ public class TaskExpander {
      * The actual expansion process. When it's finished, the new tasks and tasks to be deleted may be
      * retrieved using {@link TaskExpander#getTasksToRemove()} and {@link TaskExpander#getTasksToAdd()}
      *
-     * @throws DataException if there's a problem with the data specification
+     * @throws TaskException if there's a problem with the data specification
      */
     public void expand() throws TaskException {
 
@@ -196,7 +196,7 @@ public class TaskExpander {
      *
      * @todo it would be better to create a completely new task object, so that it doesn't get confusing
      */
-    private void expandHere() {
+    private void expandHere() throws TaskException {
         
         Vector<String> taskInput = this.task.getInput();
         
@@ -212,7 +212,7 @@ public class TaskExpander {
     /**
      * Expands all the "***"s in the task inputs specification.
      */
-    private void expandCarthesian() {
+    private void expandCarthesian() throws TaskException {
 
         Vector<String> taskInput = this.task.getInput();
 
@@ -256,8 +256,9 @@ public class TaskExpander {
      * @param pattern the pattern to be expanded
      * @param justExpansions should it return just the expansions ?
      * @return expansions or file names corresponding to the pattern
+     * @throws TaskException if no files can be found for this pattern
      */
-    private Vector<String> expandPattern(String pattern, boolean justExpansions) {
+    private Vector<String> expandPattern(String pattern, boolean justExpansions) throws TaskException {
 
         String dirName = null, filePattern = null;
         Vector<String> ret = new Vector<String>();
@@ -278,10 +279,11 @@ public class TaskExpander {
         filePattern = filePattern.replaceFirst("\\*+", "*"); // ensure we have just one star in the pattern
         files = new File(dirName).list();
 
-        // no files in the directory, just return empty list
+        // no files in the directory
         if (files == null){
-            return ret;
+            throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + pattern + ")");
         }
+
         // find all matching files and push the expansions or whole file names to the results list
         for (String file : files){
 
@@ -295,6 +297,10 @@ public class TaskExpander {
                     ret.add(dirName + File.separator + file);
                 }
             }
+        }
+        // no matching files in the directory
+        if (ret.isEmpty()){
+            throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + pattern + ")");
         }
         // return the result
         return ret;

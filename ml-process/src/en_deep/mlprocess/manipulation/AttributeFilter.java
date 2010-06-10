@@ -200,20 +200,6 @@ public class AttributeFilter extends Task {
         }
     }
 
-
-    /**
-     * This eliminates the posibility that the given Vector contains patterns by throwing an exception.
-     * @param whereFrom the Vector to be tested
-     * @throws TaskException if the given Vector contains patterns
-     */
-    private void eliminatePatterns(Vector<String> whereFrom) throws TaskException {
-        for (String str : whereFrom) {
-            if (str.contains("*")) {
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id, "Patterns in I/O specs.");
-            }
-        }
-    }
-
     /**
      * This filters just one attribute of the given name, which must be present in the data
      * and nominal.
@@ -271,7 +257,8 @@ public class AttributeFilter extends Task {
         if (data.length > 1) {
             for (int i = 1; i < data.length; ++i) {
                 if (!data[i].equalHeaders(data[0])) {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Data from different files are not compatible.");
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                            "Data from different files are not compatible.");
                 }
             }
         }
