@@ -650,6 +650,7 @@ public class Plan {
             }
         }
         if (updatedTask == null){
+            Logger.getInstance().message("Cannot find task " + id + " to update its status!", Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
 
@@ -775,6 +776,8 @@ public class Plan {
         }
 
         if (old == null){
+            Logger.getInstance().message("Cannot find " + id + "where the new tasks should be added!",
+                    Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
 
