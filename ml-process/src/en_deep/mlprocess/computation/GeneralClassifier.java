@@ -42,9 +42,13 @@ import weka.core.Instances;
  */
 public abstract class GeneralClassifier extends Task {
 
+    /* CONSTANTS */
+
+    /** Name of the class_arg parameter */
+    public static final String CLASS_ARG = "class_arg";
+
 
     /* METHODS */
-
 
     /**
      * This just checks if there are only two inputs and one output and no patterns in them.
@@ -81,34 +85,44 @@ public abstract class GeneralClassifier extends Task {
 
     /**
      * Finds out which of the features is the target one and sets it as "class" in the evaluation data.
-     * It is THE one feature that is present in the train dataset and missing in eval dataset.
-     * If the train and eval datasets have equal features, it's the last feature in train.
-     * If two or more features from train are missing in eval, an error is raised.
+     * It is THE one feature that is present in the train dataset and missing in eval dataset, or the
+     * one set-up in the class_arg parameter, if the train and eval datasets have equal features.
+     * If both data sets have equal features and no parameter is given, the last feature in train is selected.
+     * If two or more features from train are missing in eval, an error is raised. If the attribute is
+     * missing in the eval dataset, it is created with empty values.
      *
      * @param train
      * @param eval
      */
     protected void findTargetFeature(Instances train, Instances eval) throws TaskException {
+
         Enumeration trainAtts = train.enumerateAttributes();
         Attribute missing = null;
+
         // find out which attribute is missing
         while (trainAtts.hasMoreElements()) {
+
             Attribute att = (Attribute) trainAtts.nextElement();
+
             if (eval.attribute(att.name()) == null) {
                 if (missing == null) {
                     missing = att;
-                } else {
+                }
+                else {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Cannot find target attribute.");
                 }
             }
         }
+
         // an attribute name was given in parameters -- try to find it
-        if (this.parameters.get(WekaClassifier.CLASS_ARG) != null) {
+        if (this.parameters.get(CLASS_ARG) != null) {
+
             if (missing != null && !missing.name().equals(this.parameters.get(WekaClassifier.CLASS_ARG))) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
             }
             if (train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG)) == null) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found in training data.");
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
+                        + "in training data.");
             }
             if (missing == null) {
                 train.setClass(train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG)));
@@ -117,11 +131,13 @@ public abstract class GeneralClassifier extends Task {
             }
             missing = train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG));
         }
+
         // no attribute from train is missing in eval
         if (missing == null) {
             train.setClassIndex(train.numAttributes() - 1);
             eval.setClass(eval.attribute(train.attribute(train.numAttributes() - 1).name()));
-        } else {
+        }
+        else {
             Attribute att = missing.copy(missing.name());
             eval.insertAttributeAt(att, eval.numAttributes());
             eval.setClass(att);
@@ -151,11 +167,11 @@ public abstract class GeneralClassifier extends Task {
 
     /**
      * This is where the actual classification takes place
-     * @param train the training data file name
-     * @param eval the evaluation data file name
-     * @param output the output file name
+     * @param trainFile the training data file name
+     * @param evalFile the evaluation data file name
+     * @param outputFile the output file name
      * @throws Exception if an I/O or classification error occurs
      */
-    protected abstract void classify(String train, String eval, String output) throws Exception;
+    protected abstract void classify(String trainFile, String evalFile, String outputFile) throws Exception;
 
 }

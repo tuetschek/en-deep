@@ -28,8 +28,12 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Instance;
+import weka.core.Instances;
 
 /**
  * This is just a dummy classifier that assigns the most common value of the target attribute in the training data.
@@ -38,6 +42,21 @@ import java.util.Vector;
  */
 public class DummyClassifier extends GeneralClassifier {
 
+    /**
+     * This creates a new DummyClasifier. Just the inputs and outputs are checked.
+     * There is one voluntary parameter:
+     * <ul>
+     * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
+     * is not specified, the one argument that is missing from the evaluation data will be selected. If
+     * the training and evaluation data have the same arguments, the last one is used.</li>
+     * </ul>
+     * 
+     * @param id
+     * @param parameters
+     * @param input
+     * @param output
+     * @throws TaskException
+     */
     public DummyClassifier(String id, Hashtable<String, String> parameters, Vector<String> input,
             Vector<String> output) throws TaskException {
 
@@ -45,9 +64,61 @@ public class DummyClassifier extends GeneralClassifier {
     }
 
     @Override
-    protected void classify(String train, String eval, String output) throws Exception {
-        // TODO
-        throw new UnsupportedOperationException("Not supported yet.");
+    protected void classify(String trainFile, String evalFile, String outputFile) throws Exception {
+
+        // read the training data
+        Instances train = FileUtils.readArff(trainFile);
+        Instances eval = FileUtils.readArff(evalFile);
+        
+
+        this.findTargetFeature(train, eval);
+        // find the best value
+        double bestVal = this.getBestValue(train);
+        
+        // apply it to the evaluation data
+        Enumeration instances = eval.enumerateInstances();
+        while(instances.hasMoreElements()){
+
+            Instance inst = (Instance) instances.nextElement();
+            inst.setClassValue(bestVal);
+        }
+
+        // write the result
+        FileUtils.writeArff(outputFile, eval);
+    }
+
+    /**
+     * Find the most often used value in the training data.
+     * @param train the training data
+     * @return the most often used value in the training data
+     */
+    private double getBestValue(Instances train) {
+
+        Hashtable<Double,Integer> stats = new Hashtable<Double, Integer>();
+
+        // make statistics about the training data
+        double[] values = train.attributeToDoubleArray(train.classIndex());
+        for (int i = 0; i < values.length; ++i) {
+            if (stats.get(values[i]) != null) {
+                stats.put(values[i], stats.get(values[i]) + 1);
+            } else {
+                stats.put(values[i], 1);
+            }
+        }
+        // find the most often used value
+        double bestVal = Double.NaN;
+        int highestCount = -1;
+
+        Enumeration<Double> valKeys = stats.keys();
+        while (valKeys.hasMoreElements()) {
+            Double val = valKeys.nextElement();
+            if (stats.get(val) > highestCount) {
+                highestCount = stats.get(val);
+                bestVal = val;
+            }
+        }
+
+        return bestVal;
     }
 
 }

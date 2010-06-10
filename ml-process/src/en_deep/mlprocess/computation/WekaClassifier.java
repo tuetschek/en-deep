@@ -53,9 +53,6 @@ public class WekaClassifier extends GeneralClassifier {
     /** Name of the weka_class parameter */
     static final String WEKA_CLASS = "weka_class";
 
-    /** Name of the class_arg parameter */
-    public static final String CLASS_ARG = "class_arg";
-
     /** Name of the select_args parameter */
     static final String SELECT_ARGS = "select_args";
 
@@ -210,10 +207,7 @@ public class WekaClassifier extends GeneralClassifier {
         }
         
         // write the output
-        FileOutputStream os = new FileOutputStream(outFile);
-        ConverterUtils.DataSink dataOut = new ConverterUtils.DataSink(os);
-        dataOut.write(eval);
-        os.close();
+        FileUtils.writeArff(outFile, eval);
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
     }
