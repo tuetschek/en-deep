@@ -278,9 +278,13 @@ public class Plan {
         }
         
         if (pendingDesc == null){
-            // some tasks are in progress and some are waiting -> we have wait
+            // some tasks are in progress and some are waiting -> we have to wait
             if (inProgress && waiting){
-                throw new SchedulingException(SchedulingException.ERR_ALL_IN_PROGRESS);
+                throw new SchedulingException(SchedulingException.ERR_DEP_WAIT);
+            }
+            // no dependencies, but it's still needed to wait if some task will produce others
+            else if (inProgress){
+                throw new SchedulingException(SchedulingException.ERR_IN_PROGRESS);
             }
             // there are no pending tasks & no in progress or waiting - nothing to be done -> return
             return null;

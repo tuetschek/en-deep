@@ -30,14 +30,11 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Plan;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.TaskDescription;
 import en_deep.mlprocess.TaskDescription.TaskStatus;
 import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -47,12 +44,9 @@ import java.util.Vector;
  *
  * @author Ondrej Dusek
  */
-public class SettingSelector extends Task {
+public class SettingSelector extends EvalSelector {
 
     /* CONSTANTS */
-
-    /** The name of the "measure" parameter */
-    static final String MEASURE = "measure";
 
     /** The name of the reserved "eval" parameter */
     private static final String EVAL = "select_from_evaluations";
@@ -77,9 +71,6 @@ public class SettingSelector extends Task {
 
     /** The name of the class attribute to be computed and evaluated upon */
     private String classArg;
-
-    /** The name of the used statistical measure to compare the results */
-    private String measure;
 
     /** The temporary files pattern */
     private String tempFilePattern;
@@ -137,19 +128,13 @@ public class SettingSelector extends Task {
 
         // check the compulsory parameters for the evaluation case
         if (this.parameters.get(EVAL) != null){
-            if (this.parameters.get(MEASURE) == null){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "No measure specified.");
-            }
             this.evalMode = true;
-            this.measure = this.parameters.get(MEASURE);
-
             return;
         }
 
         // check the compulsory parameters for the normal case and save them
         if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
-                || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
-                || this.parameters.get(TEMPFILE).indexOf("*") == -1){
+                || this.parameters.get(TEMPFILE) == null || this.parameters.get(TEMPFILE).indexOf("*") == -1){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
         this.classArg = this.parameters.remove(CLASS_ARG);
@@ -172,17 +157,17 @@ public class SettingSelector extends Task {
             // evaluation mode
             if (this.evalMode){
 
-                Vector<String> evalFiles = new Vector<String>(this.input.size()/2);
+                String [] evalFiles = new String [this.input.size()/2];
                 int best;
 
                 Logger.getInstance().message(this.id + ": Selecting the best result ...", Logger.V_INFO);
 
                 for (int i = 0; i < this.input.size(); i += 2){
-                    evalFiles.add(this.input.get(i));
+                    evalFiles[i/2] = this.input.get(i);
                 }
 
                 // select the best settings
-                best = this.selectBest(evalFiles);
+                best = this.selectBest(evalFiles, null).first;
 
                 Logger.getInstance().message(this.id + ": Best result: " + best, Logger.V_INFO);
 
@@ -205,50 +190,6 @@ public class SettingSelector extends Task {
         catch (Exception e){            
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
-    }
-
-
-    /**
-     * Opens the given files with evaluation statistics as output by
-     * {@link en_deep.mlprocess.evaluation.EvalClassfication} and select the one which has the
-     * best characteristics according to {@link #measure}.
-     *
-     * @param evalFiles a list of statistics files
-     * @return the number of the best statistics within evalFiles
-     */
-    private int selectBest(Vector<String> evalFiles) throws IOException {
-
-        int bestIndex = -1;
-        double bestVal = -1.0;
-
-        for (int i = 0; i < evalFiles.size(); ++i){
-
-            RandomAccessFile stats = new RandomAccessFile(evalFiles.get(i), "r");
-            String line = stats.readLine();
-
-            while (line != null){
-                String [] args = line.split(":");
-
-                args[0] = args[0].trim();
-                args[1] = args[1].trim();
-
-                if (args[0].equalsIgnoreCase(this.measure)){
-
-                    double val = Double.valueOf(args[1]);
-
-                    if (val > bestVal){
-                        bestIndex = i;
-                        bestVal = val;
-                    }
-                    break;
-                }
-
-                line = stats.readLine();
-            }
-            stats.close();
-        }
-
-        return bestIndex;
     }
 
     /**

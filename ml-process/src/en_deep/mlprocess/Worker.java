@@ -135,9 +135,14 @@ public class Worker implements Runnable {
             this.currentTask = Plan.getInstance().getNextPendingTask();
         }
         catch(SchedulingException ex){
+            
+            int suspendTime = SUSPEND_TIME + (int) (Math.random() * SUSPEND_RANDOM);
+            Logger.getInstance().message("Worker thread #" + this.id + "suspending for " + suspendTime + " msecs.",
+                    Logger.V_DEBUG);
+
             // wait, if there's nothing to be processed
             try {
-                Thread.sleep(SUSPEND_TIME + (int) (Math.random() * SUSPEND_RANDOM));
+                Thread.sleep(suspendTime);
             }
             catch (InterruptedException ex1) {
             }

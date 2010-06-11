@@ -71,16 +71,8 @@ public abstract class GeneralClassifier extends Task {
         }
 
         // check if there are no patterns in inputs and outputs
-        if (this.output.get(0).contains("*")){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
-                    "No patterns allowed in output file name.");
-        }
-        for (String inputFile: this.input){
-            if (inputFile.contains("*")){
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.id,
-                        "No patterns allowed in input file names.");
-            }
-        }
+        this.eliminatePatterns(input);
+        this.eliminatePatterns(output);
     }
 
     /**
@@ -117,19 +109,19 @@ public abstract class GeneralClassifier extends Task {
         // an attribute name was given in parameters -- try to find it
         if (this.parameters.get(CLASS_ARG) != null) {
 
-            if (missing != null && !missing.name().equals(this.parameters.get(WekaClassifier.CLASS_ARG))) {
+            if (missing != null && !missing.name().equals(this.parameters.get(CLASS_ARG))) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
             }
-            if (train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG)) == null) {
+            if (train.attribute(this.parameters.get(CLASS_ARG)) == null) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
                         + "in training data.");
             }
             if (missing == null) {
-                train.setClass(train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG)));
-                eval.setClass(eval.attribute(this.parameters.get(WekaClassifier.CLASS_ARG)));
+                train.setClass(train.attribute(this.parameters.get(CLASS_ARG)));
+                eval.setClass(eval.attribute(this.parameters.get(CLASS_ARG)));
                 return;
             }
-            missing = train.attribute(this.parameters.get(WekaClassifier.CLASS_ARG));
+            missing = train.attribute(this.parameters.get(CLASS_ARG));
         }
 
         // no attribute from train is missing in eval

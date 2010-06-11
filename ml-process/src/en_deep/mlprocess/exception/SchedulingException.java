@@ -37,7 +37,9 @@ public class SchedulingException extends GeneralException {
     /* CONSTANTS */
 
     /** Exception code: All tasks have dependencies in progress */
-    public static final int ERR_ALL_IN_PROGRESS = 1;
+    public static final int ERR_DEP_WAIT = 1;
+    /** Exception code: There are still tasks in progress */
+    public static final int ERR_IN_PROGRESS = 2;
 
     /* METHODS */
 
@@ -53,7 +55,7 @@ public class SchedulingException extends GeneralException {
     @Override
     public String getMessage() {
         switch(this.code){
-            case ERR_ALL_IN_PROGRESS:
+            case ERR_DEP_WAIT:
                 return "All tasks have dependencies in progress";
             default:
                 return "Unknown error";

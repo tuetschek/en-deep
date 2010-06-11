@@ -30,7 +30,6 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -38,7 +37,6 @@ import java.util.Vector;
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 
 /**
  * This task runs a specified weka classifier with given parameters on the given train and adds its result

@@ -29,6 +29,7 @@ package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Plan;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.TaskDescription;
@@ -51,12 +52,10 @@ import weka.core.Instances;
  *
  * @author Ondrej Dusek
  */
-public class GreedyAttributeSearch extends Task {
+public class GreedyAttributeSearch extends EvalSelector {
 
     /* CONSTANTS */
 
-    /** The name of the "measure" parameter */
-    private static final String MEASURE = SettingSelector.MEASURE;
 
     /** The name of the reserved "round" parameter */
     private static final String ROUND = "round_number";
@@ -64,6 +63,8 @@ public class GreedyAttributeSearch extends Task {
     private static final String ATTRIB_COUNT = "attrib_count";
     /** The name of the reserved "class_attr_no" parameter */
     private static final String CLASS_ATTR_NO = "class_attr_no";
+    /** The name of the "attrib_order" parameter */
+    private static final String ATTRIB_ORDER = "attrib_order";
 
     /** The name of the "start" parameter */
     private static final String START = "start";
@@ -103,11 +104,11 @@ public class GreedyAttributeSearch extends Task {
     /** The name of the class attribute to be computed and evaluated upon */
     private String classArg;
 
-    /** The name of the used statistical measure to compare the results */
-    private String measure;
-
     /** The temporary files pattern */
     private String tempFilePattern;
+
+    /** The file containing the order of the attributes that should be used in evaluation */
+    private String attributeOrderFile;
 
     /** The starting number of attributes used */
     private int start;
@@ -158,11 +159,14 @@ public class GreedyAttributeSearch extends Task {
      * the output of the best set of parameters).
      * </p>
      * <p>
-     * There is one more optional parameter, which defaults to 0:
+     * There are optional parameters:
      * </p>
      * <ul>
      * <li><tt>min_improvement</tt> -- the minimal required improvement in the selected measure for the
-     * algorithm to continue</li>
+     * algorithm to continue (defaults to 0)</li>
+     * <li><tt>attrib_order</tt> -- if this parameter is set, the last input file is considered to be
+     * the file with the desired order in which the attributes with the same performance should be added to
+     * the set of used attributes.</li>
      * </li>
      * There are special parameters reserved for the program (which control the process):
      * <ul>
@@ -222,28 +226,25 @@ public class GreedyAttributeSearch extends Task {
         // final round -- special case: some parameters are not needed.
         if (this.round > this.end) {
 
-            if (this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null) {
+            if (this.parameters.get(TEMPFILE) == null) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
             }
-
-            this.measure = this.parameters.remove(MEASURE);
             this.tempFilePattern = this.parameters.remove(TEMPFILE);
+            this.attributeOrderFile = this.getAttributeOrderFile(); // optional parameter
             return;
         }
         
         // normal case: check the compulsory parameters and save them
         if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null 
-                || this.parameters.get(MEASURE) == null || this.parameters.get(TEMPFILE) == null
-                || this.parameters.get(TEMPFILE).indexOf("*") == -1) {
+                || this.parameters.get(TEMPFILE) == null || this.parameters.get(TEMPFILE).indexOf("*") == -1) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
 
         this.classArg = this.parameters.remove(CLASS_ARG);
-        this.measure = this.parameters.remove(MEASURE);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
-        // normal case: check the optional parameter
+        // normal case: check the optional parameters
         if (this.parameters.get(MIN_IMPROVEMENT) != null) {
             try {
                 this.minImprovement = Double.parseDouble(this.parameters.remove(MIN_IMPROVEMENT));
@@ -253,6 +254,7 @@ public class GreedyAttributeSearch extends Task {
                         "Parameter " + MIN_IMPROVEMENT + " must be numeric.");
             }
         }
+        this.attributeOrderFile = this.getAttributeOrderFile();
     }
 
     /**
@@ -320,11 +322,11 @@ public class GreedyAttributeSearch extends Task {
             // select the best attribute
             if (this.round > this.start){
 
-                Vector<String> evalFiles = new Vector<String>(this.input.size()/2 - 1);
+                String [] evalFiles = new String [this.input.size()/2 - 1];
                 int best;
 
                 for (int i = 0; i < this.input.size() - 2; i += 2){
-                    evalFiles.add(this.input.get(i));
+                    evalFiles[i/2] = this.input.get(i);
                 }
 
                 // select the best settings and find out if this is the last round
@@ -386,45 +388,18 @@ public class GreedyAttributeSearch extends Task {
      *
      * @param evalFiles the statistics files from the last round
      */
-    private int evalRound(Vector<String> evalFiles) throws IOException, Exception {
+    private int evalRound(String [] evalFiles) throws IOException, Exception {
 
         RandomAccessFile lastRoundStats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, 
                 this.round - 1, 0), "rw");
-        String lastBestInfo = lastRoundStats.readLine();        
-        int bestIndex = -1;
-        double bestVal = -1.0;
-
-        for (int i = 0; i < evalFiles.size(); ++i){
-
-            RandomAccessFile stats = new RandomAccessFile(evalFiles.get(i), "r");
-            String line = stats.readLine();
-
-            while (line != null){
-                String [] args = line.split(":");
-
-                args[0] = args[0].trim();
-                args[1] = args[1].trim();
-
-                if (args[0].equalsIgnoreCase(this.measure)){
-
-                    double val = Double.valueOf(args[1]);
-
-                    if (val > bestVal){
-                        bestIndex = i;
-                        bestVal = val;
-                    }
-                    break;
-                }
-
-                line = stats.readLine();
-            }
-            stats.close();
-        }
+        String lastBestInfo = lastRoundStats.readLine();
+        int [] order = this.getAttributeOrder();
+        Pair<Integer, Double> best = this.selectBest(evalFiles, order);
 
         // find the best value of the round BEFORE the previous one
         this.lastBest = Double.parseDouble(lastBestInfo.split(":")[1].trim());
 
-        for (int i = 0; i < bestIndex; ++i){
+        for (int i = 0; i < best.first; ++i){
             lastRoundStats.readLine();
         }
 
@@ -433,34 +408,34 @@ public class GreedyAttributeSearch extends Task {
         this.createMask(this.lastBestAttributesList.split("\\s+"));
 
         // test if the previous round improved the results
-        if (bestVal < this.lastBest + this.minImprovement){
+        if (best.second < this.lastBest + this.minImprovement){
 
-            if (bestVal >= this.lastBest){
+            if (best.second >= this.lastBest){
                 Logger.getInstance().message(this.id + " : convergency criterion met.", Logger.V_INFO);
             }
             else { // worse than the previous round -- will revert to last results
                 Logger.getInstance().message(this.id + " : worse than previous round, reverting.", Logger.V_INFO);
-                bestIndex = -1;
+                best.first = -1;
             }
             this.end = this.round - 1;
         }
         // store the last best value
-        if (bestVal >= this.lastBest){
-            this.lastBest = bestVal;
+        if (best.second >= this.lastBest){
+            this.lastBest = best.second;
         }
 
         // write down the selected option
         lastRoundStats.seek(lastRoundStats.length());
-        if (bestIndex == -1){
-            lastRoundStats.write(("Best " + bestVal + " worse than previous, reverting." + LF).getBytes());
+        if (best.first == -1){
+            lastRoundStats.write(("Best " + best.second + " worse than previous, reverting." + LF).getBytes());
         }
         else {
-            lastRoundStats.write(("Selected: " + bestIndex + " with " + this.measure + " of " + bestVal + LF).getBytes());
+            lastRoundStats.write(("Selected: " + best.first + " with " + this.measure + " of " + best.second + LF).getBytes());
             lastRoundStats.write((this.getLastBestNames() + LF).getBytes());
         }
         lastRoundStats.close();
         
-        return bestIndex;
+        return best.first;
     }
 
     /**
@@ -766,4 +741,86 @@ public class GreedyAttributeSearch extends Task {
         return text.toString();
     }
 
+    /**
+     * This retrieves the name of the attribute order file from the list of inputs if the attrib_order
+     * parameter is set.
+     * @return the name of the attribute order file, or null
+     */
+    private String getAttributeOrderFile() {
+
+        String ret = null;
+
+        if (this.parameters.get(ATTRIB_ORDER) != null){
+            ret = this.input.get(this.input.size()-1);
+            this.input.remove(this.input.size()-1);
+        }
+        return ret;
+    }
+
+    /**
+     * This prepares the correct order of consideration for the attributes that were tested in the last round.
+     * Returns null if the attribute order file is not set-up, so that the order will be linear.
+     *
+     * @return the order for consideration of attributes
+     * @throws IOException
+     * @throws TaskException
+     */
+    private int [] getAttributeOrder() throws IOException, TaskException {
+
+        if (this.attributeOrderFile == null){
+            return null;
+        }
+
+        int [] order = new int [this.input.size()/2 - 1];
+        int [] orderAll;
+        int [] orderSel = new int [this.input.size()/2 -1];
+
+        // read the selected attribute order from the stats file
+        RandomAccessFile stats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, this.round - 1, 0), "r");
+        String line = stats.readLine(); // skip first line
+        try {
+            for (int i = 0; i < orderSel.length; ++i){
+                line = stats.readLine();
+                orderSel[i] = Integer.parseInt(line.substring(line.lastIndexOf(' ') + 1));
+            }
+        }
+        catch (Exception e){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid round stats file "
+                    + this.round);
+        }
+        finally {
+            stats.close();
+        }
+
+        // read all attributes' correct order from the attribute order file
+        RandomAccessFile attrOrder = new RandomAccessFile(this.attributeOrderFile, "r");
+        try {
+            line = attrOrder.readLine();
+            String [] attrs = line.split("\\s+");
+            orderAll = new int [attrs.length];
+            for (int i = 0; i < attrs.length; ++i){
+                orderAll[i] = Integer.parseInt(attrs[i]);
+            }
+        }
+        catch (Exception e){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid attribute order file.");
+        }
+
+        // create the final order
+        for (int i = 0; i < orderAll.length; ++i){
+            int index = -1;
+
+            for (int j = 0; j < orderSel.length; ++i){
+                if (orderSel[j] == orderAll[i]){
+                    index = j;
+                    break;
+                }
+            }
+            if (index == -1){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid attribute order file.");
+            }
+            order[i] = index;
+        }
+        return order;
+    }
 }
