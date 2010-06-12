@@ -30,6 +30,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.MathUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -49,7 +50,9 @@ public class WekaAttributeRanker extends GeneralClassifier {
     /* CONSTANTS */
 
     /** Name of the weka_class parameter */
-    static final String WEKA_CLASS = "weka_class";
+    private static final String WEKA_CLASS = "weka_class";
+
+    private static final String LF = System.getProperty("line.separator");
 
 
     /* DATA */
@@ -121,8 +124,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
             merits[i] = this.ranker.evaluateAttribute(i);
         }
 
-        // write the output
-        FileUtils.writeArff(outputFile, eval);
+        // sort the output and write it down
+        FileUtils.writeString(outputFile, this.sortByMerits(train, merits));
 
         Logger.getInstance().message(this.id + ": results saved to " + outputFile + ".", Logger.V_DEBUG);
     }
@@ -145,12 +148,42 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         // try to create the ranker corresponding to the given WEKA class name
         try {
-            this.ranker = (AttributeEvaluator) ASEvaluation.forName(this.getParameterVal(WEKA_CLASS), rankerParams);
+            ASEvaluation rankerInit = ASEvaluation.forName(this.getParameterVal(WEKA_CLASS), rankerParams);
+            rankerInit.buildEvaluator(data);
+            this.ranker = (AttributeEvaluator) rankerInit;
         }
         catch (Exception e) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
                     "WEKA class not found or not valid: " + this.parameters.get(WEKA_CLASS) + " -- " + e.getMessage());
         }
+    }
+
+    /**
+     * This sorts the attributes by their merits and produces a list of their numbers sorted on the first
+     * line and their names with merits on the following lines.
+     *
+     * @param data the data which need to have their attributes sorted
+     * @param merits the merits of the individual attributes in the data
+     * @return the order of the attributes by their merits
+     */
+    private String sortByMerits(Instances data, double [] merits){
+
+        int [] order = MathUtils.getOrder(merits);
+        StringBuilder out = new StringBuilder();
+
+        for (int i = 0; i < order.length; ++i){
+            out.append(order[i]);
+            if (i < order.length-1){
+                out.append(" ");
+            }
+        }
+        out.append(LF);
+
+        for (int i = 0; i < order.length; ++i){
+            out.append(order[i] + " " + data.attribute(order[i]).name() + ": " + merits[i] + LF);
+        }
+
+        return out.toString();
     }
 
 }

@@ -75,4 +75,50 @@ public class MathUtils {
     public static Vector<String> combinations(int k, int n){
         return combinations(0, k, n);
     }
+
+    /**
+     * This sorts an array descending and returns its order. Uses the shakesort algorithm.
+     * @param arr the array to be sorted
+     * @return the descending order of the elements in the array
+     */
+    public static int[] getOrder(double[] arr) {
+
+        boolean changes = true;
+        int [] order = new int [arr.length];
+
+        for (int i = 0; i < order.length; ++i){ // initialize the order field
+            order[i] = i;
+        }
+
+        while (changes){ // shakesort
+            changes = false;
+
+            for (int i = 1; i < arr.length; ++i){ // forward pass
+                if (arr[i] > arr[i-1]){
+                    double temp = arr[i];
+                    int orderTemp = order[i]; // change the order along with the main array
+
+                    changes = true;
+                    arr[i] = arr[i-1];
+                    order[i] = order[i-1];
+                    arr[i-1] = temp;
+                    order[i-1] = orderTemp;
+                }
+            }
+            for (int i = arr.length-1; i >= 1; --i){ // backward pass
+                if (arr[i] > arr[i-1]){
+                    double temp = arr[i];
+                    int orderTemp = order[i];
+                    
+                    changes = true;
+                    arr[i] = arr[i-1];
+                    order[i] = order[i-1];
+                    arr[i-1] = temp;
+                    order[i-1] = orderTemp;
+                }
+            }
+        }
+
+        return order;
+    }
 }

@@ -133,4 +133,20 @@ public class FileUtils{
         os.close();
     }
 
+    /**
+     * This writes a string into a given file. It opens the file, rewrites everything in it and
+     * closes it afterwards.
+     *
+     * @param fileName the file to write into
+     * @param str the string to be written
+     * @throws IOException if an I/O error occurs
+     */
+    public static void writeString(String fileName, String str) throws IOException {
+
+        FileOutputStream os = new FileOutputStream(fileName);
+
+        os.write(str.getBytes());
+        os.close();
+    }
+
 }
