@@ -81,7 +81,7 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
-     * <li><tt>select_args</tt> -- preselection of arguments to be used (space-separated zero-based NUMBERS
+     * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
      * </ul>
      * <p>
@@ -91,6 +91,8 @@ public class WekaClassifier extends GeneralClassifier {
      * Some of these WEKA parameters may be compulsory to the classifier, too. See the particular
      * classifier definition to check what parameters are possible.
      * </p>
+     *
+     * @todo rename select_args to select_attrib, so that the name reflects the function
      * @param id
      * @param parameters
      * @param input
@@ -133,32 +135,14 @@ public class WekaClassifier extends GeneralClassifier {
         }
 
         // set-up the classifier parameters
-        Vector classifParams = new Vector<String>(this.parameters.size() - 2);
-        Enumeration<String> allParams = this.parameters.keys();
-
-        while (allParams.hasMoreElements()){
-           
-           String name = allParams.nextElement();
-           String value;
-
-           // skip the reserved parameters
-           if (name.equals(WEKA_CLASS) || name.equals(SELECT_ARGS) || name.equals(CLASS_ARG)){
-               continue;
-           }
-
-           value = this.parameters.get(name);
-
-           if (value.equals("")){
-               classifParams.add("-" + name);
-           }
-           else {
-               classifParams.add("-" + name);
-               classifParams.add(value);
-           }
-        }
+        Vector<String> skipList = new Vector<String>(3);
+        skipList.add(WEKA_CLASS);
+        skipList.add(SELECT_ARGS);
+        skipList.add(CLASS_ARG);
+        String [] classifParams = this.retrieveWekaClassParams(skipList);
 
         try {
-            this.classif.setOptions((String []) classifParams.toArray(new String[0]));
+            this.classif.setOptions(classifParams);
         }
         catch (Exception e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Could not set classifier parameters.");

@@ -166,4 +166,38 @@ public abstract class GeneralClassifier extends Task {
      */
     protected abstract void classify(String trainFile, String evalFile, String outputFile) throws Exception;
 
+    /**
+     * This takes all the parameters of this {@link Task} and creates the options for the used WEKA
+     * classifier class out of it. It skips all the given parameter names. Boolean WEKA parameters should
+     * be set without any value in the Task parameters.
+     *
+     * @return the list of all options to be passed to WEKA
+     */
+    protected String[] retrieveWekaClassParams(Vector<String> skipList) {
+
+        Vector classifParams = new Vector<String>(this.parameters.size() - skipList.size());
+        Enumeration<String> allParams = this.parameters.keys();
+
+        while (allParams.hasMoreElements()) {
+
+            String name = allParams.nextElement();
+            String value;
+
+            // skip the reserved parameters
+            if (skipList.contains(name)) {
+                continue;
+            }
+            value = this.parameters.get(name);
+            
+            if (value.equals("")) { // boolean parameters should have no value
+                classifParams.add("-" + name);
+            }
+            else {
+                classifParams.add("-" + name);
+                classifParams.add(value);
+            }
+        }
+        return (String[]) classifParams.toArray(new String[0]);
+    }
+
 }

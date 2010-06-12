@@ -33,6 +33,7 @@ import en_deep.mlprocess.utils.FileUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.attributeSelection.ASEvaluation;
 import weka.attributeSelection.AttributeEvaluator;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -45,6 +46,12 @@ import weka.core.Instances;
  */
 public class WekaAttributeRanker extends GeneralClassifier {
 
+    /* CONSTANTS */
+
+    /** Name of the weka_class parameter */
+    static final String WEKA_CLASS = "weka_class";
+
+
     /* DATA */
 
     /** The WEKA attribute ranker */
@@ -53,6 +60,14 @@ public class WekaAttributeRanker extends GeneralClassifier {
     /* METHODS */
 
     /**
+     * This just checks the compulsory parameters and the inputs and outputs.
+     * There must be two inputs and one output. There are two compulsory parameters:
+     * <ul>
+     * <li><tt>weka_class</tt> -- the desired WEKA classifier to be used</li>
+     * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
+     * is not specified, the one argument that is missing from the evaluation data will be selected. If
+     * the training and evaluation data have the same arguments, the last one is used.</li>
+     * </ul>
      *
      * @param id
      * @param parameters
@@ -63,6 +78,11 @@ public class WekaAttributeRanker extends GeneralClassifier {
     public WekaAttributeRanker(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
         super(id, parameters, input, output);
+
+        if (this.getParameterVal(CLASS_ARG) == null || this.getParameterVal(WEKA_CLASS) == null){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
+        }
+        
     }
 
     /**
@@ -107,15 +127,30 @@ public class WekaAttributeRanker extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": results saved to " + outputFile + ".", Logger.V_DEBUG);
     }
 
+
     /**
      * Initialize the attribute ranker and set its parameters. For details on ranker parameters,
      * see {@link #WekaAttributeRanker(String, Hashtable, Vector, Vector)}.
      *
      * @throws TaskException
      */
-    private void initRanker(Instances data) {
+    private void initRanker(Instances data) throws TaskException {
 
-        // TODO
+        // find out the options
+        Vector<String> skipList = new Vector<String>(2);
+        skipList.add(WEKA_CLASS);
+        skipList.add(CLASS_ARG);
+
+        String [] rankerParams = retrieveWekaClassParams(skipList);
+
+        // try to create the ranker corresponding to the given WEKA class name
+        try {
+            this.ranker = (AttributeEvaluator) ASEvaluation.forName(this.getParameterVal(WEKA_CLASS), rankerParams);
+        }
+        catch (Exception e) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                    "WEKA class not found or not valid: " + this.parameters.get(WEKA_CLASS) + " -- " + e.getMessage());
+        }
     }
 
 }
