@@ -42,11 +42,25 @@ public class StringUtils {
      * @return the concatenation of all strings using the given separator
      */
     public static String join(String [] data, String sep){
+        return StringUtils.join(data, 0, data.length, sep);
+    }
+
+
+    /**
+     * Concatenates all the strings from a given field portion, separating them with the
+     * given string.
+     * @param data the strings to be joined
+     * @param lo lower bound of the field portion (inclusive)
+     * @param hi upper bound of the field portion (exclusive)
+     * @param sep field separator
+     * @return the concatenation of all strings using the given separator
+     */
+    public static String join(String [] data, int lo, int hi, String sep){
 
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < data.length; ++i){
-            if (i > 0){
+        for (int i = lo; i < hi; ++i){
+            if (i > lo){
                 sb.append(sep);
             }
             sb.append(data[i]);

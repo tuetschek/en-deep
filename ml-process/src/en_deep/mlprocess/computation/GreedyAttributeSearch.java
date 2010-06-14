@@ -27,7 +27,6 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Plan;
@@ -75,24 +74,6 @@ public class GreedyAttributeSearch extends EvalSelector {
     /** The minimal improvement that is possible */
     private static final String MIN_IMPROVEMENT = "min_improvement";
 
-    /** The name of the "tempfile" parameter */
-    private static final String TEMPFILE = SettingSelector.TEMPFILE;
-
-    /** The name of the "class_arg" parameter */
-    private static final String CLASS_ARG = WekaClassifier.CLASS_ARG;
-    /** The name of the "weka_class" parameter */
-    private static final String WEKA_CLASS = WekaClassifier.WEKA_CLASS;
-    
-    /** File extension for classification tempfiles */
-    private static final String CLASS_EXT = SettingSelector.CLASS_EXT;
-    /** Extension for statistics tempfiles */
-    private static final String STATS_EXT = SettingSelector.STATS_EXT;
-
-    /** File types used in the computation */
-    private enum FileTypes {
-        CLASSIF, STATS, ROUND_STATS, BEST_CLASSIF, BEST_STATS
-    }
-
     /** CR/LF */
     private static final String LF = System.getProperty("line.separator");
 
@@ -103,9 +84,6 @@ public class GreedyAttributeSearch extends EvalSelector {
 
     /** The name of the class attribute to be computed and evaluated upon */
     private String classArg;
-
-    /** The temporary files pattern */
-    private String tempFilePattern;
 
     /** The file containing the order of the attributes that should be used in evaluation */
     private String attributeOrderFile;
@@ -130,8 +108,6 @@ public class GreedyAttributeSearch extends EvalSelector {
     private int classAttribNum = -1;
     /** A list of attributes the process should start with (if set) */
     private String [] startAttrib;
-    /** The part of the id that resulted from task expansions, needed for tempfiles */
-    private String expandedId;
 
     /* METHODS */
 
@@ -187,18 +163,6 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         super(id, parameters, input, output);
 
-        // set the expandedId parameter
-        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
-        if (this.expandedId.length() > 0
-                && (this.expandedId.substring(this.expandedId.lastIndexOf('#')).matches("#round[0-9]+")
-                || this.expandedId.endsWith("#finalize"))){
-            this.expandedId = this.expandedId.substring(0, this.expandedId.lastIndexOf('#'));
-        }
-        if (this.expandedId.startsWith("#")){
-            this.expandedId = this.expandedId.substring(1);
-        }
-        this.expandedId = this.expandedId.replace('#', '_');
-
         // determine the current round and check all the round-related constraints
         this.checkRound();
 
@@ -212,6 +176,22 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         // check all round-related compulsory and optional parameters
         this.checkParameters();
+    }
+
+    protected void setExpandedId() {
+
+        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
+
+        if (this.expandedId.length() > 0
+                && (this.expandedId.substring(this.expandedId.lastIndexOf('#')).matches("#round[0-9]+") ||
+                this.expandedId.endsWith("#finalize"))) {
+            this.expandedId = this.expandedId.substring(0, this.expandedId.lastIndexOf('#'));
+        }
+
+        if (this.expandedId.startsWith("#")) {
+            this.expandedId = this.expandedId.substring(1);
+        }
+        this.expandedId = this.expandedId.replace('#', '_');
     }
 
 
@@ -342,8 +322,8 @@ public class GreedyAttributeSearch extends EvalSelector {
                 if (best < 0){
                     Logger.getInstance().message(this.id +
                             ": copying the best results from previous round to the final destination.", Logger.V_INFO);
-                    FileUtils.copyFile(this.getFileName(FileTypes.BEST_STATS, this.round - 2, 0), this.output.get(1));
-                    FileUtils.copyFile(this.getFileName(FileTypes.BEST_CLASSIF, this.round - 2, 0), this.output.get(0));
+                    FileUtils.copyFile(this.getTempfileName(TempfileTypes.BEST_STATS, this.round - 2, 0), this.output.get(1));
+                    FileUtils.copyFile(this.getTempfileName(TempfileTypes.BEST_CLASSIF, this.round - 2, 0), this.output.get(0));
                 }
                 else if (this.round > this.end){
                     Logger.getInstance().message(this.id +
@@ -353,9 +333,9 @@ public class GreedyAttributeSearch extends EvalSelector {
                 }
                 else {
                     FileUtils.copyFile(this.input.get(best*2),
-                            this.getFileName(FileTypes.BEST_STATS, this.round - 1, 0));
+                            this.getTempfileName(TempfileTypes.BEST_STATS, this.round - 1, 0));
                     FileUtils.copyFile(this.input.get(best*2 + 1),
-                            this.getFileName(FileTypes.BEST_CLASSIF, this.round - 1, 0));
+                            this.getTempfileName(TempfileTypes.BEST_CLASSIF, this.round - 1, 0));
                 }
             }
             // create the next round
@@ -390,7 +370,7 @@ public class GreedyAttributeSearch extends EvalSelector {
      */
     private int evalRound(String [] evalFiles) throws IOException, Exception {
 
-        RandomAccessFile lastRoundStats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, 
+        RandomAccessFile lastRoundStats = new RandomAccessFile(this.getTempfileName(TempfileTypes.ROUND_STATS,
                 this.round - 1, 0), "rw");
         String lastBestInfo = lastRoundStats.readLine();
         int [] order = this.getAttributeOrder();
@@ -484,12 +464,12 @@ public class GreedyAttributeSearch extends EvalSelector {
 
             // set all parameters, inputs and outputs
             classifInput.addAll(this.input.subList(this.input.size() - 2, this.input.size()));
-            classifOutput.add(this.getFileName(FileTypes.CLASSIF, this.round, i));
+            classifOutput.add(this.getTempfileName(TempfileTypes.CLASSIF, this.round, i));
 
             evalParams.put(CLASS_ARG, this.classArg);
             evalInput.add(this.input.get(this.input.size() - 1));
             evalInput.add(classifOutput.get(0));
-            evalOutput.add(this.getFileName(FileTypes.STATS, this.round, i));
+            evalOutput.add(this.getTempfileName(TempfileTypes.STATS, this.round, i));
 
             nextRoundInput.add(evalOutput.get(0));
             nextRoundInput.add(classifOutput.get(0));
@@ -537,38 +517,6 @@ public class GreedyAttributeSearch extends EvalSelector {
     }
 
     /**
-     * Creates a file name out of the {@link #tempFilePattern} and the given
-     * {@link GreedyAttributeSearch.FileTypes type}.
-     *
-     * @param type the type of the file
-     * @param round the round for which the file is ment
-     * @param order the number of the file (not used for ROUND_STATS, BEST_STATS and BEST_CLASSIF)
-     * @return the file name
-     */
-    private String getFileName(FileTypes type, int round, int order){
-
-        switch (type){
-            case CLASSIF:
-                return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-" + order + ")") + CLASS_EXT;
-            case STATS:
-                return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-" + order + ")") + STATS_EXT;
-            case ROUND_STATS:
-                return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-stats)") + STATS_EXT;
-            case BEST_STATS:
-                return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-best)") + STATS_EXT;
-            case BEST_CLASSIF:
-                return Process.getInstance().getWorkDir()
-                        + this.tempFilePattern.replace("*", this.expandedId + "(" + round + "-best)") + CLASS_EXT;
-            default:
-                return "";
-        }
-    }
-
-    /**
      * Prepares the parameters for the current round trials, using the last round parameters
      * plus one additional at a time. Marks all the selections in the round statistics file.
      *
@@ -577,7 +525,7 @@ public class GreedyAttributeSearch extends EvalSelector {
     private Hashtable<String, String> [] prepareRoundParams() throws IOException {
 
         Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
-        PrintStream roundStatsFile = new PrintStream(this.getFileName(FileTypes.ROUND_STATS, this.round, 0));
+        PrintStream roundStatsFile = new PrintStream(this.getTempfileName(TempfileTypes.ROUND_STATS, this.round, 0));
 
         roundStatsFile.println("Last best:" + this.lastBest);
 
@@ -604,7 +552,7 @@ public class GreedyAttributeSearch extends EvalSelector {
     private Hashtable<String, String> [] prepareFirstParams() throws Exception {
 
         Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
-        PrintStream roundStatsFile = new PrintStream(this.getFileName(FileTypes.ROUND_STATS, this.round, 0));
+        PrintStream roundStatsFile = new PrintStream(this.getTempfileName(TempfileTypes.ROUND_STATS, this.round, 0));
         Vector<String> combinations;
         String startAttribs = this.getStartAttributes();
 
@@ -776,7 +724,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         int [] orderSel = new int [this.input.size()/2 -1];
 
         // read the selected attribute order from the stats file
-        RandomAccessFile stats = new RandomAccessFile(this.getFileName(FileTypes.ROUND_STATS, this.round - 1, 0), "r");
+        RandomAccessFile stats = new RandomAccessFile(this.getTempfileName(TempfileTypes.ROUND_STATS, this.round - 1, 0), "r");
         String line = stats.readLine(); // skip first line
         try {
             for (int i = 0; i < orderSel.length; ++i){

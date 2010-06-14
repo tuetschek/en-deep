@@ -27,14 +27,10 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.Process;
-import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Plan;
 import en_deep.mlprocess.TaskDescription;
 import en_deep.mlprocess.TaskDescription.TaskStatus;
 import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.utils.FileUtils;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -44,41 +40,7 @@ import java.util.Vector;
  *
  * @author Ondrej Dusek
  */
-public class SettingSelector extends EvalSelector {
-
-    /* CONSTANTS */
-
-    /** The name of the reserved "eval" parameter */
-    private static final String EVAL = "select_from_evaluations";
-
-    /** The name of the "tempfile" parameter */
-    static final String TEMPFILE = "tempfile";
-
-    /** The name of the "class_arg" parameter */
-    private static final String CLASS_ARG = WekaClassifier.CLASS_ARG;
-    /** The name of the "weka_class" parameter */
-    private static final String WEKA_CLASS = WekaClassifier.WEKA_CLASS;
-
-    /** File extension for classification tempfiles */
-    static final String CLASS_EXT = ".arff";
-    /** Extension for statistics tempfiles */
-    static final String STATS_EXT = ".txt";
-
-    /* DATA */
-
-    /** The name of the WEKA algorithm to be used */
-    private String wekaClass;
-
-    /** The name of the class attribute to be computed and evaluated upon */
-    private String classArg;
-
-    /** The temporary files pattern */
-    private String tempFilePattern;
-
-    /** Are we running in the evaluation mode ? */
-    private boolean evalMode;
-    /** The part of the task ID that originated in task expansions, used in tempfile naming */
-    private String expandedId;
+public class SettingSelector extends WekaSettingTrials {
 
     /* METHODS */
 
@@ -105,7 +67,7 @@ public class SettingSelector extends EvalSelector {
      * There is a special parameter reserved for the program (the process ends with this
      * parameter). If the task is run with this parameter, more inputs are allowed.
      * <ul>
-     * <li><tt>eval</tt> -- starts the selection from finished evaluations, if it's set
+     * <li><tt>select_from_evaluations</tt> -- starts the selection from finished evaluations, if it's set
      * </ul>
      *
      * @param id
@@ -119,160 +81,44 @@ public class SettingSelector extends EvalSelector {
         super(id, parameters, input, output);
 
         // check the number of inputs and outputs
-        if (this.parameters.get(EVAL) == null && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
+        if ((!this.evalMode && input.size() != 2) || (input.size() < 2) || (input.size() % 2 != 0)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
         if (output.size() != 2){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
 
-        // check the compulsory parameters for the evaluation case
-        if (this.parameters.get(EVAL) != null){
-            this.evalMode = true;
-            return;
-        }
-
-        // check the compulsory parameters for the normal case and save them
-        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
-                || this.parameters.get(TEMPFILE) == null || this.parameters.get(TEMPFILE).indexOf("*") == -1){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
-        }
-        this.classArg = this.parameters.remove(CLASS_ARG);
-        this.measure = this.parameters.remove(MEASURE);
-        this.wekaClass = this.parameters.remove(WEKA_CLASS);
-        this.tempFilePattern = Process.getInstance().getWorkDir() + this.parameters.remove(TEMPFILE);
-
-        // find out the expanded ID part in order to create tempfile names
-        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
-        if (this.expandedId.startsWith("#")){
-            this.expandedId = this.expandedId.substring(1);
-        }
-        this.expandedId = this.expandedId.replace('#', '_');
     }
 
-    @Override
-    public void perform() throws TaskException {
-
-        try {
-            // evaluation mode
-            if (this.evalMode){
-
-                String [] evalFiles = new String [this.input.size()/2];
-                int best;
-
-                Logger.getInstance().message(this.id + ": Selecting the best result ...", Logger.V_INFO);
-
-                for (int i = 0; i < this.input.size(); i += 2){
-                    evalFiles[i/2] = this.input.get(i);
-                }
-
-                // select the best settings
-                best = this.selectBest(evalFiles, null).first;
-
-                Logger.getInstance().message(this.id + ": Best result: " + best, Logger.V_INFO);
-
-                // copy the best settings to the destination location
-                FileUtils.copyFile(this.input.get(best*2), this.output.get(1));
-                FileUtils.copyFile(this.input.get(best*2 + 1), this.output.get(0));
-
-            }
-            // normal mode -- assign tasks for computation
-            else {
-               Vector<TaskDescription> subTasks = this.createMeasuringTasks();
-
-               Logger.getInstance().message(this.id + ": assigning tasks for computation ...", Logger.V_INFO);
-               Plan.getInstance().appendToTask(this.id, subTasks);
-            }
-        }
-        catch (TaskException te){
-            throw te;
-        }
-        catch (Exception e){            
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
-        }
-    }
 
     /**
-     * This creates all the {@link TaskDescription}s that are needed to test the classifier under
-     * the given conditions. The last task is the evaluation mode of this class itself.
-     *
-     * @return the list of all needed tasks
+     * This prepares the parameter sets for the individual classifier tasks
      */
-    private Vector<TaskDescription> createMeasuringTasks() throws TaskException {
+    protected Hashtable<String, String>[] prepareParamSets() throws TaskException {
 
-        Vector<TaskDescription> newTasks = new Vector<TaskDescription>();
-        Hashtable<String, String> [] paramSets = null;
-        Vector<String> lastTaskInput = new Vector<String>();
-        Hashtable<String, String> lastTaskParams = new Hashtable<String, String>();
-        TaskDescription lastTask;
-
+        Hashtable<String, String>[] paramSets = null;
         // differentiate the needed sets of classifier parameters
-        for (String paramName : this.parameters.keySet()){
+        for (String paramName : this.parameters.keySet()) {
 
-            String [] paramVals = this.parameters.get(paramName).split("\\s+");
+            String[] paramVals = this.parameters.get(paramName).split("\\s+");
 
-            if (paramSets == null){
+            if (paramSets == null) {
                 paramSets = new Hashtable[paramVals.length];
             }
-            if (paramVals.length != paramSets.length){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Numbers of the individual parameters vary.");
+            if (paramVals.length != paramSets.length) {
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                        "Numbers of the individual parameters vary.");
             }
-            for (int i = 0; i < paramSets.length; ++i){
-
-                if (paramSets[i] == null){
+            for (int i = 0; i < paramSets.length; ++i) {
+                if (paramSets[i] == null) {
                     paramSets[i] = new Hashtable<String, String>(this.parameters.size());
-
                     paramSets[i].put(CLASS_ARG, this.classArg);
                     paramSets[i].put(WEKA_CLASS, this.wekaClass);
                 }
                 paramSets[i].put(paramName, paramVals[i]);
             }
         }
-
-        // create the classifier tasks and evaluation tasks that are connected to them
-        for (int i = 0; i < paramSets.length; ++i){
-
-            TaskDescription classifTask, evalTask;
-            Vector<String> classifOutput = new Vector<String>(1),
-                    evalInput = new Vector<String>(2), evalOutput = new Vector<String>(1);
-            Hashtable<String, String> evalParams = new Hashtable<String, String>();
-
-            // set all parameters, inputs and outputs
-            evalParams.put(CLASS_ARG, this.classArg);
-            classifOutput.add(this.tempFilePattern.replace("*", this.expandedId +  "(" + i + ")") + CLASS_EXT);
-            evalInput.add(this.input.get(1));
-            evalInput.add(classifOutput.get(0));
-            evalOutput.add(this.tempFilePattern.replace("*", this.expandedId + "(" + i + ")") + STATS_EXT);
-            lastTaskInput.add(evalOutput.get(0));
-            lastTaskInput.add(classifOutput.get(0));
-
-            // create the tasks
-            classifTask = new TaskDescription(this.id + "#classif" + i, WekaClassifier.class.getName(),
-                    paramSets[i], (Vector<String>) this.input.clone(), classifOutput);
-            evalTask = new TaskDescription(this.id + "#eval" + i, EvalClassification.class.getName(),
-                    evalParams, evalInput, evalOutput);
-
-            // set their dependencies
-            classifTask.setStatus(TaskStatus.WAITING);
-            evalTask.setDependency(classifTask);
-
-            // add them to the list
-            newTasks.add(classifTask);
-            newTasks.add(evalTask);
-        }
-
-        // create the last task that will select the best result
-        lastTaskParams.put(MEASURE, this.measure);
-        lastTaskParams.put(EVAL, "1");
-        lastTask = new TaskDescription(this.id + "#select", SettingSelector.class.getName(),
-                lastTaskParams, lastTaskInput, (Vector<String>) this.output.clone());
-        
-        for (TaskDescription t : newTasks){
-            lastTask.setDependency(t);
-        }
-        newTasks.add(lastTask);
-
-        return newTasks;
+        return paramSets;
     }
 
 }

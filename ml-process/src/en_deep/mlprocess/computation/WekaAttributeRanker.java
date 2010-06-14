@@ -121,7 +121,12 @@ public class WekaAttributeRanker extends GeneralClassifier {
         double [] merits = new double [train.numAttributes()];
 
         for (int i = 0; i < train.numAttributes(); ++i){
-            merits[i] = this.ranker.evaluateAttribute(i);
+            if (i != train.classIndex()){
+                merits[i] = this.ranker.evaluateAttribute(i);
+            }
+            else {
+                merits[i] = Double.NEGATIVE_INFINITY; // this will eliminate the class attribute itself
+            }
         }
 
         // sort the output and write it down
@@ -171,7 +176,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         int [] order = MathUtils.getOrder(merits);
         StringBuilder out = new StringBuilder();
 
-        for (int i = 0; i < order.length; ++i){
+        for (int i = 0; i < order.length - 1; ++i){ // assume the class attribute itself is at the end
             out.append(order[i]);
             if (i < order.length-1){
                 out.append(" ");
@@ -179,7 +184,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
         out.append(LF);
 
-        for (int i = 0; i < order.length; ++i){
+        for (int i = 0; i < order.length -1; ++i){
             out.append(order[i] + " " + data.attribute(order[i]).name() + ": " + merits[i] + LF);
         }
 

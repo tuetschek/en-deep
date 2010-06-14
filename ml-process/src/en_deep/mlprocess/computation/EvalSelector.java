@@ -28,6 +28,7 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.IOException;
@@ -48,10 +49,26 @@ public abstract class EvalSelector extends Task {
     /** The name of the "measure" parameter */
     protected static final String MEASURE = "measure";
 
+    /** File extension for classification tempfiles */
+    protected static final String CLASS_EXT = ".arff";
+    /** Extension for statistics tempfiles */
+    protected static final String STATS_EXT = ".txt";
+    /** The name of the "tempfile" parameter */
+    static final String TEMPFILE = "tempfile";
+
+    /** The name of the "class_arg" parameter */
+    protected static final String CLASS_ARG = GeneralClassifier.CLASS_ARG;
+    /** The name of the "weka_class" parameter */
+    protected static final String WEKA_CLASS = WekaClassifier.WEKA_CLASS;
+
     /* DATA */
 
     /** The name of the evaluation measure */
     protected String measure;
+    /** Pattern used to create tempfiles */
+    protected String tempFilePattern;
+    /** The expanded id, the part of the ID that originated in task expansions */
+    protected String expandedId;
 
     /* METHODS */
 
@@ -72,7 +89,10 @@ public abstract class EvalSelector extends Task {
         if (this.parameters.get(MEASURE) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "No measure specified.");
         }
-        this.measure = this.parameters.get(MEASURE);
+
+        this.measure = this.parameters.remove(MEASURE);
+
+        this.setExpandedId();
     }
 
     /**
@@ -133,4 +153,75 @@ public abstract class EvalSelector extends Task {
         }
         return new Pair<Integer, Double>(bestIndex, bestVal);
     }
+
+
+
+    /**
+     * Temporary file types used in the computation
+     */
+    protected enum TempfileTypes {
+
+        CLASSIF, STATS, ROUND_STATS, BEST_CLASSIF, BEST_STATS
+    }
+
+
+    /**
+     * This is the same as {@link #getTempfileName(en_deep.mlprocess.computation.EvalSelector.TempfileTypes, int, int)},
+     * with the omission of the round parameter.
+     *
+     * @param type type of the tempfile
+     * @param order the number of the file (not used for ROUND_STATS, BEST_STATS and BEST_CLASSIF)
+     * @return
+     */
+    protected String getTempfileName(TempfileTypes type, int order){
+        return this.getTempfileName(type, -1, order);
+    }
+
+    /**
+     * Creates a file name out of the {@link #tempFilePattern} and the given
+     * {@link GreedyAttributeSearch.TempfileTypes type}.
+     *
+     * @param type the type of the file
+     * @param round the round for which the file is ment (-1 if not used)
+     * @param order the number of the file (not used for ROUND_STATS, BEST_STATS and BEST_CLASSIF)
+     * @return the file name
+     */
+    protected String getTempfileName(TempfileTypes type, int round, int order) {
+
+        String lbr = round >= 0 ? "(" + round + "-" : "(";
+
+        switch (type) {
+            case CLASSIF:
+                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
+                        this.expandedId + lbr + order + ")") + CLASS_EXT;
+            case STATS:
+                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
+                        this.expandedId + lbr + order + ")") + STATS_EXT;
+            case ROUND_STATS:
+                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
+                        this.expandedId + lbr + "stats)") + STATS_EXT;
+            case BEST_STATS:
+                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
+                        this.expandedId + lbr + "best)") + STATS_EXT;
+            case BEST_CLASSIF:
+                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
+                        this.expandedId + lbr + "best)") + CLASS_EXT;
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * This retrieves the part of the id that resulted from task expansion, so that the tempfiles generated differ for
+     * different tasks.
+     */
+    protected void setExpandedId() {
+        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
+        if (this.expandedId.startsWith("#")) {
+            this.expandedId = this.expandedId.substring(1);
+        }
+        this.expandedId = this.expandedId.replace('#', '_');
+    }
+
+
 }

@@ -27,16 +27,12 @@
 
 package en_deep.mlprocess;
 
-import en_deep.mlprocess.computation.WekaClassifier;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
-import weka.core.Attribute;
-import weka.core.Instances;
 
 /**
  * A general task to be computed or performed.

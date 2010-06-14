@@ -28,12 +28,10 @@
 package en_deep.mlprocess.evaluation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Task;
-import en_deep.mlprocess.computation.WekaClassifier;
+import en_deep.mlprocess.computation.GeneralClassifier;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import en_deep.mlprocess.utils.StringUtils;
 import java.io.PrintStream;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -51,7 +49,7 @@ public class EvalClassification extends Task {
     /* CONSTANTS */
     
     /** The name of the "class_arg" parameter */
-    private static String CLASS_ARG = WekaClassifier.CLASS_ARG;
+    private static String CLASS_ARG = GeneralClassifier.CLASS_ARG;
     
     /** The value that's used as "empty" */
     private static String EMPTY = "_";
