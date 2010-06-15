@@ -407,4 +407,21 @@ public class StReader {
             return -1;
         }
     }
+
+    /**
+     * This is for debugging purposes, it returns the full text of the currently loaded sentence.
+     * @return the text of the currently loaded sentence
+     */
+    public String getSentenceText(){
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < this.length(); ++i){
+            sb.append(this.getWordInfo(i, this.IDXI_FORM));
+            if (i < this.length() -1){
+                sb.append(" ");
+            }
+        }
+        return sb.toString();
+    }
 }

@@ -73,15 +73,15 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
      * testing data and the third the attribute order file) and two outputs (one is for the
      * classification output and one for the output of the best set of parameters).
      * </p>
-     * There is a special parameter reserved for the program (the process ends with this
-     * parameter). If the task is run with this parameter, more inputs are allowed.
-     * <ul>
-     * <li><tt>eval</tt> -- starts the selection from finished evaluations, if it's set
-     * </ul>
      * There are additional voluntary parameters:
      * <ul>
      * <li><tt>start</tt> -- the starting number of attributes</li>
      * <li><tt>end</tt> -- the maximum number of attributes that are to be tried</li>
+     * </ul>
+     * There is a special parameter reserved for the program (the process ends with this
+     * parameter). If the task is run with this parameter, more inputs are allowed.
+     * <ul>
+     * <li><tt>select_from_evaluations</tt> -- starts the selection from finished evaluations, if it's set
      * </ul>
      *
      * @param id

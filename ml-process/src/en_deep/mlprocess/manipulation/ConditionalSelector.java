@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -47,11 +48,13 @@ public class ConditionalSelector extends GroupInputsTask {
     private static final String CONDITION = "condition";
     /** The "attribute" parameter name */
     private static final String ATTRIBUTE = "attribute";
+    /** The "boundaries" parameter name */
+    private static final String BOUNDARIES = "boundaries";
 
 
     private enum Condition {
 
-        UNARY;
+        UNARY, DIVIDE_BY_NUM_VAL;
 
         /**
          * This constructs the condition from a string value.
@@ -67,6 +70,9 @@ public class ConditionalSelector extends GroupInputsTask {
             else if (str.equalsIgnoreCase("unary")){
                 return UNARY;
             }
+            else if (str.equalsIgnoreCase("divide_by_num_val")){
+                return DIVIDE_BY_NUM_VAL;
+            }
             else {
                 return null;
             }
@@ -77,8 +83,12 @@ public class ConditionalSelector extends GroupInputsTask {
 
     /** The condition for the selection */
     private final Condition condition;
-    /** If {@link #condition} is {@link Condition.UNARY}, this stores the name of the attribute to be checked. */
+    /** If {@link #condition} is {@link Condition.UNARY} or {@link Condition.DIVIDE_BY_NUM_VAL}, this
+     * stores the name of the attribute to be checked. */
     private String attrName;
+    /** If {@link #condition} is {@link Condition.DIVIDE_BY_NUM_VAL}, this stores the boundaries of 
+     * division.     */
+    private int [] boundaries;
     /** The tables that contain all the files matching the different input patterns sorted unter the same expansion keys */
     private Hashtable<String, String> [] tables;
 
@@ -87,15 +97,20 @@ public class ConditionalSelector extends GroupInputsTask {
 
     /**
      * This just checks the parameters and creates a new instance. There is one compulsory parameter:
-     * <li>
-     * <ul><tt>condition</tt> -- may currently have just one value: "unary" (check unarity, outputs are first unary
-     *  and then non-unary)
-     * </li>
+     * <ul>
+     * <li><tt>condition</tt> -- may currently have following values:
+     * <ul>
+     * <li> "unary" -- check unarity, outputs are first unary and then non-unary</li>
+     * <li> "divide_by_num_val" -- divide by numbers of values of the given attribute and the given boundaries</li>
+     * </ul></li>
+     * </ul>
      * Other parameters depend on the setting of condition:
-     * <li>
-     * <ul><tt>attribute</tt> -- if condition is "unary", this gives the name of the attribute which should be checked
-     *  for its unarity.
-     * </li>
+     * <ul>
+     * <li><tt>attribute</tt> -- if condition is "unary" or "divide_by_num_val", this gives the name of the attribute which
+     * should be checked</li>
+     * <li><tt>boundaries</tt> -- if condition is "divide_by_num_val", this gives the boundary values of division,
+     * sorted and divided by spaces (the boundary values will be included in the higher interval)
+     * </ul>
      *
      * @param id
      * @param parameters
@@ -123,6 +138,21 @@ public class ConditionalSelector extends GroupInputsTask {
                 this.attrName = this.parameters.get(ATTRIBUTE);
                 this.extractPatterns(2);
                 break;
+
+            case DIVIDE_BY_NUM_VAL:
+
+                if (this.getParameterVal(ATTRIBUTE) == null || this.getParameterVal(BOUNDARIES) == null){
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters missing.");
+                }
+                this.attrName = this.getParameterVal(ATTRIBUTE);
+                try {
+                    this.boundaries = StringUtils.readListOfInts(this.getParameterVal(BOUNDARIES));
+                }
+                catch (NumberFormatException e){
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Boundaries must be numeric.");
+                }
+                this.extractPatterns(this.boundaries.length  +1);
+                break;
         }
     }
 
@@ -136,13 +166,13 @@ public class ConditionalSelector extends GroupInputsTask {
             for (String key : allKeys){
 
                 switch (this.condition){
+
                     case UNARY:
-                        if (this.hasUnaryAttribute(key)){
-                            this.copyToTarget(key, 0);
-                        }
-                        else {
-                            this.copyToTarget(key, 1);
-                        }
+                        this.copyToTarget(key, this.hasUnaryAttribute(key) ? 0 : 1);
+                        break;
+
+                    case DIVIDE_BY_NUM_VAL:
+                        this.copyToTarget(key, this.divideByNumberOfAttributes(key));
                         break;
                 }
             }
@@ -185,21 +215,58 @@ public class ConditionalSelector extends GroupInputsTask {
      */
     private boolean hasUnaryAttribute(String key) throws Exception {
 
-        Instances [] data = new Instances[this.tables.length];
-
-        for (int i = 0; i < this.tables.length; ++i){
-            data[i] = FileUtils.readArffStructure(this.tables[i].get(key));
-
-            if (i > 0 && !data[i].equalHeaders(data[0])){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Files with the same expansion "
-                        + key + "don't have the same headers.");
-            }
-        }
+        Instances[] data = this.readAndCheckHeaders(key);
         
         if (data[0].attribute(this.attrName) == null || data[0].attribute(this.attrName).numValues() == 0){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + this.attrName
                     + " not found or not numeric for " + key + "-like files.");
         }
         return data[0].attribute(this.attrName).numValues() == 1;
+    }
+
+
+    /**
+     * This tests how many values does the file have for the given attribute and returns the corresponding
+     * number of cluster (according to {@link #boundaries}).
+     *
+     * @param key the expansion eky to look up the file names in the {@link #tables}
+     * @return the number of division group, according to the {@link #boundaries}
+     * @throws TaskException if the files don't have the same attributes or the desired one is missing
+     */
+    private int divideByNumberOfAttributes(String key) throws Exception {
+
+        Instances [] data = this.readAndCheckHeaders(key);
+
+        if (data[0].attribute(this.attrName) == null || data[0].attribute(this.attrName).numValues() == 0){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + this.attrName
+                    + " not found or not numeric for " + key + "-like files.");
+        }
+
+        int i = 0;
+        while (i < this.boundaries.length && data[0].attribute(this.attrName).numValues() <= this.boundaries[i]){
+            i++;
+        }
+        return i;
+    }
+
+    /**
+     * Reads the headers of all files in the {@link #tables} that correspond to the given key and checks if
+     * their headers are equal. Returns all the headers.
+     * @param key the exapnsion key
+     * @return the headers of all files under the given expansion key
+     * @throws Exception if an I/O error occurs or if the files don't have the same headers
+     */
+    private Instances[] readAndCheckHeaders(String key) throws Exception {
+
+        Instances[] data = new Instances[this.tables.length];
+
+        for (int i = 0; i < this.tables.length; ++i) {
+            data[i] = FileUtils.readArffStructure(this.tables[i].get(key));
+            if (i > 0 && !data[i].equalHeaders(data[0])) {
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                        "Files with the same expansion " + key + "don't have the same headers.");
+            }
+        }
+        return data;
     }
 }

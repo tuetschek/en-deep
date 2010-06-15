@@ -102,4 +102,22 @@ public class StringUtils {
         }
         return Integer.parseInt(str.substring(pos, end));
     }
+
+    /**
+     * This reads a space-separated list of integers from a string.
+     * @param str the string from which the input is read
+     * @return the list of integers that were in the string
+     * @throws NumberFormatException if the string doesn't contain only space-separated integers
+     */
+    public static int[] readListOfInts(String str) throws NumberFormatException {
+
+        String[] divided = str.split("\\s+");
+        int[] ints = new int[divided.length];
+
+        for (int i = 0; i < divided.length; ++i) {
+            ints[i] = Integer.parseInt(divided[i]);
+        }
+        return ints;
+    }
+
 }

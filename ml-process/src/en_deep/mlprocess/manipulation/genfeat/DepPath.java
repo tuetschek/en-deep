@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation.genfeat;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.utils.StringUtils;
+import java.util.Arrays;
 
 /**
  * This feature contains the complete path in DEPREL and POS values from the argument candidate
@@ -58,22 +59,29 @@ public class DepPath extends Feature {
         int curPos = predNo + 1;
         StringBuilder pathRel = new StringBuilder(), pathPos = new StringBuilder();
         int pathLength = 0;
+        int predRoot = -1;
+
+        Arrays.fill(pathBack, -1);
 
         if (wordNo == predNo){ // special case -- argument == predicate
             return "\"+\",\"+\",0";
         }
 
-        while(curPos > 0){ // find the way from the predicate to the root
+        while(curPos > 0){ // find the way from the root to the predicate and store it in pathBack
             int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_HEAD));
+
             if (head > 0){
                 pathBack[head-1] = curPos;
+            }
+            else { // store the root for the predicate
+                predRoot = curPos;
             }
             curPos = head;
         }
 
         // find the way up from the argument to the predicate-root path
         curPos = wordNo + 1;
-        while (curPos != 0 && curPos != predNo + 1 && pathBack[curPos-1] == 0){
+        while (curPos != 0 && curPos != predNo + 1 && pathBack[curPos-1] == -1){
             int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1,this.reader.IDXI_HEAD));
 
             if (curPos != wordNo + 1){
@@ -85,12 +93,20 @@ public class DepPath extends Feature {
         }
 
         if (curPos != predNo + 1){
-            if (curPos != wordNo + 1){ // end the way up
+
+            if (curPos == 0){ // the sentence is not a tree and predicate and the given word are in separate trees
+                pathRel.append("/+++");
+                pathPos.append("/+++");
+                curPos = predRoot;
+            }
+            else {
+                if (curPos != wordNo + 1){ // end the way up
                 pathRel.append("/" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
                 pathPos.append("/" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
                 pathLength++;
+                }
+                curPos = pathBack[curPos-1];
             }
-            curPos = pathBack[curPos-1];
             // follow the predicate-root path down to the predicate
             while (curPos != 0 && curPos != predNo + 1){
                 pathRel.append("\\" + this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));

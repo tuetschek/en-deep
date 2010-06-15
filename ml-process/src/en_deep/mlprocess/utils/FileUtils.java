@@ -96,7 +96,6 @@ public class FileUtils{
 
         ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
         Instances data = reader.getDataSet();
-        reader.reset();
         return data;
     }
 
@@ -111,7 +110,26 @@ public class FileUtils{
 
         ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
         Instances data = reader.getStructure();
-        reader.reset();
+        return data;
+    }
+
+    /**
+     * This reads the internal structure of a given ARFF file and forces it to close.
+     * @param fileName the name of the file to read
+     * @return the file structure
+     * @throws Exception if an I/O error occurs
+     */
+    public static Instances readArffStructureAndClose(String fileName) throws Exception {
+
+        FileInputStream in = new FileInputStream(fileName);
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(in);
+        Instances data = reader.getStructure();
+
+        in.getChannel().force(true);
+        in.getFD().sync();
+        in.close();
+        in = null;
+
         return data;
     }
 

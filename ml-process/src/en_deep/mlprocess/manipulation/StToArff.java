@@ -240,10 +240,14 @@ public class StToArff extends Task {
             }
         }
         catch (TaskException e){
+            Logger.getInstance().message("Sentence: " + this.reader.getSentenceId() + " -- "
+                    + this.reader.getSentenceText(), Logger.V_DEBUG);
             Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw e;
         }
         catch (Exception e){
+            Logger.getInstance().message("Sentence: " + this.reader.getSentenceId() + " -- "
+                    + this.reader.getSentenceText(), Logger.V_DEBUG);
             Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }

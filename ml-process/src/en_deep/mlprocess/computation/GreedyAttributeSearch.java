@@ -37,6 +37,7 @@ import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
@@ -166,6 +167,9 @@ public class GreedyAttributeSearch extends EvalSelector {
         // determine the current round and check all the round-related constraints
         this.checkRound();
 
+        // check all round-related compulsory and optional parameters
+        this.checkParameters();
+
         // check the number of inputs and outputs
         if (this.round == this.start && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
@@ -173,11 +177,9 @@ public class GreedyAttributeSearch extends EvalSelector {
         if (output.size() != 2){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
-
-        // check all round-related compulsory and optional parameters
-        this.checkParameters();
     }
 
+    @Override
     protected void setExpandedId() {
 
         this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
@@ -744,11 +746,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         RandomAccessFile attrOrder = new RandomAccessFile(this.attributeOrderFile, "r");
         try {
             line = attrOrder.readLine();
-            String [] attrs = line.split("\\s+");
-            orderAll = new int [attrs.length];
-            for (int i = 0; i < attrs.length; ++i){
-                orderAll[i] = Integer.parseInt(attrs[i]);
-            }
+            orderAll = StringUtils.readListOfInts(line);
         }
         catch (Exception e){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid attribute order file.");
