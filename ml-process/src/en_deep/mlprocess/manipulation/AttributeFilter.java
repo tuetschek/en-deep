@@ -51,6 +51,8 @@ public class AttributeFilter extends Task {
     private static final String MOST_COMMON = "most_common";
     /** The "min_occurrences" parameter name */
     private static final String MIN_OCCURRENCES = "min_occurrences";
+    /** The 'min_percentage' parameter name */
+    private static final String MIN_PERCENTAGE = "min_percentage";
     /** The "del_orig" parameter name */
     private static final String DEL_ORIG = "del_orig";
     /** The "attributes" parameter name */
@@ -74,6 +76,9 @@ public class AttributeFilter extends Task {
     private int mostCommon = -1;
     /** What's the minimum number of occurrences a value should have to be preserved ? (-1 = not applied) */
     private int minOccurrences = -1;
+    /** What's the minimum percentage of occurrences in relation to the total number of instances, so 
+     * that the value is preserved ? */
+    private double minPercentage = Double.NaN;
     /** The names of the attributePrefixes to be filtered */
     private String [] attributePrefixes;
 
@@ -96,6 +101,8 @@ public class AttributeFilter extends Task {
      * <li><tt>most_common</tt> -- the maximum number of most common values that will be preserved</li>
      * <li><tt>min_occurrences</tt> -- minimum number of occurrences that the values must have in order to be
      *  preserved</li>
+     * <li><tt>min_percentage</tt> -- the minimum percentage the given value must take up in all instances in
+     * order to be preserved</li>
      * </ul>
      * <p>
      * If both parameters are set, both conditions must be fulfilled, so that the value is not discarded.
@@ -126,6 +133,9 @@ public class AttributeFilter extends Task {
             if (this.parameters.get(MIN_OCCURRENCES) != null){
                 this.minOccurrences = Integer.parseInt(this.parameters.get(MIN_OCCURRENCES));
             }
+            if (this.parameters.get(MIN_PERCENTAGE) != null){
+                this.minPercentage = Double.parseDouble(this.parameters.get(MIN_PERCENTAGE)) / 100.0;
+            }
         }
         catch (NumberFormatException e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid number specification.");
@@ -142,7 +152,8 @@ public class AttributeFilter extends Task {
             this.mergeInputs = true;
         }
 
-        if (this.attributePrefixes == null || (this.mostCommon == -1 && this.minOccurrences == -1)){
+        if (this.attributePrefixes == null 
+                || (this.mostCommon == -1 && this.minOccurrences == -1 && this.minPercentage == Double.NaN)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
 
@@ -223,15 +234,18 @@ public class AttributeFilter extends Task {
             }
         }
         // collect statistics about the given attribute and create its filtered version
+        int minOccur = this.getMinOccurrences(data);
         int[] stats = this.collectStatistics(data, attrName);
-        boolean[] allowedIndexes = this.filterValues(stats);
+        boolean[] allowedIndexes = this.filterValues(stats, minOccur);
         Vector<String> allowedValues = new Vector<String>();
+
         for (int i = 0; i < allowedIndexes.length; ++i) {
             if (allowedIndexes[i]) {
                 allowedValues.add(data[0].attribute(attrName).value(i));
             }
         }
         allowedValues.add(OTHER_VALUE);
+
         Attribute newAttr = new Attribute(newName, allowedValues);
         for (int i = 0; i < data.length; ++i) {
             this.addFiltered(data[i], attrName, newAttr, allowedIndexes);
@@ -316,11 +330,11 @@ public class AttributeFilter extends Task {
     /**
      * Returns the values that have passed the filtering for the given attribute.
      *
-     * @param attribute the attribute to have its values filtered
      * @param stats the statistics for this attribute
+     * @param minOccurrences the minimum number of occurrences the values must have
      * @return true for the values that have passed the filtering, false otherwise
      */
-    private boolean [] filterValues(int[] stats) {
+    private boolean [] filterValues(int[] stats, int minOccurrences) {
 
         boolean [] allowedVals = new boolean [stats.length];
 
@@ -332,7 +346,7 @@ public class AttributeFilter extends Task {
                 top[i] = -1;
             }
             for (int i = 0; i < stats.length; ++i){
-                if (stats[i] > this.minOccurrences 
+                if (stats[i] > minOccurrences 
                         && (top[this.mostCommon - 1] == -1 || stats[i] > stats[top[this.mostCommon - 1]])){
                     int j = this.mostCommon - 1;
                     while (j > 0 && (top[j] == -1 || stats[i] > stats[top[j-1]])){
@@ -348,7 +362,7 @@ public class AttributeFilter extends Task {
         }
         else {
             for (int i = 0; i < stats.length; ++i){
-                if (stats[i] > this.minOccurrences){
+                if (stats[i] > minOccurrences){
                     allowedVals[i] = true;
                 }
             }
@@ -418,6 +432,33 @@ public class AttributeFilter extends Task {
             }
             this.attributePrefixes = uniquePrefixes;
         }
+    }
+
+    /**
+     * This computes the minimum number of occurrences a value must have in order to be preserved, according to
+     * the {@link #minOccurrences} and {@link #minPercentage} settings.
+     *
+     * @param data the data to be processed
+     * @return the minimum number of occurrences for the values in data
+     */
+    private int getMinOccurrences(Instances[] data) {
+
+        if (this.minOccurrences == -1 && this.minPercentage == Double.NaN){
+            return 0;
+        }
+        else if (this.minPercentage == Double.NaN){
+            return this.minOccurrences;
+        }
+        else {
+            int sumInst = 0;
+
+            for (int i = 0; i < data.length; ++i){
+                sumInst += data[i].numInstances();
+            }
+            
+            return Math.max(this.minOccurrences, (int) Math.ceil(this.minPercentage * sumInst));
+        }
+
     }
 
 

@@ -109,19 +109,21 @@ public abstract class GeneralClassifier extends Task {
         // an attribute name was given in parameters -- try to find it
         if (this.parameters.get(CLASS_ARG) != null) {
 
-            if (missing != null && !missing.name().equals(this.parameters.get(CLASS_ARG))) {
+            String classArg = this.parameters.remove(CLASS_ARG);
+
+            if (missing != null && !missing.name().equals(classArg)) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
             }
-            if (train.attribute(this.parameters.get(CLASS_ARG)) == null) {
+            if (train.attribute(classArg) == null) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
                         + "in training data.");
             }
             if (missing == null) {
-                train.setClass(train.attribute(this.parameters.get(CLASS_ARG)));
-                eval.setClass(eval.attribute(this.parameters.get(CLASS_ARG)));
+                train.setClass(train.attribute(classArg));
+                eval.setClass(eval.attribute(classArg));
                 return;
             }
-            missing = train.attribute(this.parameters.get(CLASS_ARG));
+            missing = train.attribute(classArg);
         }
 
         // no attribute from train is missing in eval
@@ -165,39 +167,5 @@ public abstract class GeneralClassifier extends Task {
      * @throws Exception if an I/O or classification error occurs
      */
     protected abstract void classify(String trainFile, String evalFile, String outputFile) throws Exception;
-
-    /**
-     * This takes all the parameters of this {@link Task} and creates the options for the used WEKA
-     * classifier class out of it. It skips all the given parameter names. Boolean WEKA parameters should
-     * be set without any value in the Task parameters.
-     *
-     * @return the list of all options to be passed to WEKA
-     */
-    protected String[] retrieveWekaClassParams(Vector<String> skipList) {
-
-        Vector classifParams = new Vector<String>(this.parameters.size() - skipList.size());
-        Enumeration<String> allParams = this.parameters.keys();
-
-        while (allParams.hasMoreElements()) {
-
-            String name = allParams.nextElement();
-            String value;
-
-            // skip the reserved parameters
-            if (skipList.contains(name)) {
-                continue;
-            }
-            value = this.parameters.get(name);
-            
-            if (value.equals("")) { // boolean parameters should have no value
-                classifParams.add("-" + name);
-            }
-            else {
-                classifParams.add("-" + name);
-                classifParams.add(value);
-            }
-        }
-        return (String[]) classifParams.toArray(new String[0]);
-    }
 
 }

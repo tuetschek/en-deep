@@ -27,6 +27,10 @@
 
 package en_deep.mlprocess.utils;
 
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Vector;
+
 /**
  * This class comprises several useful string functions, which do not pertain to a specific object type.
  *
@@ -118,6 +122,37 @@ public class StringUtils {
             ints[i] = Integer.parseInt(divided[i]);
         }
         return ints;
+    }
+
+
+    /**
+     * This takes the parameters of a {@link Task} and creates the options for the WEKA
+     * classifier/filter class out of it. Boolean WEKA parameters should
+     * be set without any value in the Task parameters.
+     *
+     * @return the list of all options to be passed to WEKA
+     */
+    public static String[] getWekaOptions(Hashtable<String, String> parameters) {
+
+        Vector classifParams = new Vector<String>(parameters.size());
+        Enumeration<String> allParams = parameters.keys();
+
+        while (allParams.hasMoreElements()) {
+
+            String name = allParams.nextElement();
+            String value;
+
+            value = parameters.get(name);
+
+            if (value.equals("")) { // boolean parameters should have no value
+                classifParams.add("-" + name);
+            }
+            else {
+                classifParams.add("-" + name);
+                classifParams.add(value);
+            }
+        }
+        return (String[]) classifParams.toArray(new String[0]);
     }
 
 }

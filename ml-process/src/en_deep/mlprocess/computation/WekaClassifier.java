@@ -30,6 +30,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -121,25 +122,22 @@ public class WekaClassifier extends GeneralClassifier {
      */
     private void initClassifier() throws TaskException {
 
+        String classifName = this.parameters.remove(WEKA_CLASS);
+
         // try to create the classifier corresponding to the given WEKA class name
         try {
             Class classifClass = null;
             Constructor classifConstructor = null;
-            classifClass = Class.forName(this.parameters.get(WEKA_CLASS));
+            classifClass = Class.forName(classifName);
             classifConstructor = classifClass.getConstructor();
             this.classif = (AbstractClassifier) classifConstructor.newInstance();
         }
         catch (Exception e) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                    "WEKA class not found or not valid: " + this.parameters.get(WEKA_CLASS));
+                    "WEKA class not found or not valid: " + classifName);
         }
-
-        // set-up the classifier parameters
-        Vector<String> skipList = new Vector<String>(3);
-        skipList.add(WEKA_CLASS);
-        skipList.add(SELECT_ARGS);
-        skipList.add(CLASS_ARG);
-        String [] classifParams = this.retrieveWekaClassParams(skipList);
+        
+        String [] classifParams = StringUtils.getWekaOptions(this.parameters);
 
         try {
             this.classif.setOptions(classifParams);
@@ -208,7 +206,7 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.parameters.get(SELECT_ARGS) == null){
             return;
         }
-        selection = this.parameters.get(SELECT_ARGS).split("\\s+");
+        selection = this.parameters.remove(SELECT_ARGS).split("\\s+");
 
         // find the attributes selected for removal
         for (String attr : selection){

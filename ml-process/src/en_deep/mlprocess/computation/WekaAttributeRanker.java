@@ -31,6 +31,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -144,22 +145,18 @@ public class WekaAttributeRanker extends GeneralClassifier {
      */
     private void initRanker(Instances data) throws TaskException {
 
-        // find out the options
-        Vector<String> skipList = new Vector<String>(2);
-        skipList.add(WEKA_CLASS);
-        skipList.add(CLASS_ARG);
-
-        String [] rankerParams = retrieveWekaClassParams(skipList);
+        String rankerName = this.parameters.remove(WEKA_CLASS);
+        String [] rankerParams = StringUtils.getWekaOptions(this.parameters);
 
         // try to create the ranker corresponding to the given WEKA class name
         try {
-            ASEvaluation rankerInit = ASEvaluation.forName(this.getParameterVal(WEKA_CLASS), rankerParams);
+            ASEvaluation rankerInit = ASEvaluation.forName(rankerName, rankerParams);
             rankerInit.buildEvaluator(data);
             this.ranker = (AttributeEvaluator) rankerInit;
         }
         catch (Exception e) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                    "WEKA class not found or not valid: " + this.parameters.get(WEKA_CLASS) + " -- " + e.getMessage());
+                    "WEKA class not found or not valid: " + rankerName + " -- " + e.getMessage());
         }
     }
 
