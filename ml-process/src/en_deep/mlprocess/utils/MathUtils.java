@@ -121,4 +121,13 @@ public class MathUtils {
 
         return order;
     }
+
+    /**
+     * This returns the base 2 logarithm of the given value.
+     * @param value the value to be logarithmed
+     * @return the base 2 logarithm of the given value
+     */
+    public static double log2(double value) {
+        return Math.log(value) / Math.log(2);
+    }
 }

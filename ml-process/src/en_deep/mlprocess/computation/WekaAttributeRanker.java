@@ -36,7 +36,9 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.attributeSelection.ASEvaluation;
+import weka.attributeSelection.ASSearch;
 import weka.attributeSelection.AttributeEvaluator;
+import weka.attributeSelection.RankedOutputSearch;
 import weka.core.Instance;
 import weka.core.Instances;
 
@@ -50,16 +52,28 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
     /* CONSTANTS */
 
-    /** Name of the weka_class parameter */
-    private static final String WEKA_CLASS = "weka_class";
+    /** Name of the ranker parameter */
+    private static final String RANKER = "ranker";
+    /** Name of the evaluator parameter */
+    private static final String EVALUATOR = "evaluator";
+    /** Evaluator parameter prefix */
+    private static final String EVALUATOR_PARAM_PREFIX = "E_";
+    /** Ranker parameter prefix */
+    private static final String RANKER_PARAM_PREFIX = "R_";
 
     private static final String LF = System.getProperty("line.separator");
 
 
     /* DATA */
 
+    /** The WEKA attribute search with an evaluator */
+    private ASSearch searcher;
+    /** WEKA attribute (subset) evaluator for {@link #searcher} */
+    private ASEvaluation searcherEval;
     /** The WEKA attribute ranker */
-    private AttributeEvaluator ranker;
+    private RankedOutputSearch ranker;
+    /** The WEKA attribute evaluator */
+    private AttributeEvaluator evaluator;
 
     /* METHODS */
 
@@ -67,7 +81,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
      * This just checks the compulsory parameters and the inputs and outputs.
      * There must be two inputs and one output. There are two compulsory parameters:
      * <ul>
-     * <li><tt>weka_class</tt> -- the desired WEKA classifier to be used</li>
+     * <li><tt>ranker</tt> -- the desired WEKA attribute ranker to be used</li>
      * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
@@ -83,14 +97,15 @@ public class WekaAttributeRanker extends GeneralClassifier {
             Vector<String> input, Vector<String> output) throws TaskException {
         super(id, parameters, input, output);
 
-        if (this.getParameterVal(CLASS_ARG) == null || this.getParameterVal(WEKA_CLASS) == null){
+        if (this.getParameterVal(CLASS_ARG) == null 
+                || (this.getParameterVal(RANKER) == null && this.getParameterVal(EVALUATOR) == null)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
         
     }
 
     /**
-     * This processes the train and evaluation data using the given WEKA attribute ranker (all data is
+     * This processes the data and evaluation data using the given WEKA attribute ranker (all data is
      * used for attribute ranking).
      *
      * @param trainFile the training data
@@ -119,19 +134,31 @@ public class WekaAttributeRanker extends GeneralClassifier {
         this.initRanker(train);
 
         // rank all the attributes and store the values
-        double [] merits = new double [train.numAttributes()];
+        String outText = null;
+        if (this.searcher != null){
+            int [] order = this.searcher.search(this.searcherEval, eval);
+            outText = this.getAttribList(train, order);
+        }
+        else if (this.ranker != null){
+            double [][] order = this.ranker.rankedAttributes();
+            outText = this.getAttribList(train, order);
+        }
+        else { // evaluator != null
+            double [] merits = new double [train.numAttributes()];
 
-        for (int i = 0; i < train.numAttributes(); ++i){
-            if (i != train.classIndex()){
-                merits[i] = this.ranker.evaluateAttribute(i);
+            for (int i = 0; i < train.numAttributes(); ++i){
+                if (i != train.classIndex()){
+                    merits[i] = this.evaluator.evaluateAttribute(i);
+                }
+                else {
+                    merits[i] = Double.NEGATIVE_INFINITY; // this will eliminate the class attribute itself
+                }
             }
-            else {
-                merits[i] = Double.NEGATIVE_INFINITY; // this will eliminate the class attribute itself
-            }
+            outText = this.sortByMerits(train, merits);
         }
 
         // sort the output and write it down
-        FileUtils.writeString(outputFile, this.sortByMerits(train, merits));
+        FileUtils.writeString(outputFile, outText);
 
         Logger.getInstance().message(this.id + ": results saved to " + outputFile + ".", Logger.V_DEBUG);
     }
@@ -145,19 +172,61 @@ public class WekaAttributeRanker extends GeneralClassifier {
      */
     private void initRanker(Instances data) throws TaskException {
 
-        String rankerName = this.parameters.remove(WEKA_CLASS);
-        String [] rankerParams = StringUtils.getWekaOptions(this.parameters);
+        String rankerName = this.parameters.remove(RANKER);
+        String evalName = this.parameters.remove(EVALUATOR);
 
-        // try to create the ranker corresponding to the given WEKA class name
+        String [] rankerParams = null, evalParams = null;
+
+        // both ranker and evaluator are set --> need prefixes in parameters
+        if (rankerName != null && evalName != null){
+            
+            rankerParams = StringUtils.getWekaOptions(StringUtils.getPrefixParams(this.parameters, RANKER_PARAM_PREFIX));
+            evalParams = StringUtils.getWekaOptions(StringUtils.getPrefixParams(this.parameters, EVALUATOR_PARAM_PREFIX));
+        }
+        else if (rankerName != null){
+            rankerParams = StringUtils.getWekaOptions(this.parameters);
+        }
+        else {
+            evalParams = StringUtils.getWekaOptions(this.parameters);
+        }
+
+        // try to create the ranker /evaluator / searcher corresponding to the given WEKA class name
         try {
-            ASEvaluation rankerInit = ASEvaluation.forName(rankerName, rankerParams);
-            rankerInit.buildEvaluator(data);
-            this.ranker = (AttributeEvaluator) rankerInit;
+            if (rankerName != null){                
+                if (evalName == null){
+                    this.ranker = (RankedOutputSearch) this.initWekaAS(rankerName, rankerParams, data);
+                }
+                else {
+                    ASEvaluation evalInit = this.initWekaAS(evalName, evalParams, data);
+                    this.evaluator = (AttributeEvaluator) evalInit;
+                    this.searcher = ASSearch.forName(rankerName, rankerParams);
+                }
+            }
+            else if (evalName != null){
+                this.evaluator = (AttributeEvaluator) this.initWekaAS(evalName, evalParams, data);
+            }
         }
         catch (Exception e) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                    "WEKA class not found or not valid: " + rankerName + " -- " + e.getMessage());
+                    "Could not create ranker or evaluator: " + e.getMessage());
         }
+    }
+
+    /**
+     * This initializes any WEKA class for attribute evaluation.
+     *
+     * @param className the name of the class
+     * @param params the class parameters
+     * @param data the data to initialize the class
+     * @return the attribute evaluator object
+     * @throws Exception if the class is not found or is not a derivee of {@link ASEvaluation}
+     */
+    private ASEvaluation initWekaAS(String className, String[] params, Instances data) throws Exception {
+
+        ASEvaluation asObject = ASEvaluation.forName(className, params);
+        asObject.buildEvaluator(data);
+
+        return asObject;
     }
 
     /**
@@ -175,7 +244,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         for (int i = 0; i < order.length - 1; ++i){ // assume the class attribute itself is at the end
             out.append(order[i]);
-            if (i < order.length-1){
+            if (i < order.length-2){
                 out.append(" ");
             }
         }
@@ -185,6 +254,50 @@ public class WekaAttributeRanker extends GeneralClassifier {
             out.append(order[i] + " " + data.attribute(order[i]).name() + ": " + merits[i] + LF);
         }
 
+        return out.toString();
+    }
+
+    /**
+     * This returns the attribute list based on the given order (as output by {@link ASSearch}).
+     * @param data the data the search was performed on
+     * @param order the attribute order
+     * @return the list of the attributes by their order
+     */
+    private String getAttribList(Instances data, int[] order) {
+        
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < order.length; ++i){
+            out.append(order[i]);
+            if (i < order.length-1){
+                out.append(" ");
+            }
+        }
+        out.append(LF);
+        for (int i = 0; i < order.length; ++i){
+            out.append(order[i] + " " + data.attribute(order[i]).name() + LF);
+        }
+        return out.toString();
+    }
+
+    /**
+     * This returns the attribute list based on the given order (as output by {@link RankedOutputSearch}).
+     * @param data the data the search was performed on
+     * @param order the attribute order
+     * @return the list of the attributes by their order
+     */
+    private String getAttribList(Instances data, double[][] order) {
+
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < order.length; ++i){
+            out.append((int) order[i][0]);
+            if (i < order.length-1){
+                out.append(" ");
+            }
+        }
+        out.append(LF);
+        for (int i = 0; i < order.length; ++i){
+            out.append((int) order[i][0] + " " + data.attribute((int) order[i][0]).name() + ": " + order[i][1] + LF);
+        }
         return out.toString();
     }
 

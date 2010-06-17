@@ -155,4 +155,24 @@ public class StringUtils {
         return (String[]) classifParams.toArray(new String[0]);
     }
 
+    /**
+     * This retrieves all the parameters that start with a given prefix from a parameter set. It strips the
+     * prefix off the parameter names and leave their values unchanged.
+     * 
+     * @param origParams the original parameters
+     * @param prefix the prefix
+     * @return
+     */
+    public static Hashtable<String, String> getPrefixParams(Hashtable<String, String> origParams, String prefix){
+
+        Hashtable<String, String> prefixParams = new Hashtable<String, String>();
+
+        for (String key : origParams.keySet()){
+            if (key.startsWith(prefix)){
+                prefixParams.put(key.substring(prefix.length()),origParams.get(key));
+            }
+        }
+        return prefixParams;
+    }
+
 }
