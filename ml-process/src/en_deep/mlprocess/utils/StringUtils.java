@@ -175,4 +175,41 @@ public class StringUtils {
         return prefixParams;
     }
 
+    /**
+     * Return specified substrings for all the members of the given array. If the strings are not long enough,
+     * returns the longest possible part.
+     *
+     * @param arr the array of strings to make the substrings of
+     * @param start the starting index of the substring (incl.)
+     * @param end the ending index of the substring (excl.)
+     * @return
+     */
+    public static String[] substrings(String[] arr, int start, int end) {
+
+        String [] subs = new String [arr.length];
+
+        for (int i = 0; i < arr.length; ++i){
+            subs[i] = safeSubstr(arr[i], start, end);
+        }
+        return subs;
+    }
+
+    /**
+     * This returns a substring of the given string even if the string is not long enough (the substring will be truncated then).
+     * @param str the string to take the substring of
+     * @param start the starting index
+     * @param end the ending index
+     */
+    public static String safeSubstr(String str, int start, int end) {
+        if (str.length() >= end){
+            return str.substring(start, end);
+        }
+        else if (str.length() >= start){
+            return str.substring(start);
+        }
+        else {
+            return "";
+        }
+    }
+
 }

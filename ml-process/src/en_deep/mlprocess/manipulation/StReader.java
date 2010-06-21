@@ -31,6 +31,7 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.Vector;
 
 /**
@@ -296,7 +297,7 @@ public class StReader {
     }
 
     /**
-     * Returns the given piece of information about for serveral words in a sentence.
+     * Returns the given piece of information about for several words in a sentence.
      *
      * @param wordNos the numbers of the desired words in the sentence
      * @param fieldNo the number of the desired field from the ST file
@@ -321,7 +322,7 @@ public class StReader {
      */
     public int [] getChildrenPos(int wordNo){
 
-        Vector<Integer> children = new Vector<Integer>();
+        ArrayList<Integer> children = new ArrayList<Integer>();
         // find all children
         for (int i = 0; i < this.length(); ++i){
             if (this.getWordInfo(i, IDXI_HEAD).equals(Integer.toString(wordNo + 1))){

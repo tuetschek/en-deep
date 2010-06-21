@@ -32,7 +32,7 @@ import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
- * This feature returns the lemma, pos and form of the parent node.
+ * This feature returns the lemma, POS, coarse POS and form of the parent node.
  * @author Ondrej Dusek
  */
 public class Head extends Feature {
@@ -44,6 +44,7 @@ public class Head extends Feature {
     @Override
     public String getHeader() {
         return StToArff.ATTRIBUTE + " ParentPOS " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " ParentCPOS " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " ParentLemma " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " ParentForm " + StToArff.STRING;
     }
@@ -54,9 +55,12 @@ public class Head extends Feature {
         Integer headPos = this.reader.getHeadPos(wordNo);
 
         if (headPos == 0){ // the root node
-            return "\"\",\"\",\"\"";
+            return "\"\",\"\",\"\",\"\"";
         }
-        return "\"" + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_POS)) + "\",\""
+        String pos = this.reader.getWordInfo(headPos, this.reader.IDXI_POS);
+        String cpos = pos.isEmpty() ? "" : pos.substring(0, 1);
+        return "\"" + StringUtils.escape(pos) + "\",\""
+                + StringUtils.escape(cpos) + "\",\""
                 + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_LEMMA)) + "\",\""
                 + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_FORM)) + "\"";
     }

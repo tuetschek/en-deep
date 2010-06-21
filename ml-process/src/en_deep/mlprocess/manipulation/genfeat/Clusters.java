@@ -117,19 +117,19 @@ public class Clusters extends Feature {
 
         for (int i = 0; i < this.featNames.length; ++i){
 
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + " " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left3 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left2 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left1 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Left12 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right12 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right1 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right2 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Right3 " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Parent " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_Children " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_LeftSibling " + StToArff.STRING + LF);
-            text.append(StToArff.ATTRIBUTE + " " + this.featNames[i] + "_RightSibling " + StToArff.STRING);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append(" " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left3 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left2 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left1 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left12 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right12 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right1 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right2 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right3 " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Parent " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Children " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_LeftSibling " + StToArff.STRING).append(LF);
+            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_RightSibling " + StToArff.STRING);
 
             if (i < this.featNames.length - 1){
                 text.append(LF);
@@ -150,22 +150,22 @@ public class Clusters extends Feature {
                 text.append(",");
             }
             // the word itself
-            text.append(this.getCluster(clusterType, wordNo) + ",");
+            text.append(this.getCluster(clusterType, wordNo)).append(",");
 
             // left3 ... right3
-            text.append(this.getCluster(clusterType, wordNo-3) + ",");
-            text.append(this.getCluster(clusterType, wordNo-2) + ",");
-            text.append(this.getCluster(clusterType, wordNo-1) + ",");
-            text.append(this.getCluster(clusterType, wordNo-2)
-                    + DATA_SEP + this.getCluster(clusterType, wordNo-1) + ",");
-            text.append(this.getCluster(clusterType, wordNo+1)
-                    + DATA_SEP + this.getCluster(clusterType, wordNo+2) + ",");
-            text.append(this.getCluster(clusterType, wordNo+1) + ",");
-            text.append(this.getCluster(clusterType, wordNo+2) + ",");
-            text.append(this.getCluster(clusterType, wordNo+3) + ",");
+            text.append(this.getCluster(clusterType, wordNo - 3)).append(",");
+            text.append(this.getCluster(clusterType, wordNo - 2)).append(",");
+            text.append(this.getCluster(clusterType, wordNo - 1)).append(",");
+            text.append(this.getCluster(clusterType, wordNo - 2)).append(DATA_SEP).append(
+                    this.getCluster(clusterType, wordNo - 1)).append(",");
+            text.append(this.getCluster(clusterType, wordNo + 1)).append(DATA_SEP).append(
+                    this.getCluster(clusterType, wordNo + 2)).append(",");
+            text.append(this.getCluster(clusterType, wordNo + 1)).append(",");
+            text.append(this.getCluster(clusterType, wordNo + 2)).append(",");
+            text.append(this.getCluster(clusterType, wordNo + 3)).append(",");
 
             // parent
-            text.append(this.getCluster(clusterType, this.reader.getHeadPos(wordNo)) + ",");
+            text.append(this.getCluster(clusterType, this.reader.getHeadPos(wordNo))).append(",");
 
             // children
             int [] childrenPos = this.reader.getChildrenPos(wordNo);
@@ -183,7 +183,7 @@ public class Clusters extends Feature {
             text.append(",");
 
             // left & right sibling
-            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.LEFT)) + ",");
+            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.LEFT))).append(",");
             text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.RIGHT)));
         }
         return text.toString();

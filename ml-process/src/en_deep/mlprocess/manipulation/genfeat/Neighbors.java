@@ -52,7 +52,8 @@ public class Neighbors extends Feature {
 
     @Override
     public String getHeader() {
-        return this.getHeaderText("_Form") + LF + this.getHeaderText("_Lemma") + LF + this.getHeaderText("_POS");
+        return this.getHeaderText("_Form") + LF + this.getHeaderText("_Lemma") + LF + this.getHeaderText("_POS")
+                + LF + this.getHeaderText("_CPOS");
     }
 
     /**
@@ -75,9 +76,11 @@ public class Neighbors extends Feature {
     @Override
     public String generate(int wordNo, int predNo) {
         
-        return this.getNeighborsField(wordNo, this.reader.IDXI_FORM) + ","
-                + this.getNeighborsField(wordNo, this.reader.IDXI_LEMMA) + ","
-                + this.getNeighborsField(wordNo, this.reader.IDXI_POS);
+        return "\"" + StringUtils.join(this.getNeighborsField(wordNo, this.reader.IDXI_FORM),"\",\"") + "\",\""
+                + StringUtils.join(this.getNeighborsField(wordNo, this.reader.IDXI_LEMMA), "\",\"") + "\",\""
+                + StringUtils.join(this.getNeighborsField(wordNo, this.reader.IDXI_POS), "\",\"") + "\",\""
+                + StringUtils.join(StringUtils.substrings(this.getNeighborsField(wordNo, this.reader.IDXI_POS),0,1),"\",\"")
+                + "\"";
     }
 
     /**
@@ -87,18 +90,23 @@ public class Neighbors extends Feature {
      * @param field The field to get.
      * @return All the neighbors' values for the given field.
      */
-    private String getNeighborsField(int wordNo, int field){
+    private String [] getNeighborsField(int wordNo, int field){
 
-        return "\"" + StringUtils.escape(this.reader.getWordInfo(wordNo - 3, field)) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field))  + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo - 1, field)) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field)
-                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo - 1, field))  + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field)
-                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo + 2, field))  + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field))  + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo + 2, field))  + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(wordNo + 3, field))  + "\"";
+        String [] ret = new String [8];
+        int i = 0;
+
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 3, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 1, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, field)
+                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo - 1, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field)
+                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo + 2, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 2, field));
+        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 3, field));
+
+        return ret;
     }
 
 }

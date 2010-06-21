@@ -28,8 +28,10 @@
 package en_deep.mlprocess.computation;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import weka.attributeSelection.ASEvaluation;
 import weka.attributeSelection.RankedOutputSearch;
+import weka.attributeSelection.SubsetEvaluator;
 import weka.core.Capabilities;
 import weka.core.CapabilitiesHandler;
 import weka.core.Instances;
@@ -39,7 +41,7 @@ import weka.core.Instances;
  * @todo this should most probably be a subset evaluator, not ranked output search.
  * @author Ondrej Dusek
  */
-public class mRMR extends ASEvaluation implements RankedOutputSearch, CapabilitiesHandler {
+public class mRMR extends ASEvaluation implements RankedOutputSearch, CapabilitiesHandler, SubsetEvaluator {
 
     /* DATA */
 
@@ -49,25 +51,19 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
     private Instances data;
     /** Show ranking ? */
     private boolean ranking;
+    /* MI's of all attributes */
+    private double [][] miMatrix;
 
     /* METHODS */
 
     /**
      * This computes the minimum redundancy-maximum relevance score for all the attributes of the
-     * given data, against the class attribute (must be set in te data)
+     * given data, against the class attribute (must be set in the data)
      *
      * @param data the data to be used for computation
      * @return mRMR ranking of all the attributes in the data
      */
     private double[][] computemRMR(){
-
-        // initialize the matrix for mutual information
-        double [][] miMatrix = new double [data.numAttributes()] [];
-
-        for (int i = 0; i < miMatrix.length; ++i){
-            miMatrix[i] = new double [data.numAttributes()];
-            Arrays.fill(miMatrix[i], Double.NaN);
-        }
 
         // initialize the return value -- attribute indexes with mRMR values
         double [][] ret = new double [this.numAttrib] [];
@@ -85,7 +81,11 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
                 continue;
             }
 
-            double mi = MutualInformation.mutualInformation(data, i, data.classIndex());
+            double mi = miMatrix[i][data.classIndex()];
+
+            if (Double.isNaN(mi)){
+                mi = MutualInformation.mutualInformation(data, i, data.classIndex());
+            }
             miMatrix[i][data.classIndex()] = miMatrix[data.classIndex()][i] = mi;
 
             if (mi > ret[0][1]){
@@ -94,16 +94,16 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
             }
         }
 
-        boolean [] usedAttribMask = new boolean [data.numAttributes()];
-        usedAttribMask[(int) ret[0][0]] = true;
-        usedAttribMask[data.classIndex()] = true;
+        BitSet usedAttrib = new BitSet(data.numAttributes());
+        usedAttrib.set((int) ret[0][0]);
+        usedAttrib.set(data.classIndex());
 
         // round by round, select the attribute with the best relevance-redundancy score
         for (int round = 1; round < this.numAttrib; ++round){
 
             for (int j = 0; j < data.numAttributes(); j++){
 
-                if (usedAttribMask[j]){ // skip already selected attributes & the class attribute
+                if (usedAttrib.get(j)){ // skip already selected attributes & the class attribute
                     continue;
                 }
 
@@ -123,7 +123,7 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
                     ret[round][0] = j;
                 }
             }
-            usedAttribMask[(int) ret[round][0]] = true;
+            usedAttrib.set((int) ret[round][0]);
         }
 
         // return the result
@@ -139,6 +139,14 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
 
         if (data.classIndex() == -1){
             throw new Exception("Class attribute must be set.");
+        }
+
+        // initialize the matrix for mutual information
+        this.miMatrix = new double [data.numAttributes()] [];
+
+        for (int i = 0; i < this.miMatrix.length; ++i){
+            this.miMatrix[i] = new double [data.numAttributes()];
+            Arrays.fill(this.miMatrix[i], Double.NaN);
         }
     }
 
@@ -204,5 +212,52 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
         ret.enable(Capabilities.Capability.NUMERIC_CLASS);
 
         return ret;
+    }
+
+    /**
+     * Compute the mRMR value of an attribute subset (independent on the incremental algorithm). The value
+     * is the difference b/t relevance and redundancy of the set.
+     *
+     * @param bitset the attribute subset to be used
+     * @return the relevance-redundancy difference of the given set
+     * @throws Exception
+     */
+    public double evaluateSubset(BitSet bitset) throws Exception {
+
+        double relevance = 0.0;
+        double redundancy = 0.0;
+        double setSize = 0.0;
+
+        for (int i = 0; i < bitset.length(); ++i){
+
+            if (!bitset.get(i) || i == data.classIndex()){
+                continue;
+            }
+            setSize++;
+
+            // relevance of this attribute in the set
+            double mi = miMatrix[i][data.classIndex()];
+
+            if (Double.isNaN(mi)){
+                mi = MutualInformation.mutualInformation(data, i, data.classIndex());
+                miMatrix[i][data.classIndex()] = miMatrix[data.classIndex()][i] = mi;
+            }
+            relevance += mi;
+
+            // redundancy with respect to all other set members
+            for (int j = 0; j < i; ++j){
+
+                if (!bitset.get(j) || j == data.classIndex()){
+                    continue;
+                }
+                mi = miMatrix[i][j];
+                if (Double.isNaN(mi)){
+                    mi = MutualInformation.mutualInformation(data, i, j);
+                    miMatrix[i][j] = miMatrix[j][i] = mi;
+                }
+                redundancy += mi;
+            }
+        }
+        return (1/setSize) * relevance - (1/(setSize*setSize)) * redundancy;
     }
 }

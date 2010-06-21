@@ -49,7 +49,8 @@ public class Children extends Feature {
     public String getHeader() {
         return StToArff.ATTRIBUTE + " ChildrenPOS " + StToArff.STRING + LF
                 + StToArff.ATTRIBUTE + " ChildrenLemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING;
+                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING + LF
+                + StToArff.ATTRIBUTE + " ChildrenCPOS " + StToArff.STRING;
     }
 
     @Override
@@ -60,11 +61,13 @@ public class Children extends Feature {
         String [] pos = this.reader.getWordsInfo(children, this.reader.IDXI_POS);
         String [] lemma = this.reader.getWordsInfo(children, this.reader.IDXI_LEMMA);
         String [] form = this.reader.getWordsInfo(children, this.reader.IDXI_FORM);
+        String [] cpos = StringUtils.substrings(pos, 0, 1);
 
         // output the result
         return "\"" + StringUtils.escape(StringUtils.join(pos, SEP)) + "\",\""
                 + StringUtils.escape(StringUtils.join(lemma, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(form, SEP)) + "\"";
+                + StringUtils.escape(StringUtils.join(form, SEP)) + "\",\""
+                + StringUtils.escape(StringUtils.join(cpos, SEP)) + "\"";
     }
 
 
