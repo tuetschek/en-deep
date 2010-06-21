@@ -32,6 +32,7 @@ import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
 
 /**
@@ -46,6 +47,13 @@ public class StReader {
     public enum Direction {
         LEFT, RIGHT
     }
+
+    /** Name of the ARFF lemma attribute */
+    public final String LEMMA;
+    /** Name of the ARFF POS attribute */
+    public final String POS;
+    /** Name of the ARFF pred attribute */
+    public final String PRED = "pred";
 
     /** Index of the word id in the ST file */
     public final int IDXI_WORDID = 0;
@@ -65,9 +73,21 @@ public class StReader {
     public final int IDXI_DEPREL;
     /** Index of the DEPREL attribute in the ST file */
     public final int IDXI_FEAT;
+    /** Index of the PRED attribute in the ST file */
+    public final int IDXI_PRED = 13;
 
     /** Number of compulsory fields that are in each sentence in the ST file */
     final int COMPULSORY_FIELDS = 14;
+
+    /** The default value for ST file fields. */
+    private String DEFAULT_VALUE = "_";
+
+    /** Output file suffix for noun predicates */
+    private static final String NOUN = ".n";
+    /** Output file suffix for verb predicates */
+    private static final String VERB = ".v";
+    /** Output file suffix for erroneously tagged predicates */
+    private static final String TAG_ERR = ".e";
 
     /* VARIABLES */
 
@@ -93,8 +113,8 @@ public class StReader {
      * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
      */
     final int predictedNon;
-    /** The {@link StToArff} task. */
-    private final StToArff task;
+    /** The {@link StManipulation} task this reader works for. */
+    private final StManipulation task;
     
     /** The data for the current sentence */
     private Vector<String []> words;
@@ -111,7 +131,7 @@ public class StReader {
      *
      * @param task the StToArff task for this conversion
      */
-    StReader(StToArff task) throws IOException {
+    StReader(StManipulation task) throws IOException {
 
         // set main parameters
         this.task = task;
@@ -125,6 +145,8 @@ public class StReader {
             IDXI_DEPREL = 11;
             IDXI_FEAT = 7;
             this.predictedNon = -1;
+            LEMMA = "p-lemma";
+            POS = "p-pos";
         } else {
             IDXI_POS = 4;
             IDXI_LEMMA = 2;
@@ -132,6 +154,8 @@ public class StReader {
             IDXI_DEPREL = 10;
             IDXI_FEAT = 6;
             this.predictedNon = 1;
+            LEMMA = "lemma";
+            POS = "pos";
         }
 
         // read the config file
@@ -181,9 +205,9 @@ public class StReader {
         if (arr == null || arr.length == 0) {
             return "";
         }
-        sb.append("\"" + StringUtils.escape(arr[0]) + "\"");
+        sb.append("\"").append(StringUtils.escape(arr[0])).append("\"");
         for (int j = 1; j < arr.length; ++j) {
-            sb.append(",\"" + StringUtils.escape(arr[j]) + "\"");
+            sb.append(",\"").append(StringUtils.escape(arr[j])).append("\"");
         }
         return sb.toString();
     }
@@ -424,5 +448,61 @@ public class StReader {
             }
         }
         return sb.toString();
+    }
+
+
+    /**
+     * This returns the current sentence in the original ST format.
+     * @return the current sentence, in the original ST format (without empty line at the end)
+     */
+    public String getSentenceST(){
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < this.length(); ++i){
+            sb.append(StringUtils.join(this.words.get(i), "\t"));
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * This rewrites the contents of the given field (or adds a necessary number of columns) and fills
+     * in the given value. Missing columns will be initialized with a '_'.
+     *
+     * @param field the number of the field to be filled in
+     * @param word the number of the word
+     * @param value the string value
+     */
+    public void setField(int field, int word, String value){
+
+        int origColumns = this.words.get(0).length;
+
+        if (field >= origColumns){
+            for (int i = 0; i < this.words.size(); ++i){
+                String [] tmp = new String [field + 1];
+                System.arraycopy(this.words.get(i), 0, tmp, 0, origColumns);
+                Arrays.fill(tmp, origColumns+1, field+1, DEFAULT_VALUE);
+            }
+        }
+        this.words.get(word)[field] = value;
+    }
+
+    /**
+     * This returns the predicate type for the given POS, according to the POS pattern specifications.
+     * @param pos the POS candidate
+     * @return the predicate type (n-oun, v-erb, or e-rror)
+     */
+    String getPredicateType(String pos) {
+
+        String predType = TAG_ERR;
+        if (pos.matches(this.nounPat)){
+            predType = NOUN;
+        }
+        else if (pos.matches(this.verbPat)){
+            predType = VERB;
+        }
+        return predType;
     }
 }

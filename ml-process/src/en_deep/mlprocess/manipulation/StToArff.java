@@ -29,9 +29,7 @@ package en_deep.mlprocess.manipulation;
 
 import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.Process;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -55,29 +53,15 @@ import weka.filters.unsupervised.attribute.StringToNominal;
  *
  * @author Ondrej Dusek
  */
-public class StToArff extends Task {
-
-    /* CONSTANTS */
-
-    /** The lang_conf parameter name */
-    static final String LANG_CONF = "lang_conf";
+public class StToArff extends StManipulation {
     /** The multiclass parameter name */
     private static final String MULTICLASS = "multiclass";
-    /** The predicted parameter name */
-    static final String PREDICTED = "predicted";
     /** The pred_only parameter name */
     private static final String PRED_ONLY = "pred_only";
     /** The generate parameter name */
     private static final String GENERATE = "generate";
     /** The omit_semclass parameter name */
     private static final String OMIT_SEMCLASS = "omit_semclass";
-
-    /** Output file suffix for noun predicates */
-    private static final String NOUN = ".n";
-    /** Output file suffix for verb predicates */
-    private static final String VERB = ".v";
-    /** Output file suffix for errorneously tagged predicates */
-    private static final String TAG_ERR = ".e";
 
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
@@ -132,9 +116,6 @@ public class StToArff extends Task {
     /** Features to be generated */
     private Vector<Feature> genFeats;
 
-    /** The input reader */
-    private StReader reader;
-
     /** Used output files (for reprocessing) */
     private HashMultimap<String, String> usedFiles;
 
@@ -156,7 +137,7 @@ public class StToArff extends Task {
      * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
      * (one semantic class each) with 0/1 values are created.</li>
      * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
-     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, ommiting all other words in a sentence</li>
+     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, omitting all other words in a sentence</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * </ul>
      * <p>
@@ -174,31 +155,12 @@ public class StToArff extends Task {
         
         super(id, parameters, input, output);
 
-        // check parameters
-        if (this.parameters.get(LANG_CONF) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter lang_conf is missing.");
-        }
-
-        // find the reader file
-        String configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
-        if (!new File(configFile).exists()){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
-        }
-        this.parameters.put(LANG_CONF, configFile); // set-up the LANG_CONF path
-
         // initialize boolean parameters
         this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
         this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);       
 
         // initialize features to be generated
-        try {
-            this.reader = new StReader(this);
-        }
-        catch (IOException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, 
-                    "Cannot initialize ST reader, probably lang_conf file error:" + e.getMessage());
-        }
         this.initGenFeats();
 
         // initialize the list of used output files
@@ -419,16 +381,10 @@ public class StToArff extends Task {
             // a predicate has been found -> fill output file details
             if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_FILLPRED).equals("Y")){ 
 
-                String posSuffix = TAG_ERR;
                 String predicate, fileName;
 
-                if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS).matches(this.reader.nounPat)){
-                    posSuffix = NOUN;
-                }
-                else if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS).matches(this.reader.verbPat)){
-                    posSuffix = VERB;
-                }
-                predicate = this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA) + posSuffix;
+                predicate = this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA) +
+                        this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
                 fileName = pattern.replace("**", predicate);
                 this.usedFiles.put(predicate, fileName); // store the used file name
                 out.add(fileName);
