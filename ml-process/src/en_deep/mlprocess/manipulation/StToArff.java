@@ -31,6 +31,7 @@ import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -65,11 +66,11 @@ public class StToArff extends StManipulation {
 
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
-    /** Specification of an attribute as CLASS in ARFF files */
+    /** Specification of an attribute as CLASS in ARFF files @todo move to StReader */
     public static final String CLASS = "";
-    /** Specification of an attribute as INTEGER in ARFF files */
+    /** Specification of an attribute as INTEGER in ARFF files @todo move to StReader */
     public static final String INTEGER = "INTEGER";
-    /** Specification of an attribute as STRING in ARFF files */
+    /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
     public static final String STRING = "STRING";
 
     /** Semantic relation (multiclass) attribute name in ARFF files */
@@ -320,7 +321,7 @@ public class StToArff extends StManipulation {
             FileOutputStream os = new FileOutputStream(fileName);
             PrintStream out = new PrintStream(os);
 
-            out.println(RELATION + " " + fileName);
+            out.println(RELATION + " " + StringUtils.truncateFileName(fileName));
 
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){

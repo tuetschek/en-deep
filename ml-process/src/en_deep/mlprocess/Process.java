@@ -27,6 +27,7 @@
 package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.ParamException;
+import en_deep.mlprocess.utils.StringUtils;
 import gnu.getopt.*;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -191,7 +192,7 @@ public class Process {
             if (workDir == null && inputFile.indexOf(File.separator) != -1){
 
                 workDir = inputFile.substring(0, inputFile.lastIndexOf(File.separator));
-                inputFile = inputFile.substring(inputFile.lastIndexOf(File.separator) + 1);
+                inputFile = StringUtils.truncateFileName(inputFile);
             }
             // otherwise working directory is the current one
             else if (workDir == null){

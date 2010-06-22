@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -98,7 +99,7 @@ public abstract class GroupInputsTask extends Task {
 
         for (String path : this.input) {
 
-            String file = path.substring(path.lastIndexOf(File.separator) + 1);
+            String file = StringUtils.truncateFileName(path);
             int matchingPatNo = -1;
             String matchingPatStart = "";
             String matchingPatEnd = "";

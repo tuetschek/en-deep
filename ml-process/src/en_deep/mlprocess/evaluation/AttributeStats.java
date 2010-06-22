@@ -32,6 +32,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -125,9 +126,7 @@ public class AttributeStats extends Task {
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "File " + file
                     + "doesn't have the given attribute.");
         }
-        if (file.contains(File.separator)){
-            file = file.substring(file.lastIndexOf(File.separator) + 1);
-        }
+        file = StringUtils.truncateFileName(file);
         this.values.put(structure.attribute(this.attribName).numValues(), file);
     }
 

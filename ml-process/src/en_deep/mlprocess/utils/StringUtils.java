@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.utils;
 
+import java.io.File;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -210,6 +211,19 @@ public class StringUtils {
         else {
             return "";
         }
+    }
+
+    /**
+     * This extracts the last part of a file path -- a file name -- from a string. If the string does not
+     * contain any path separator characters, it is returned as a whole.
+     * @param fileName the path to be truncated to the file name
+     * @return the last part of the file path -- a file name
+     */
+    public static String truncateFileName(String fileName) {
+        if (fileName.contains(File.separator)){
+            fileName = fileName.substring(fileName.lastIndexOf(File.separator) + 1);
+        }
+        return fileName;
     }
 
 }

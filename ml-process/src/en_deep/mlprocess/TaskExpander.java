@@ -29,6 +29,7 @@ package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
@@ -269,7 +270,7 @@ public class TaskExpander {
         // must be always a valid path name, not a pattern, and the filePattern must not be empty
         if (pattern.indexOf(File.separator) != -1){
             dirName = pattern.substring(0, pattern.lastIndexOf(File.separator));
-            filePattern = pattern.substring(pattern.lastIndexOf(File.separator) + 1);
+            filePattern = StringUtils.truncateFileName(pattern);
         }
         else {
             dirName = ".";
