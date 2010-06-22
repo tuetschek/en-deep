@@ -51,10 +51,9 @@ public class ConditionalSelector extends GroupInputsTask {
     /** The "boundaries" parameter name */
     private static final String BOUNDARIES = "boundaries";
 
-
     private enum Condition {
 
-        UNARY, DIVIDE_BY_NUM_VAL;
+        UNARY, DIVIDE_BY_NUM_VAL, ORPHANS;
 
         /**
          * This constructs the condition from a string value.
@@ -72,6 +71,9 @@ public class ConditionalSelector extends GroupInputsTask {
             }
             else if (str.equalsIgnoreCase("divide_by_num_val")){
                 return DIVIDE_BY_NUM_VAL;
+            }
+            else if (str.equalsIgnoreCase("orphans")){
+                return ORPHANS;
             }
             else {
                 return null;
@@ -100,8 +102,11 @@ public class ConditionalSelector extends GroupInputsTask {
      * <ul>
      * <li><tt>condition</tt> -- may currently have following values:
      * <ul>
-     * <li> "unary" -- check unarity, outputs are first unary and then non-unary</li>
-     * <li> "divide_by_num_val" -- divide by numbers of values of the given attribute and the given boundaries</li>
+     * <li>"unary" -- check unarity, outputs are first unary and then non-unary</li>
+     * <li>"divide_by_num_val" -- divide by numbers of values of the given attribute and the given boundaries</li>
+     * <li>"orphan" -- if there are files which don't match correspondingly in the tables (only some patterns
+     * correspond to a given expansion), they go into the first output. The correctly matching files go into the second
+     * output</li>
      * </ul></li>
      * </ul>
      * Other parameters depend on the setting of condition:
@@ -153,6 +158,10 @@ public class ConditionalSelector extends GroupInputsTask {
                 }
                 this.extractPatterns(this.boundaries.length  +1);
                 break;
+
+            case ORPHANS:
+                this.extractPatterns(2);
+                break;
         }
     }
 
@@ -163,6 +172,7 @@ public class ConditionalSelector extends GroupInputsTask {
         Vector<String> allKeys = this.selectViableExpansions(tables);
 
         try {
+            // process the expansions that are represented in all hashtables
             for (String key : allKeys){
 
                 switch (this.condition){
@@ -174,7 +184,15 @@ public class ConditionalSelector extends GroupInputsTask {
                     case DIVIDE_BY_NUM_VAL:
                         this.copyToTarget(key, this.divideByNumberOfAttributes(key));
                         break;
+
+                    case ORPHANS:
+                        this.copyToTarget(key, 1);
+                        break;
                 }
+            }
+            // process the orphans (only for Condition.ORPHANS)
+            if (this.condition == Condition.ORPHANS){
+                this.copyOrphans(allKeys, 0);
             }
         }
         catch (TaskException e){
@@ -229,7 +247,7 @@ public class ConditionalSelector extends GroupInputsTask {
      * This tests how many values does the file have for the given attribute and returns the corresponding
      * number of cluster (according to {@link #boundaries}).
      *
-     * @param key the expansion eky to look up the file names in the {@link #tables}
+     * @param key the expansion key to look up the file names in the {@link #tables}
      * @return the number of division group, according to the {@link #boundaries}
      * @throws TaskException if the files don't have the same attributes or the desired one is missing
      */
@@ -239,11 +257,11 @@ public class ConditionalSelector extends GroupInputsTask {
 
         if (data[0].attribute(this.attrName) == null || data[0].attribute(this.attrName).numValues() == 0){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + this.attrName
-                    + " not found or not numeric for " + key + "-like files.");
+                    + " not found or not nominal for " + key + "-like files.");
         }
 
         int i = 0;
-        while (i < this.boundaries.length && data[0].attribute(this.attrName).numValues() <= this.boundaries[i]){
+        while (i < this.boundaries.length && data[0].attribute(this.attrName).numValues() > this.boundaries[i]){
             i++;
         }
         return i;
@@ -252,7 +270,7 @@ public class ConditionalSelector extends GroupInputsTask {
     /**
      * Reads the headers of all files in the {@link #tables} that correspond to the given key and checks if
      * their headers are equal. Returns all the headers.
-     * @param key the exapnsion key
+     * @param key the expansion key
      * @return the headers of all files under the given expansion key
      * @throws Exception if an I/O error occurs or if the files don't have the same headers
      */
@@ -269,4 +287,24 @@ public class ConditionalSelector extends GroupInputsTask {
         }
         return data;
     }
+
+    /**
+     * This copies all the orphan input files to the given destination (files that come under the expansions for which 
+     * only some patterns apply).
+     *
+     * @param list of all non-orphan expansions
+     * @param dest the destination file pattern
+     */
+    private void copyOrphans(Vector<String> nonOrphans, int destNo) throws IOException {
+
+        for (int i = 0; i < this.tables.length; i++) {
+            for (String key : this.tables[i].keySet()){
+                if (!nonOrphans.contains(key)){
+                    FileUtils.copyFile(this.tables[i].get(key), 
+                            this.output.get(destNo * this.tables.length + i).replace("**", key));
+                }
+            }
+        }
+    }
+
 }

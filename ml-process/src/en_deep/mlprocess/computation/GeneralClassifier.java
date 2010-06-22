@@ -52,6 +52,7 @@ public abstract class GeneralClassifier extends Task {
 
     /**
      * This just checks if there are only two inputs and one output and no patterns in them.
+     * @todo rename class_arg to class_attr
      * @param id
      * @param parameters
      * @param input

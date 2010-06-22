@@ -38,7 +38,8 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 /**
- *
+ * This class unites some functions for complicated WEKA classification tasks that try to classify the same file
+ * with different settings and select the best result.
  * @author Ondrej Dusek
  */
 public abstract class WekaSettingTrials extends EvalSelector {
