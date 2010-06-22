@@ -31,12 +31,10 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
-import weka.core.Instance;
 import weka.core.Instances;
 
 /**
@@ -133,17 +131,26 @@ public class ResultsToSt extends StManipulation {
             
             // first, load all the predicted values
             for (String file: this.input){
+                Logger.getInstance().message("Loading predictions from " + file + "...", Logger.V_DEBUG);
                 this.loadPrediction(file);
             }
 
             // then, stream-process the ST file
+            int ctr = 0;
             while (this.reader.loadNextSentence()){
+
                 switch (this.mode){
                     case PRED:
                         this.rewritePredicates();
-                        out.println(this.reader.getSentenceST());
+                        out.print(this.reader.getSentenceST());
+                        out.print("\n"); // force unix-LF as in original format
                         break;
                 }
+
+                if (ctr > 0 && ctr % 1000 == 0){
+                    Logger.getInstance().message("Processing sentence " + ctr + "...", Logger.V_DEBUG);
+                }
+                ctr++;
             }
             out.close();
         }
@@ -164,7 +171,7 @@ public class ResultsToSt extends StManipulation {
      */
     private void loadPrediction(String file) throws Exception {
         Instances data = FileUtils.readArff(file);
-        String predicateName = data.instance(0).stringValue(data.attribute(this.reader.LEMMA)) + "."
+        String predicateName = data.instance(0).stringValue(data.attribute(this.reader.LEMMA))
                 + this.reader.getPredicateType(data.instance(0).stringValue(data.attribute(this.reader.POS)));
 
         this.predicatePredictions.put(predicateName, new PredicatePrediction(data));
@@ -207,7 +214,7 @@ public class ResultsToSt extends StManipulation {
             int j = 0;
             while (vals.hasMoreElements()){
                 String val = vals.nextElement();
-                valOrder[j] = Integer.parseInt(val.substring(0, val.indexOf(".") + 1));
+                valOrder[j] = Integer.parseInt(val.substring(val.indexOf(".") + 1));
                 j++;
             }
 
@@ -224,7 +231,7 @@ public class ResultsToSt extends StManipulation {
          */
         public String getNext(){
 
-            String ret = this.predPrefix + (this.senses[this.current] < 10 ? "0" : "")
+            String ret = this.predPrefix + "." + (this.senses[this.current] < 10 ? "0" : "")
                     + Integer.toString(this.senses[this.current]);
             this.current++;
             return ret;
