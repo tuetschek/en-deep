@@ -34,6 +34,7 @@ import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.TaskDescription;
 import en_deep.mlprocess.utils.FileUtils;
+import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -72,7 +73,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
      * <li><tt>tempfile</tt> -- the tempfile pattern to be used</li>
      * </ul>
      * It removes all the compulsory parameters from the parameter set so that only the WEKA classifier parameters
-     * remain there.
+     * remain there. It also checks the number of outputs (must be three).
      *
      * @param id
      * @param parameters
@@ -99,6 +100,10 @@ public abstract class WekaSettingTrials extends EvalSelector {
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = this.parameters.remove(TEMPFILE);
+
+        if (output.size() != 3){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
+        }
     }
 
     @Override
@@ -117,6 +122,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
                 best = this.selectBest(evalFiles, null).first;
 
                 Logger.getInstance().message(this.id + ": Best result: " + best, Logger.V_INFO);
+                this.writeBestStats(this.output.get(2), best);
                 
                 FileUtils.copyFile(this.input.get(best * 2), this.output.get(1));
                 FileUtils.copyFile(this.input.get(best * 2 + 1), this.output.get(0));
@@ -132,6 +138,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
             throw te;
         }
         catch (Exception e) {
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
@@ -146,7 +153,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
 
         Vector<TaskDescription> newTasks = new Vector<TaskDescription>();
         Vector<String> lastTaskInput = new Vector<String>();
-        Hashtable<String, String> lastTaskParams = new Hashtable<String, String>();
+        Hashtable<String, String> lastTaskParams = this.getEvalParams();
         TaskDescription lastTask;
         Hashtable<String, String>[] paramSets = this.prepareParamSets();
 
@@ -184,8 +191,6 @@ public abstract class WekaSettingTrials extends EvalSelector {
         }
 
         // create the last task that will select the best result
-        lastTaskParams.put(MEASURE, this.measure);
-        lastTaskParams.put(WekaSettingTrials.EVAL, "1");
         lastTask = new TaskDescription(this.id + "#select", this.getClass().getName(), lastTaskParams,
                 lastTaskInput, (Vector<String>) this.output.clone());
         for (TaskDescription t : newTasks) {
@@ -201,5 +206,18 @@ public abstract class WekaSettingTrials extends EvalSelector {
      * @return a list of parameters sets for the classification
      */
     protected abstract Hashtable<String, String> [] prepareParamSets() throws TaskException;
+
+    /**
+     * This prepares the parameters for the default evaluation task.
+     * @return
+     */
+    protected Hashtable<String, String> getEvalParams() {
+
+        Hashtable<String, String> evalParams = new Hashtable<String, String>();
+        evalParams.put(MEASURE, this.measure);
+        evalParams.put(EVAL, "1");
+
+        return evalParams;
+    }
 
 }

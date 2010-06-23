@@ -27,10 +27,9 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.TaskDescription;
-import en_deep.mlprocess.TaskDescription.TaskStatus;
-import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -61,8 +60,8 @@ public class SettingSelector extends WekaSettingTrials {
      * </ul>
      * <p>
      * There must be exactly two inputs (first of which is the training data and second the
-     * testing data) and two outputs (one is for the classification output and one for
-     * the output of the best set of parameters).
+     * testing data) and three outputs (one is for the classification output, one for
+     * the best classification statistics and one for the best parameter set).
      * </p>
      * There is a special parameter reserved for the program (the process ends with this
      * parameter). If the task is run with this parameter, more inputs are allowed.
@@ -84,10 +83,6 @@ public class SettingSelector extends WekaSettingTrials {
         if ((!this.evalMode && input.size() != 2) || (input.size() < 2) || (input.size() % 2 != 0)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
-        if (output.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
-        }
-
     }
 
 
@@ -120,5 +115,19 @@ public class SettingSelector extends WekaSettingTrials {
         }
         return paramSets;
     }
+
+    @Override
+    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+
+        PrintStream out = new PrintStream(outFile);
+
+        for (String paramName : this.parameters.keySet()){
+            String [] vals = this.parameters.get(paramName).split("\\s+");
+            out.println(paramName + ":" + vals[settingNo]);
+        }
+        out.close();
+    }
+
+    
 
 }

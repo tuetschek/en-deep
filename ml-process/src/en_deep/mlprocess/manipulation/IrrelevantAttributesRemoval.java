@@ -204,7 +204,7 @@ public class IrrelevantAttributesRemoval extends Task {
                         break;
 
                     case UNARY:
-                        if (attr.numValues() == 1){
+                        if (!this.checkDifferentVlaues(data, attr.name())){
                             forRemoval.add(attr.name());
                             reason = "unary";
                         }
@@ -251,6 +251,34 @@ public class IrrelevantAttributesRemoval extends Task {
         }
         return false;
     }
+
+    /**
+     * This checks that there are at least two different values in the attribute data (for all given data sets)
+     *
+     * @param data the data sets to check
+     * @param name the attribute name to check
+     * @return true if there are two different values of the given attribute in the data
+     */
+    private boolean checkDifferentVlaues(Instances[] data, String name) {
+
+        double firstValue = Double.NaN;
+
+        for (int i = 0; i < data.length; ++i){
+
+            double [] values = data[i].attributeToDoubleArray(data[i].attribute(name).index());
+
+            if (i == 0){
+                firstValue = values[0];
+            }
+            for (int j = 0; j < values.length; ++j){
+                if (values[j] != firstValue){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     /**
      * Save the space-separated values of an attribute to a hash-set.

@@ -30,6 +30,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -46,10 +47,12 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
     private static final String START = "start";
     /** The name of the "end" parameter */
     private static final String END = "end";
+    /** The name of the reserved 'attribute_order_file' parameter */
+    private static final String ATTRIB_ORDER_FILE = "attribute_order_file";
 
     /* DATA */
 
-    /** The file with the attribute order */
+    /** The name of the file with the attribute order */
     private String attributeOrderFile;
     /** The starting number of attributes */
     private int start;
@@ -70,8 +73,8 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
      * </ul>
      * <p>
      * There must be exactly three inputs (first of which is the training data, the second the
-     * testing data and the third the attribute order file) and two outputs (one is for the
-     * classification output and one for the output of the best set of parameters).
+     * testing data and the third the attribute order file) and three outputs (one is for the
+     * best classification output, one for the best statistics and one for the best set of parameters).
      * </p>
      * There are additional voluntary parameters:
      * <ul>
@@ -98,6 +101,9 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         if (!this.evalMode){
             this.attributeOrderFile = this.input.remove(this.input.size()-1);
         }
+        else {
+            this.attributeOrderFile = this.getParameterVal(ATTRIB_ORDER_FILE);
+        }
 
         // check voluntary parameters
         try {
@@ -119,38 +125,35 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         if ((!this.evalMode && input.size() != 2) || (input.size() < 2) || (input.size() % 2 != 0)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
-        if (output.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
-        }
     }
 
 
     @Override
     protected Hashtable<String, String> [] prepareParamSets() throws TaskException {
 
-        String [] attribOrder = null;
         Hashtable<String, String>[] paramSets = null;
         int lo, length;
+        String [] attributeOrder = null;
 
         try {
-            attribOrder = readAttributeOrder();
+            attributeOrder = readAttributeOrder();
         }
         catch (IOException e){
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, "Error accessing the attribute file.");
         }
 
-        length = attribOrder.length - 1;
+        length = attributeOrder.length - 1;
         if (this.start != -1){
             length -= this.start;
         }
         if (this.end != -1){
-            length -= attribOrder.length - this.end;
+            length -= attributeOrder.length - this.end;
         }
         paramSets = new Hashtable[length];
         lo = Math.max(this.start, 1);
         for (int i = lo; i < lo + length; ++i){
 
-            paramSets[i-lo] = this.prepareParamSet(StringUtils.join(attribOrder, lo, i+1, " "));
+            paramSets[i-lo] = this.prepareParamSet(StringUtils.join(attributeOrder, lo, i+1, " "));
         }
         return paramSets;
     }
@@ -190,4 +193,29 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
 
         return paramSet;
     }
+
+    /**
+     * This prints out the list of best attributes.
+     */
+    @Override
+    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+
+        PrintStream out = new PrintStream(outFile);
+        int paramNum = Math.max(this.start, 1) + settingNo;
+        String [] attributeOrder = this.readAttributeOrder();
+
+        out.println(StringUtils.join(attributeOrder, 0, paramNum, " "));
+        out.close();
+    }
+
+    @Override
+    protected Hashtable<String, String> getEvalParams() {
+
+        Hashtable<String, String> evalParams = super.getEvalParams();
+        evalParams.put(START, Integer.toString(this.start));
+        evalParams.put(ATTRIB_ORDER_FILE, this.attributeOrderFile);
+        return evalParams;
+    }
+
+
 }

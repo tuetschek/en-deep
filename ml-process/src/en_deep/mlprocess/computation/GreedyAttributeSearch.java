@@ -122,7 +122,7 @@ public class GreedyAttributeSearch extends EvalSelector {
      * There are the same parameters as in {@link WekaClassifier}, plus two that are same
      * as in {@link SettingSelector} -- <tt>measure</tt> and <tt>tempfile</tt>.
      * There are additional compulsory parameters (<tt>start</tt> and <tt>start_attrib</tt> are
-     * mutualy exclusive):
+     * mutually exclusive):
      * </p>
      * <ul>
      * <li><tt>start</tt> -- the starting number of attributes (should be very small, for all
@@ -174,7 +174,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         if (this.round == this.start && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
-        if (output.size() != 2){
+        if (output.size() != 3){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }
@@ -241,7 +241,7 @@ public class GreedyAttributeSearch extends EvalSelector {
 
     /**
      * This checks all the round-related constraints and determines the number of the current, staring and ending round.
-     * @throws TaskException if some of the needed parameters is missing or errorneous
+     * @throws TaskException if some of the needed parameters is missing or erroneous
      */
     private void checkRound() throws TaskException {
 
@@ -320,6 +320,11 @@ public class GreedyAttributeSearch extends EvalSelector {
                             + " with attributes " + this.lastBestAttributesList, Logger.V_INFO);
                 }
 
+                // for the final round, write the best list of attributes
+                if (this.round > this.end){
+                    this.writeBestStats(this.output.get(2), best);
+                }
+
                 // copy the best settings to the destination location (final or temporary)
                 if (best < 0){
                     Logger.getInstance().message(this.id +
@@ -365,20 +370,23 @@ public class GreedyAttributeSearch extends EvalSelector {
 
     /**
      * This finds the best result from the last round and stores its value and the attributes
-     * used to achieveit, then checks if the improvement was big enough for the algorithm to
+     * used to achieve it, then checks if the improvement was big enough for the algorithm to
      * continue.
      *
      * @param evalFiles the statistics files from the last round
+     * @return the number of the best setting, or -1 if all are worse than previous
      */
     private int evalRound(String [] evalFiles) throws IOException, Exception {
 
         RandomAccessFile lastRoundStats = new RandomAccessFile(this.getTempfileName(TempfileTypes.ROUND_STATS,
                 this.round - 1, 0), "rw");
-        String lastBestInfo = lastRoundStats.readLine();
+
+        // find out which trial of the previous round gave the best results
         int [] order = this.getAttributeOrder();
         Pair<Integer, Double> best = this.selectBest(evalFiles, order);
 
         // find the best value of the round BEFORE the previous one
+        String lastBestInfo = lastRoundStats.readLine();
         this.lastBest = Double.parseDouble(lastBestInfo.split(":")[1].trim());
 
         for (int i = 0; i < best.first; ++i){
@@ -769,4 +777,23 @@ public class GreedyAttributeSearch extends EvalSelector {
         }
         return order;
     }
+
+    /**
+     * This writes just the list of the best attribute numbers.
+     */
+    @Override
+    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+
+        PrintStream out = new PrintStream(outFile);
+        String bestList = this.lastBestAttributesList;
+
+        if (settingNo < 0){ // if the last round didn't improve the results, rip off one attribute
+            bestList = bestList.substring(0, bestList.lastIndexOf(" "));
+        }
+        
+        out.println(bestList);
+        out.close();
+    }
+
+
 }

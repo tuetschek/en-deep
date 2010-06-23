@@ -79,14 +79,17 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
     /**
      * This just checks the compulsory parameters and the inputs and outputs.
-     * There must be two inputs and one output. There are two compulsory parameters:
+     * There must be two inputs and one output. There are the following compulsory parameters:
      * <ul>
      * <li><tt>ranker</tt> -- the desired WEKA attribute ranker to be used</li>
+     * <li><tt>evaluator</tt> -- the desired WEKA attribute evaluator to be used</li>
      * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * </ul>
-     *
+     * If ranker and evaluator are selected at once, the evaluator is considered to be a subset evaluator
+     * and the ranker to be a search procedure.
+     * 
      * @param id
      * @param parameters
      * @param input
@@ -197,8 +200,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
                     this.ranker = (RankedOutputSearch) this.initWekaAS(rankerName, rankerParams, data);
                 }
                 else {
-                    ASEvaluation evalInit = this.initWekaAS(evalName, evalParams, data);
-                    this.evaluator = (AttributeEvaluator) evalInit;
+                    this.searcherEval = this.initWekaAS(evalName, evalParams, data);
                     this.searcher = ASSearch.forName(rankerName, rankerParams);
                 }
             }
@@ -219,7 +221,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
      * @param params the class parameters
      * @param data the data to initialize the class
      * @return the attribute evaluator object
-     * @throws Exception if the class is not found or is not a derivee of {@link ASEvaluation}
+     * @throws Exception if the class is not found or is not a derivative of {@link ASEvaluation}
      */
     private ASEvaluation initWekaAS(String className, String[] params, Instances data) throws Exception {
 
@@ -251,7 +253,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
         out.append(LF);
 
         for (int i = 0; i < order.length -1; ++i){
-            out.append(order[i] + " " + data.attribute(order[i]).name() + ": " + merits[i] + LF);
+            out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(
+                    ": ").append(merits[i]).append(LF);
         }
 
         return out.toString();
@@ -274,7 +277,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
         out.append(LF);
         for (int i = 0; i < order.length; ++i){
-            out.append(order[i] + " " + data.attribute(order[i]).name() + LF);
+            out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(LF);
         }
         return out.toString();
     }
@@ -296,7 +299,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
         out.append(LF);
         for (int i = 0; i < order.length; ++i){
-            out.append((int) order[i][0] + " " + data.attribute((int) order[i][0]).name() + ": " + order[i][1] + LF);
+            out.append((int) order[i][0]).append(" ").append(data.attribute((int) order[i][0]).name()).append(
+                    ": ").append(order[i][1]).append(LF);
         }
         return out.toString();
     }

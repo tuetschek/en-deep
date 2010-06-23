@@ -158,7 +158,7 @@ public class AttributeFilter extends Task {
         }
 
         // check inputs and outputs
-        if (this.input.size() == 0){
+        if (this.input.isEmpty()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
         if (this.input.size () != this.output.size()){

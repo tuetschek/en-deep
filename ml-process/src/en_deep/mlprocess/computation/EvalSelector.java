@@ -154,6 +154,13 @@ public abstract class EvalSelector extends Task {
         return new Pair<Integer, Double>(bestIndex, bestVal);
     }
 
+    /**
+     * This writes the statistics for the best result into the given output file.
+     * @param outFile the output file name
+     * @param settingNo the number of the best setting
+     */
+    protected abstract void writeBestStats(String outFile, int settingNo) throws IOException;
+
 
 
     /**
