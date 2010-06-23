@@ -33,6 +33,7 @@ import en_deep.mlprocess.exception.SchedulingException;
 import en_deep.mlprocess.exception.TaskException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Vector;
 
 
 /**
@@ -57,7 +58,7 @@ public class Worker implements Runnable {
     /* DATA */
     
     /** The task currently in progress */
-    private Task currentTask;
+    private Vector<Task> currentTasks;
     
     /** {@link Worker} thread identification string */
     private String id;
@@ -90,24 +91,39 @@ public class Worker implements Runnable {
         Logger.getInstance().message("Worker thread " + this.id + " started.", Logger.V_INFO);
 
         try {
-            while (this.waitForNextTask()){
+            while (this.waitForNextTasks()){
 
                 long time = System.currentTimeMillis();
-                Logger.getInstance().message("Worker thread " + this.id + " working on task " + this.currentTask.getId(),
-                        Logger.V_INFO);
+                Task task = null;
+                int current = 0;
 
                 try {
-                    this.currentTask.perform();
+                    // perform all the retrieved tasks
+                    for (; current < this.currentTasks.size(); ++current){
+                        task = this.currentTasks.get(current);
+                        Logger.getInstance().message("Worker thread " + this.id + " working on task " + task.getId(),
+                                Logger.V_INFO);
+                        task.perform();
+                        time = System.currentTimeMillis() - time;
+                        Logger.getInstance().message("task " + task.getId() + " finished in " + time/1000.0 + " secs.", Logger.V_INFO);
+                    }
+
+                    Plan.getInstance().updateStatuses(this.currentTasks, TaskStatus.DONE);
                 }
                 catch(TaskException ex){
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
-                    Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.FAILED);
+                    // If there's an exception, set the done tasks to DONE, the bad task to FAILED and those not done back to PENDING
+                    if (current > 0){
+                        Plan.getInstance().updateStatuses(this.currentTasks.subList(0, current), TaskStatus.DONE);
+                    }
+                    Plan.getInstance().updateStatuses(this.currentTasks.subList(current, current + 1),
+                            TaskStatus.FAILED);
+                    if (current < this.currentTasks.size() - 1){
+                        Plan.getInstance().updateStatuses(this.currentTasks.subList(current + 1, this.currentTasks.size()),
+                                TaskStatus.PENDING);
+                    }
                     continue;
                 }
-
-                time = System.currentTimeMillis() - time;
-                Logger.getInstance().message("task " + this.currentTask.getId() + " finished in " + time/1000.0 + " secs.", Logger.V_INFO);
-                Plan.getInstance().updateTaskStatus(this.currentTask.getId(), TaskStatus.DONE);
             }
         }
         catch(PlanException ex){
@@ -123,16 +139,16 @@ public class Worker implements Runnable {
      * Tries to get the next pending task from the {@link Plan}, waits if there are dependent
      * {@link Task}s waiting to be done and all {@link Workers} are busy.
      *
-     * If {@link Plan.getNextPendingTask()} ends with a {@link SchedulingException}, tries to wait
-     * and repeat the call. Stores the next task to be processed in the {@link currentTask} member.
+     * If {@link Plan.getNextPendingTasks()} ends with a {@link SchedulingException}, tries to wait
+     * and repeat the call. Stores the next task to be processed in the {@link currentTasks} member.
      * @return true if there is a task to process
      * @throws PlanException if there's something wrong with the plan
      */
-    private boolean waitForNextTask() throws PlanException {
+    private boolean waitForNextTasks() throws PlanException {
 
         try {
             // try to get the next pending task to process
-            this.currentTask = Plan.getInstance().getNextPendingTask();
+            this.currentTasks = Plan.getInstance().getNextPendingTasks();
         }
         catch(SchedulingException ex){
             
@@ -147,9 +163,9 @@ public class Worker implements Runnable {
             catch (InterruptedException ex1) {
             }
             // and try again after a while
-            return waitForNextTask();
+            return waitForNextTasks();
         }
-        return currentTask != null;
+        return !currentTasks.isEmpty();
     }
 
 }

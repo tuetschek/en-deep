@@ -45,6 +45,7 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -66,6 +67,9 @@ public class Plan {
     public static final String RESET_FILE_SUFFIX =  ".reset";
     /** File extension for the status file */
     public static final String STATUS_FILE_SUFFIX = ".status";
+
+    /** Number of tasks to retrieve at once */
+    private static final int RETRIEVE_TASKS = 10;
 
     /* DATA */
 
@@ -132,15 +136,15 @@ public class Plan {
      * the highest importance setting and an exception is thrown.
      * <p>
      *
-     * @return the next pending task to be done, or null if there are no tasks to be done
+     * @return the next pending task to be done, or an empty vector if there are no tasks to be done
      * @throws PlanException if an exception occurs when working with the scenario or plan file
      * @throws SchedulingException if there are no tasks to process and we have to wait for them
      */
-    public synchronized Task getNextPendingTask() throws PlanException, SchedulingException {
+    public synchronized Vector<Task> getNextPendingTasks() throws PlanException, SchedulingException {
 
         FileLock planLock = null;
         FileLock resetLock = null;
-        Task nextPending = null;
+        Vector<Task> nextPending = null;
         RandomAccessFile planFileIO = null;
         RandomAccessFile resetFileIO = null;
         
@@ -159,7 +163,7 @@ public class Plan {
                 this.resetTasks(planFileIO, resetFileIO);
             }
            
-            nextPending = this.getNextPendingTask(planFileIO);
+            nextPending = this.getNextPendingTasks(planFileIO);
         }
         catch(IOException ex){
             Logger.getInstance().message("I/O error - " + ex.getMessage(), Logger.V_IMPORTANT);
@@ -245,20 +249,54 @@ public class Plan {
 
 
     /**
-     * Reads the to-do file structure and retrieves the next pending {@link Task}, updating its
-     * progress status in the plan file.
+     * Reads the to-do file structure and retrieves at most {@link #RETRIEVE_TASKS} next pending {@link Task}s,
+     * updating their progress status to {@link TaskStatus#IN_PROGRESS} in the plan file.
      *
      * @param planFileIO the to-do file, locked and opened for writing
-     * @return the next pending task from the .todo file
+     * @return next pending tasks from the .todo file, or an empty vector
      * @throws IOException if there are I/O problems with the plan file access
      * @throws ClassNotFoundException if there are problems with the plan file contents
      * @throws TaskException if there are problems with the task classes' descriptions
      * @throws SchedulingException if there are tasks waiting or in progress, but no pending ones
      */
-    private synchronized Task getNextPendingTask(RandomAccessFile planFileIO)
+    private synchronized Vector<Task> getNextPendingTasks(RandomAccessFile planFileIO)
             throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
         Vector<TaskDescription> plan = this.readPlan(planFileIO);
+        Vector<Task> retrieved = new Vector<Task>(RETRIEVE_TASKS);
+
+        for (int i = 0; i < RETRIEVE_TASKS; i++) {
+            try {
+                TaskDescription nextTask = this.retrievePendingTask(plan);
+                if (nextTask == null){
+                    break;
+                }
+                retrieved.add(Task.createTask(nextTask));
+            }
+            catch (SchedulingException e) { // if we have to wait, return with less tasks than RETRIEVE_TASKS
+                if (i == 0){
+                    throw e;
+                }
+                break;
+            }
+        }
+
+        // update the plan file
+        this.writePlan(plan, planFileIO);
+
+        return retrieved;
+    }
+
+
+    /**
+     * This finds the next pending task and returns it, performing the necessary task expansions along the way.
+     * @param plan the opened and active process plan
+     * @return the next pending task, or null if there are none
+     * @throws SchedulingException if there are only tasks waiting for dependencies
+     * @throws TaskException if task expansion fails
+     */
+    TaskDescription retrievePendingTask(Vector<TaskDescription> plan) throws SchedulingException, TaskException {
+
         TaskDescription pendingDesc = null;
         boolean inProgress = false, waiting = false; // are there waiting tasks & tasks in progress ?
         int pos;
@@ -276,7 +314,7 @@ public class Plan {
                 break;
             }
         }
-        
+
         if (pendingDesc == null){
             // some tasks are in progress and some are waiting -> we have to wait
             if (inProgress && waiting){
@@ -289,7 +327,6 @@ public class Plan {
             // there are no pending tasks & no in progress or waiting - nothing to be done -> return
             return null;
         }
-
         // expand the task (and possibly dependent tasks) accoring to "*"'s in input / output file names
         TaskExpander te = new TaskExpander(pendingDesc);
         te.expand();
@@ -297,13 +334,10 @@ public class Plan {
         plan.removeAll(te.getTasksToRemove());
 
         pendingDesc = plan.get(pos); // the first expanded task
-        
+
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
-        // update the plan file
-        this.writePlan(plan, planFileIO);
-
-        return Task.createTask(pendingDesc);
+        return pendingDesc;
     }
 
 
@@ -577,11 +611,11 @@ public class Plan {
     }
 
     /**
-     * Updates the status of this task (all the dependent tasks, accordingly).
-     * @param id the id of the updated task
-     * @param status the new task status
+     * Updates the statuses of the given tasks (and all the dependent tasks, accordingly).
+     * @param tasks the task whose statuses are to be updated
+     * @param status the new status
      */
-    public synchronized void updateTaskStatus(String id, TaskStatus status) throws PlanException {
+    public synchronized void updateStatuses(List<Task> tasks, TaskStatus status) throws PlanException {
 
         FileLock lock = null;
         RandomAccessFile planFileIO = null;
@@ -595,7 +629,9 @@ public class Plan {
             Vector<TaskDescription> plan = this.readPlan(planFileIO);
 
             // update the statuses
-            this.updateTaskStatus(plan, id, status);
+            for (Task task : tasks){
+                this.updateTaskStatus(plan, task.getId(), status);
+            }
             
             // write the plan back
             this.writePlan(plan, planFileIO);
