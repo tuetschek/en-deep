@@ -28,7 +28,6 @@
 package en_deep.mlprocess.evaluation;
 
 import en_deep.mlprocess.Task;
-import en_deep.mlprocess.evaluation.Stats;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.IOException;
 import java.io.PrintStream;

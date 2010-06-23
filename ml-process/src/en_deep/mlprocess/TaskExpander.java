@@ -253,7 +253,8 @@ public class TaskExpander {
 
     /**
      * Expands a pattern for corresponding file names. Returns just the expansions or file names
-     * as a whole.
+     * as a whole. The returned list is alphabetically sorted.
+     * 
      * @param pattern the pattern to be expanded
      * @param justExpansions should it return just the expansions ?
      * @return expansions or file names corresponding to the pattern
@@ -285,6 +286,8 @@ public class TaskExpander {
             throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + pattern + ")");
         }
 
+        // sort the list alphabetically
+        Arrays.sort(files);
         // find all matching files and push the expansions or whole file names to the results list
         for (String file : files){
 

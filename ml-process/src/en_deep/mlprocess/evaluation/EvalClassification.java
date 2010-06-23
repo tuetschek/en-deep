@@ -28,10 +28,12 @@
 package en_deep.mlprocess.evaluation;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.computation.GeneralClassifier;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -60,9 +62,9 @@ public class EvalClassification extends Task {
 
     /**
      * This creates a new instance of {@link EvalClassification} and checks the parameters. 
-     * <p> The input must contain exactly two files, first of which is considered to
-     * be the gold standard and the second to be the test data. The output must contain just one
-     * file name, in which the statistics are written.
+     * <p>The number of inputs must be divisible by two, the first half of them is considered
+     * to be the gold standard data, the second half is supposed to be the output of a classification.
+     * The output specification must contain just one file name, in which the statistics are written.
      * </p><p>
      * There is one compulsory parameter:
      * <ul>
@@ -82,8 +84,8 @@ public class EvalClassification extends Task {
         if (this.parameters.get(CLASS_ARG) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter class_arg is missing.");
         }
-        if (this.input.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be 2 inputs.");
+        if (this.input.size() % 2 != 0){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be pairs of inputs.");
         }
         if (this.output.size() != 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
@@ -94,7 +96,21 @@ public class EvalClassification extends Task {
     public void perform() throws TaskException {
 
         try {
-            this.eval(this.input.get(0), this.input.get(1), this.output.get(0));
+            Stats labeled = new Stats(), unlabeled = new Stats();
+
+            for (int i = 0; i < this.input.size() / 2; i++) {
+
+                Pair<Stats,Stats> results = this.eval(this.input.get(i), this.input.get(this.input.size() / 2 + i));
+                labeled.add(results.first);
+                unlabeled.add(results.second);
+
+                Logger.getInstance().message("Evaluated " + this.input.get(i) + " against "
+                        + this.input.get(this.input.size()/ 2 + i) + " : " + results.first.toString() + " / "
+                        + results.second.toString(), Logger.V_DEBUG);
+
+            }
+
+            this.printStats(labeled, unlabeled, this.output.get(0));
         }
         catch (TaskException e){
             throw e;
@@ -106,13 +122,13 @@ public class EvalClassification extends Task {
     }
 
     /**
-     * The actual evaluation. This reads all input data and runs all the tests.
+     * The actual evaluation of one file. This reads all input data and runs all the tests.
      *
      * @param goldFile the gold standard input file
      * @param testFile the test input file
-     * @param outFile the statistics output file
+     * @returns the evaluation statistics, first is labeled, second is unlabeled
      */
-    private void eval(String goldFile, String testFile, String outFile) throws Exception {
+    private Pair<Stats,Stats> eval(String goldFile, String testFile) throws Exception {
         
         // read the gold data
         Instances gold = FileUtils.readArff(goldFile);
@@ -128,27 +144,39 @@ public class EvalClassification extends Task {
                 || gold.numInstances() != test.numInstances()){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
                     "Attribute for evaluation not found or not nominal, or the numbers of instances in gold " +
-                    "and evaluation data mismatch.");
+                    "and evaluation data mismatch (" + goldFile + " / " + testFile + ").");
         }
 
         // test everything
-        Stats labelled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
+        Stats labeled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
                 test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), true);
-        Stats unlabelled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
+        Stats unlabeled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
                 test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), false);
 
-        // output the results
-        PrintStream out = new PrintStream(outFile);
+        return new Pair<Stats, Stats>(labeled, unlabeled);
+    }
 
-        out.println(labelled.toString());
-        out.println(unlabelled.toString());
-        out.println("accuracy:" + labelled.getAcc());
-        out.println("labelled precision:" + labelled.getPrec());
-        out.println("labelled recall:" + labelled.getRecall());
-        out.println("labelled f1:" + labelled.getF1());
-        out.println("unlabelled precision:" + unlabelled.getPrec());
-        out.println("unlabelled recall:" + unlabelled.getRecall());
-        out.println("unlabelled f1:" + unlabelled.getF1());
+
+    /**
+     * This prints the evaluation statistics to a file.
+     * @param labeled the labeled statistics
+     * @param unlabeled the unlabeled statistics
+     * @param fileName the output file name
+     * @throws IOException
+     */
+    private void printStats(Stats labeled, Stats unlabeled, String fileName) throws IOException {
+
+        PrintStream out = new PrintStream(fileName);
+
+        out.println(labeled.toString());
+        out.println(unlabeled.toString());
+        out.println("accuracy:" + labeled.getAcc());
+        out.println("labeled precision:" + labeled.getPrec());
+        out.println("labeled recall:" + labeled.getRecall());
+        out.println("labeled f1:" + labeled.getF1());
+        out.println("unlabeled precision:" + unlabeled.getPrec());
+        out.println("unlabeled recall:" + unlabeled.getRecall());
+        out.println("unlabeled f1:" + unlabeled.getF1());
 
         out.close();
     }

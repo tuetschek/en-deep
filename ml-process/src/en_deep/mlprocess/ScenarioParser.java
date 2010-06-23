@@ -325,7 +325,7 @@ class ScenarioParser {
      */
     private String getNextSection() throws IOException, DataException {
 
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         int clausesRead = 0;
         String currentClause = ";";
         String retVal;
@@ -393,8 +393,8 @@ class ScenarioParser {
                 }
                 commented = false;
             }
-            // begin comments (unquoted hash-char)
-            else if (!quoted && c == '#'){
+            // begin comments (unquoted and uncommented hash-char begins comments)
+            else if (!quoted && !commented && c == '#'){
                 commented = true;
                 comments.add(new Pair<Integer, Integer>((int)(curPos - pos1)));
             }
@@ -459,7 +459,7 @@ class ScenarioParser {
 
         StringBuilder sb = new StringBuilder();
 
-        if (comments.size() == 0){
+        if (comments.isEmpty()){
             sb.append(new String(rawLine));
         }
         else {
