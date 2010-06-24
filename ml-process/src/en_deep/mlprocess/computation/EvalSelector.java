@@ -47,7 +47,7 @@ public abstract class EvalSelector extends Task {
     /* CONSTANTS */
 
     /** The name of the "measure" parameter */
-    protected static final String MEASURE = "measure";
+    public static final String MEASURE = "measure";
 
     /** File extension for classification tempfiles */
     protected static final String CLASS_EXT = ".arff";

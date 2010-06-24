@@ -3,9 +3,10 @@ package en_deep.mlprocess.evaluation;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
- * This is just a holder for the statistics -- true / false negs / positives.
+ * This is a holder for the statistics -- true / false negs / positives.
+ * @author Ondrej Dusek
  */
-class Stats {
+public class Stats {
 
     /** True positives */
     int tp;
@@ -18,9 +19,17 @@ class Stats {
     /** Number of instances */
     int n;
 
+    /**
+     * This creates empty stats with zero fields.
+     */
     public Stats() {
     }
 
+    /**
+     * From a text representation as given by {@link #toString()}, this loads the statistics.
+     * @param textRepresentation the text representation of the statistics
+     * @throws NumberFormatException if the text is not well-formed
+     */
     public Stats(String textRepresentation) throws NumberFormatException {
 
         this.tp = StringUtils.findVariableVal(textRepresentation, "tp");
@@ -79,4 +88,27 @@ class Stats {
     public double getAcc() {
         return (tp + tn) / (double)n;
     }
+
+    /**
+     * This returns the value of the given measure (supported values are accuracy, precision, recall and f1).
+     * @param measure the name of the measure to get
+     * @return the value of the given measure
+     */
+    public double getMeasure(String measure) throws Exception {
+
+        if (measure.equals("accuracy")){
+            return this.getAcc();
+        }
+        else if (measure.equals("precision")){
+            return this.getPrec();
+        }
+        else if (measure.equals("recall")){
+            return this.getRecall();
+        }
+        else if (measure.equals("f1")){
+            return this.getF1();
+        }
+        throw new Exception("Invalid measure name.");
+    }
+
 }

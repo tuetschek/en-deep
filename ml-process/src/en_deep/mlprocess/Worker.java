@@ -93,19 +93,24 @@ public class Worker implements Runnable {
         try {
             while (this.waitForNextTasks()){
 
-                long time = System.currentTimeMillis();
+                long time;
                 Task task = null;
                 int current = 0;
 
                 try {
                     // perform all the retrieved tasks
                     for (; current < this.currentTasks.size(); ++current){
+
+                        time = System.currentTimeMillis();
+
                         task = this.currentTasks.get(current);
                         Logger.getInstance().message("Worker thread " + this.id + " working on task " + task.getId(),
                                 Logger.V_INFO);
                         task.perform();
+
                         time = System.currentTimeMillis() - time;
-                        Logger.getInstance().message("task " + task.getId() + " finished in " + time/1000.0 + " secs.", Logger.V_INFO);
+                        Logger.getInstance().message("task " + task.getId() + " finished in " + time/1000.0 + " secs.",
+                                Logger.V_INFO);
                     }
 
                     Plan.getInstance().updateStatuses(this.currentTasks, TaskStatus.DONE);

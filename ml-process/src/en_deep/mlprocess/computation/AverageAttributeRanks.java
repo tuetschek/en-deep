@@ -65,6 +65,7 @@ public class AverageAttributeRanks extends Task {
 
     @Override
     public void perform() throws TaskException {
+
         try {
 
             int [][] ranks = new int [this.input.size()][];

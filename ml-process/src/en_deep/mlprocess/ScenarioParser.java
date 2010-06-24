@@ -411,7 +411,9 @@ class ScenarioParser {
             lastC = c;
         }
         pos2 = this.input.getFilePointer();
-
+        if (commented){
+            comments.lastElement().second = (int) (pos2 - pos1);
+        }
         if (curPos == this.fileSize && quoted){
             throw new DataException(DataException.ERR_UNEXPECTED_EOF, this.fileName, this.line);
         }
