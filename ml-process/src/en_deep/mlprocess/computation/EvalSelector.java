@@ -55,6 +55,8 @@ public abstract class EvalSelector extends Task {
     protected static final String STATS_EXT = ".txt";
     /** The name of the "tempfile" parameter */
     static final String TEMPFILE = "tempfile";
+    /** The 'delete_tempfiles' parameter name */
+    protected static final String DELETE_TEMPFILES = "delete_tempfiles";
 
     /** The name of the "class_arg" parameter */
     protected static final String CLASS_ARG = GeneralClassifier.CLASS_ARG;
@@ -69,6 +71,8 @@ public abstract class EvalSelector extends Task {
     protected String tempFilePattern;
     /** The expanded id, the part of the ID that originated in task expansions */
     protected String expandedId;
+    /** Delete temporary files after selecting from the possibilities ? */
+    protected boolean deleteTempfiles;
 
     /* METHODS */
 
@@ -91,8 +95,8 @@ public abstract class EvalSelector extends Task {
         }
 
         this.measure = this.parameters.remove(MEASURE);
-
-        this.setExpandedId();
+        this.deleteTempfiles = this.getBooleanParameterVal(DELETE_TEMPFILES);
+        this.parameters.remove(DELETE_TEMPFILES);
     }
 
     /**
@@ -220,7 +224,7 @@ public abstract class EvalSelector extends Task {
 
     /**
      * This retrieves the part of the id that resulted from task expansion, so that the tempfiles generated differ for
-     * different tasks.
+     * different tasks. This must be called before any tempfile names are generated.
      */
     protected void setExpandedId() {
         this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
@@ -231,4 +235,8 @@ public abstract class EvalSelector extends Task {
     }
 
 
+    /**
+     * This deletes all the tempfiles that are listed among the inputs of the task.
+     */
+    protected abstract void deleteTempfiles();
 }

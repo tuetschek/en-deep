@@ -89,14 +89,35 @@ public class FileUtils{
      * This reads the contents of an ARFF (or convertible) data file, using WEKA code.
      *
      * @param fileName the name of the file to read
+     * @param close force close the file after reading ?
+     * @return the file contents
+     * @throws Exception if an I/O error occurs
+     */
+    public static Instances readArff(String fileName, boolean close) throws Exception {
+
+        FileInputStream in = new FileInputStream(fileName);
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(in);
+        Instances data = reader.getDataSet();
+
+        if (close){
+            in.getChannel().force(true);
+            in.getFD().sync();
+        }
+        in.close();
+        in = null;
+
+        return data;
+    }
+
+    /**
+     * This reads the contents of an ARFF (or convertible) data file, using WEKA code.
+     *
+     * @param fileName the name of the file to read
      * @return the file contents
      * @throws Exception if an I/O error occurs
      */
     public static Instances readArff(String fileName) throws Exception {
-
-        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
-        Instances data = reader.getDataSet();
-        return data;
+        return readArff(fileName, false);
     }
 
     /**
@@ -107,26 +128,26 @@ public class FileUtils{
      * @throws Exception if an I/O error occurs
      */
     public static Instances readArffStructure(String fileName) throws Exception {
-
-        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(fileName);
-        Instances data = reader.getStructure();
-        return data;
+        return readArffStructure(fileName, false);
     }
 
     /**
-     * This reads the internal structure of a given ARFF file and forces it to close.
+     * This reads the internal structure of a given ARFF file.
      * @param fileName the name of the file to read
+     * @param close force close the file after reading ?
      * @return the file structure
      * @throws Exception if an I/O error occurs
      */
-    public static Instances readArffStructureAndClose(String fileName) throws Exception {
+    public static Instances readArffStructure(String fileName, boolean close) throws Exception {
 
         FileInputStream in = new FileInputStream(fileName);
         ConverterUtils.DataSource reader = new ConverterUtils.DataSource(in);
         Instances data = reader.getStructure();
 
-        in.getChannel().force(true);
-        in.getFD().sync();
+        if (close){
+            in.getChannel().force(true);
+            in.getFD().sync();
+        }
         in.close();
         in = null;
 
@@ -165,6 +186,21 @@ public class FileUtils{
 
         os.write(str.getBytes());
         os.close();
+    }
+
+
+    /**
+     * This deletes the specified file. If the file is still open, it won't be deleted and false
+     * is returned.
+     * @param fileName the file name
+     * @returns true if the file was really deleted, false otherwise
+     * @throws SecurityException if the file is not accessible
+     */
+    public static boolean deleteFile(String fileName) throws SecurityException {
+
+        File file = new File(fileName);
+
+        return file.delete();
     }
 
 }

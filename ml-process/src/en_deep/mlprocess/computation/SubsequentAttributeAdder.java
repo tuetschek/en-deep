@@ -142,18 +142,24 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, "Error accessing the attribute file.");
         }
 
+        // determine the number of trials
         length = attributeOrder.length - 1;
-        if (this.start != -1){
+        if (this.start > 1 && this.start < attributeOrder.length - 1){
             length -= this.start;
         }
-        if (this.end != -1){
+        if (this.end != -1 && this.end < attributeOrder.length){
             length -= attributeOrder.length - this.end;
         }
-        paramSets = new Hashtable[length];
         lo = Math.max(this.start, 1);
-        for (int i = lo; i < lo + length; ++i){
 
-            paramSets[i-lo] = this.prepareParamSet(StringUtils.join(attributeOrder, lo, i+1, " "));
+        if (this.start >= attributeOrder.length){
+            length = 1;
+            lo = attributeOrder.length - 1;
+        }
+        // prepare the corresponding parameter sets
+        paramSets = new Hashtable[length];
+        for (int i = lo; i < lo + length; ++i){
+            paramSets[i-lo] = this.prepareParamSet(StringUtils.join(attributeOrder, 0, i+1, " "));
         }
         return paramSets;
     }
@@ -201,8 +207,9 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
     protected void writeBestStats(String outFile, int settingNo) throws IOException {
 
         PrintStream out = new PrintStream(outFile);
-        int paramNum = Math.max(this.start, 1) + settingNo;
         String [] attributeOrder = this.readAttributeOrder();
+        int paramNum = (this.start < attributeOrder.length ? Math.max(this.start, 1) : attributeOrder.length)
+                + settingNo;
 
         out.println(StringUtils.join(attributeOrder, 0, paramNum, " "));
         out.close();

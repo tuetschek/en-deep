@@ -279,8 +279,8 @@ class ScenarioParser {
     }
 
     /**
-     * Parse a string that contains comma-separated name = value pairs, values
-     * may be enclosed in quotes. Parameter names must be unique.
+     * Parse a string that contains comma-separated name = value pairs, values are not compulsory (empty string
+     * will be set) and may be enclosed in quotes. Parameter names must be unique.
      *
      * @param string the string to be parsed
      * @return the resulting name - value list
@@ -296,11 +296,15 @@ class ScenarioParser {
             String [] nameVal = listMember.split("=", 2);
 
             nameVal[0] = nameVal[0].trim();
-            nameVal[1] = nameVal[1].trim();
 
             if (nameVal[0].matches("[^a-zA-Z0-9_\\.-]")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_PARAMETER, this.fileName, this.line);
             }
+            if (nameVal.length == 1){
+                parameters.put(nameVal[0], "");
+                continue;
+            }
+            nameVal[1] = nameVal[1].trim();
             if (nameVal[1].startsWith("\"") && nameVal[1].endsWith("\"")){
                 nameVal[1] = this.unquote(nameVal[1]);
             }

@@ -68,7 +68,7 @@ public class Plan {
     /** File extension for the status file */
     public static final String STATUS_FILE_SUFFIX = ".status";
 
-    /** Number of tasks to retrieve at once */
+    /** Number of tasks to retrieve at once @todo make RETRIEVE_TASKS configurable */
     private static final int RETRIEVE_TASKS = 10;
 
     /* DATA */

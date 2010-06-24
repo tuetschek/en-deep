@@ -151,7 +151,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      *
      * @param source the governing {@link TaskDescription} that must be processed before this one.
      */
-    public void setDependency(TaskDescription source) {
+    public final void setDependency(TaskDescription source) {
 
         // if we have a dependency, we need to wait for it to finish (if not already finished)
         if (source.status != TaskStatus.DONE){
@@ -428,7 +428,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
                     }
                 }
             }
-            if (dependList.size() == 0){ // make the list null if it's empty
+            if (dependList.isEmpty()){ // make the list null if it's empty
                 if (backwards){
                     this.iDependOn = null;
                 }
@@ -456,12 +456,12 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
         if (this.iDependOn != null){
             for (TaskDescription td : this.iDependOn){
-                iDO.append(td.id + " ");
+                iDO.append(td.id).append(" ");
             }
         }
         if (this.dependOnMe != null){
             for (TaskDescription td : this.dependOnMe){
-                dOM.append(td.id + " ");
+                dOM.append(td.id).append(" ");
             }
         }
 
@@ -530,7 +530,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
     /**
      * Resets the current task status to PENDING, if it's already set as IN_PROGRESS, DONE or ERROR.
-     * Does nothing if the task's status is WAITING or PENDING. Sets all dependent tasks to WAITING.
+     * Does nothing if the task status is WAITING or PENDING. Sets all dependent tasks to WAITING.
      */
     public void resetStatus() {
 

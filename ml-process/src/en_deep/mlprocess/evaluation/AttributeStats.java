@@ -120,7 +120,7 @@ public class AttributeStats extends Task {
      */
     private void collectStats(String file) throws Exception {
 
-        Instances structure = FileUtils.readArffStructureAndClose(file);
+        Instances structure = FileUtils.readArffStructure(file, true);
 
         if (structure.attribute(this.attribName) == null){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "File " + file

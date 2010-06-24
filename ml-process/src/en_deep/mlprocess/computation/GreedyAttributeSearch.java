@@ -300,6 +300,8 @@ public class GreedyAttributeSearch extends EvalSelector {
     @Override
     public void perform() throws TaskException {
 
+        this.setExpandedId();
+
         try {
             // select the best attribute
             if (this.round > this.start){
@@ -343,6 +345,10 @@ public class GreedyAttributeSearch extends EvalSelector {
                             this.getTempfileName(TempfileTypes.BEST_STATS, this.round - 1, 0));
                     FileUtils.copyFile(this.input.get(best*2 + 1),
                             this.getTempfileName(TempfileTypes.BEST_CLASSIF, this.round - 1, 0));
+                }
+
+                if (this.deleteTempfiles){
+                    this.deleteTempfiles();
                 }
             }
             // create the next round
@@ -510,6 +516,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         nextRoundParams.put(ATTRIB_COUNT, Integer.toString(this.attribCount));
         nextRoundParams.put(CLASS_ATTR_NO, Integer.toString(this.classAttribNum));
         nextRoundParams.put(TEMPFILE, this.tempFilePattern);
+        nextRoundParams.put(DELETE_TEMPFILES, Boolean.toString(this.deleteTempfiles));
         
         nextRoundInput.addAll(this.input.subList(this.input.size() - 2, this.input.size()));
 
@@ -684,7 +691,7 @@ public class GreedyAttributeSearch extends EvalSelector {
      */
     private String getLastBestNames() throws Exception {
 
-        Instances structure = FileUtils.readArffStructure(this.input.get(this.input.size()-2));
+        Instances structure = FileUtils.readArffStructure(this.input.get(this.input.size()-2), true);
         StringBuilder text = new StringBuilder();
 
         for (int i = 0; i < this.lastBestAttributes.length; ++i){
@@ -793,6 +800,17 @@ public class GreedyAttributeSearch extends EvalSelector {
         
         out.println(bestList);
         out.close();
+    }
+
+    /**
+     * This deletes all the tempfiles of the individual trials, but keeps the round statistics.
+     */
+    @Override
+    protected void deleteTempfiles() {
+
+        for (int i = 0; i < this.input.size() - 2; i++) {
+            FileUtils.deleteFile(this.input.get(i));
+        }
     }
 
 

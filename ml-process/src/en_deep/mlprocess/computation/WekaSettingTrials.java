@@ -34,7 +34,6 @@ import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.TaskDescription;
 import en_deep.mlprocess.utils.FileUtils;
-import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -108,6 +107,9 @@ public abstract class WekaSettingTrials extends EvalSelector {
 
     @Override
     public void perform() throws TaskException {
+
+        this.setExpandedId();
+
         try {
             // evaluation mode
             if (this.evalMode) {
@@ -126,6 +128,10 @@ public abstract class WekaSettingTrials extends EvalSelector {
                 
                 FileUtils.copyFile(this.input.get(best * 2), this.output.get(1));
                 FileUtils.copyFile(this.input.get(best * 2 + 1), this.output.get(0));
+
+                if (this.deleteTempfiles){
+                    this.deleteTempfiles();
+                }
             } 
             // normal mode
             else {
@@ -216,8 +222,18 @@ public abstract class WekaSettingTrials extends EvalSelector {
         Hashtable<String, String> evalParams = new Hashtable<String, String>();
         evalParams.put(MEASURE, this.measure);
         evalParams.put(EVAL, "1");
+        evalParams.put(DELETE_TEMPFILES, Boolean.toString(this.deleteTempfiles));
 
         return evalParams;
     }
+
+    @Override
+    protected void deleteTempfiles() {
+
+        for (String file : this.input){
+            FileUtils.deleteFile(file); // all the inputs of the evaluation round are tempfiles
+        }
+    }
+
 
 }
