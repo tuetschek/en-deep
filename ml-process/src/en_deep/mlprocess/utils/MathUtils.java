@@ -130,4 +130,20 @@ public class MathUtils {
     public static double log2(double value) {
         return Math.log(value) / Math.log(2);
     }
+
+    /**
+     * This returns the position of a given value in the given array, or -1 if not found.
+     * @param arr the array that contains the value
+     * @param val the value to search
+     * @return the position of the value in the array, or -1
+     */
+    public static int find(int [] arr, int val){
+
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] == val){
+                return i;
+            }
+        }
+        return -1;
+    }
 }

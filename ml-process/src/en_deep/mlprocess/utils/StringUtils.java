@@ -226,4 +226,23 @@ public class StringUtils {
         return fileName;
     }
 
+    /**
+     * This converts a list of integers to strings and joins them with the given separator
+     * @param data the list of integers to be joined
+     * @param sep the field separator
+     * @return the joined list of integers
+     */
+    public static String join(int[] data, String sep) {
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < data.length; i++) {
+            if (i > 0) {
+                sb.append(sep);
+            }
+            sb.append(Integer.toString(data[i]));
+        }
+        return sb.toString();
+    }
+
 }
