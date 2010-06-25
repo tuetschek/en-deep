@@ -38,7 +38,6 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
@@ -252,7 +251,7 @@ public class GreedyAttributeSearch extends EvalSelector {
                         + "attrib_order is not set.");
             }
             try {
-                this.startOutOf = Integer.parseInt(this.getParameterVal(START_OUTOF));
+                this.startOutOf = Integer.parseInt(this.parameters.remove(START_OUTOF));
             }
             catch (NumberFormatException e){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter"
@@ -686,7 +685,6 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         paramSet.put(CLASS_ARG, this.classArg);
         paramSet.put(WEKA_CLASS, this.wekaClass);
-        paramSet.put(TEMPFILE, this.tempFilePattern);
         paramSet.put(WekaClassifier.SELECT_ARGS, attribList);
         paramSet.putAll(this.parameters); // these are just the classifier parameters
 
@@ -715,8 +713,8 @@ public class GreedyAttributeSearch extends EvalSelector {
     }
 
     /**
-     * This retrieves the name of the attribute order file from the list of inputs if the attrib_order
-     * parameter is set.
+     * This retrieves the name of the attribute order file from the list of inputs if the {@link #ATTRIB_ORDER}
+     * parameter is set. Removes the {@link #ATTRIB_ORDER} parameter from the task parameters.
      * @return the name of the attribute order file, or null
      */
     private String getAttributeOrderFile() {
@@ -724,8 +722,10 @@ public class GreedyAttributeSearch extends EvalSelector {
         String ret = null;
 
         if (this.parameters.get(ATTRIB_ORDER) != null){
+
             ret = this.input.get(this.input.size()-1);
             this.input.remove(this.input.size()-1);
+            this.parameters.remove(ATTRIB_ORDER);
         }
         return ret;
     }
