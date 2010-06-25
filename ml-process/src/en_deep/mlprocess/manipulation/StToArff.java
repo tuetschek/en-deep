@@ -63,6 +63,8 @@ public class StToArff extends StManipulation {
     private static final String GENERATE = "generate";
     /** The omit_semclass parameter name */
     private static final String OMIT_SEMCLASS = "omit_semclass";
+    /** The divide_senses parameter name */
+    private static final String DIVIDE_SENSES = "divide_senses";
 
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
@@ -113,6 +115,8 @@ public class StToArff extends StManipulation {
     private boolean predOnly;
     /** Omit semantic class in the ouptut ? */
     private boolean omitSemClass;
+    /** Divide the data according to pred, not lemma ? */
+    private boolean divideSenses;
 
     /** Features to be generated */
     private Vector<Feature> genFeats;
@@ -140,6 +144,7 @@ public class StToArff extends StManipulation {
      * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
      * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, omitting all other words in a sentence</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
+     * <li><tt>divide_senses</tt> -- if set to non-false, the data are divided according to the sense of predicates, too</li>
      * </ul>
      * <p>
      * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
@@ -159,7 +164,8 @@ public class StToArff extends StManipulation {
         // initialize boolean parameters
         this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
         this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
-        this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);       
+        this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
+        this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
 
         // initialize features to be generated
         this.initGenFeats();
@@ -384,8 +390,9 @@ public class StToArff extends StManipulation {
 
                 String predicate, fileName;
 
-                predicate = this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA) +
-                        this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
+                predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
+                        : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
+                        + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
                 fileName = pattern.replace("**", predicate);
                 this.usedFiles.put(predicate, fileName); // store the used file name
                 out.add(fileName);

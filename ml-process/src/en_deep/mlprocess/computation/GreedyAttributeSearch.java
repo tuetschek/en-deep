@@ -38,9 +38,11 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Instances;
@@ -70,6 +72,8 @@ public class GreedyAttributeSearch extends EvalSelector {
     private static final String START = "start";
     /** The name of the "start_attrib" parameter */
     private static final String START_ATTRIB = "start_attrib";
+    /** The name of the "startOutOf" parameter */
+    private static final String START_OUTOF = "start_outof";
     /** The name of the "end" parameter */
     private static final String END = "end";
     /** The minimal improvement that is possible */
@@ -91,6 +95,8 @@ public class GreedyAttributeSearch extends EvalSelector {
 
     /** The starting number of attributes used */
     private int start;
+    /** The limiting number of attributes to choose from upon start */
+    private int startOutOf = -1;
     /** The maximum number  of attributes used */
     private int end;
     /** The current number of attributes for this round */
@@ -144,6 +150,8 @@ public class GreedyAttributeSearch extends EvalSelector {
      * <li><tt>attrib_order</tt> -- if this parameter is set, the last input file is considered to be
      * the file with the desired order in which the attributes with the same performance should be added to
      * the set of used attributes.</li>
+     * <li><tt>startOutOf</tt> -- if the <tt>attrib_order</tt> parameter is set, this limits the selection
+     * of combinations to the first <i>n</i> attributes from the attribute order file. Must be greater than start.</li>
      * </li>
      * There are special parameters reserved for the program (which control the process):
      * <ul>
@@ -237,6 +245,24 @@ public class GreedyAttributeSearch extends EvalSelector {
             }
         }
         this.attributeOrderFile = this.getAttributeOrderFile();
+        
+        if (this.getParameterVal(START_OUTOF) != null){
+            if (this.attributeOrderFile == null){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot set start_outof if"
+                        + "attrib_order is not set.");
+            }
+            try {
+                this.startOutOf = Integer.parseInt(this.getParameterVal(START_OUTOF));
+            }
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter"
+                        + START_OUTOF + " must be numeric.");
+            }
+            if (this.startOutOf < this.start){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter"
+                        + START_OUTOF + " must be greater or equal to " + START + ".");
+            }
+        }
     }
 
     /**
@@ -388,7 +414,7 @@ public class GreedyAttributeSearch extends EvalSelector {
                 this.round - 1, 0), "rw");
 
         // find out which trial of the previous round gave the best results
-        int [] order = this.getAttributeOrder();
+        int [] order = this.getOrderOfConsideration();
         Pair<Integer, Double> best = this.selectBest(evalFiles, order);
 
         // find the best value of the round BEFORE the previous one
@@ -577,15 +603,26 @@ public class GreedyAttributeSearch extends EvalSelector {
             combinations = new Vector<String>(1);
             combinations.add(startAttribs);
         }
+        else if (this.startOutOf > 0){
+            int [] values = Arrays.copyOf(this.readAttributeOrder(), this.startOutOf);
+            combinations = MathUtils.combinations(this.start, values);
+        }
         else {
-            combinations = MathUtils.combinations(this.round, this.attribCount);
+            int [] values = new int [this.attribCount];
+            for (int i = 0; i <= this.attribCount; ++i){
+                if (i == this.classAttribNum){
+                    continue;
+                }
+                values[i] = i > this.classAttribNum ? i - 1 : i;
+            }
+            combinations = MathUtils.combinations(this.start, values);
         }
 
         roundStatsFile.println("Last best:" + 0);
 
         for (int i = 0; i < combinations.size(); ++i){
 
-            String combination = this.moveAttribs(combinations.get(i));
+            String combination = combinations.get(i);
 
             paramSets.add(this.prepareParamSet(combination));
             roundStatsFile.println(combination);
@@ -599,7 +636,7 @@ public class GreedyAttributeSearch extends EvalSelector {
     /**
      * This finds out the number of available arguments and the order of the class argument
      * and saves it to {@link #classAttribNum} and {@link #attribCount} and select the start
-     * attributes by number, if the {@link #startAttrib} member is set.
+     * attributes by number, if the {@link #startAttrib} member is set. 
      *
      * @return the space-separated list of starting attributes, or null if their names haven't been set-up \
      *      in the parameters of this {@link Task}
@@ -635,35 +672,6 @@ public class GreedyAttributeSearch extends EvalSelector {
             return startAttribNums.toString();
         }
         return null;
-    }
-
-    /**
-     * Moves all the attributes numbers within the string past the class attribute one to the right
-     * (attribList.e\. adds one to them).
-     * @param list list of attributes
-     * @return
-     */
-    private String moveAttribs(String list) {
-
-        String [] attribNums = list.split("\\s+");
-        StringBuilder ret = new StringBuilder();
-
-        for (String attribNum : attribNums){
-
-            int n = Integer.parseInt(attribNum);
-
-            if (ret.length() != 0){
-                ret.append(" ");
-            }
-            if (n >= this.classAttribNum){
-                ret.append(n+1);
-            }
-            else {
-                ret.append(n);
-            }
-        }
-
-        return ret.toString();
     }
 
     /**
@@ -730,7 +738,7 @@ public class GreedyAttributeSearch extends EvalSelector {
      * @throws IOException
      * @throws TaskException
      */
-    private int [] getAttributeOrder() throws IOException, TaskException {
+    private int [] getOrderOfConsideration() throws IOException, TaskException {
 
         if (this.attributeOrderFile == null){
             return null;
@@ -756,16 +764,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         finally {
             stats.close();
         }
-
-        // read all attributes' correct order from the attribute order file
-        RandomAccessFile attrOrder = new RandomAccessFile(this.attributeOrderFile, "r");
-        try {
-            line = attrOrder.readLine();
-            orderAll = StringUtils.readListOfInts(line);
-        }
-        catch (Exception e){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid attribute order file.");
-        }
+        orderAll = this.readAttributeOrder();
 
         // create the final order
         for (int i = 0; i < orderAll.length; ++i){
@@ -784,6 +783,29 @@ public class GreedyAttributeSearch extends EvalSelector {
         }
         return order;
     }
+
+    /**
+     * This reads the order of attributes from the {@link #attributeOrderFile} and returns it as
+     * a list of ints.
+     *
+     * @return the order of attributes as given by the attribute ranker
+     * @throws TaskException if the {@link #attributeOrderFile} is invalid
+     */
+    private int[] readAttributeOrder() throws TaskException {
+        
+        int[] orderAll;       
+
+        try {
+            RandomAccessFile attrOrder = new RandomAccessFile(this.attributeOrderFile, "r");
+            String line = attrOrder.readLine();
+            orderAll = StringUtils.readListOfInts(line);
+        }
+        catch (Exception e) {
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Invalid attribute order file.");
+        }
+        return orderAll;
+    }
+
 
     /**
      * This writes just the list of the best attribute numbers.

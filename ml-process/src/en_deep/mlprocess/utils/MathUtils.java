@@ -36,14 +36,14 @@ import java.util.Vector;
 public class MathUtils {
 
     /**
-     * This returns the list of all k-tuple combinations in the interval [base,n>.
+     * This returns the list of all k-tuple combinations in the sub-array, starting from base.
      *
      * @param base the lower bound of the interval (included)
      * @param k how big should the combinations be
-     * @param n the upper bound of the interval (excluded)
+     * @param values the list of possible values (from which the combinations are taken)
      * @return the list of all k-tuple combinations
      */
-    private static Vector<String> combinations(int base, int k, int n){
+    private static Vector<String> combinations(int base, int k, int [] values){
 
         Vector<String> ret = new Vector<String>();
 
@@ -54,10 +54,11 @@ public class MathUtils {
 
         // if base > n (combinations that can't be finished), this returns empty list to
         // which nothing will be added
-        for (int i = base; i < n; ++i){
-            Vector<String> subCombs = combinations(i+1, k-1, n);
+        for (int i = base; i < values.length; ++i){
+            Vector<String> subCombs = combinations(i+1, k-1, values);
+
             for (String subComb : subCombs){
-                ret.add(i + " " + subComb);
+                ret.add(values[i] + (subComb.length() == 0 ? "" : " " + subComb));
             }
         }
 
@@ -65,15 +66,16 @@ public class MathUtils {
     }
 
     /**
-     * This returns the list of all k-tuple combinations out of n.
+     * This returns the list of all k-tuple combinations out of the values in the
+     * given array (they must not repeat).
      *
      * @param base the lower bound of the interval (included)
      * @param k how big should the combinations be
-     * @param n the upper bound of the interval (excluded)
+     * @param values the list of possible values (from which the combinations are taken)
      * @return the list of all k-tuple combinations
      */
-    public static Vector<String> combinations(int k, int n){
-        return combinations(0, k, n);
+    public static Vector<String> combinations(int k, int [] values){
+        return combinations(0, k, values);
     }
 
     /**

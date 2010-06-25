@@ -83,7 +83,7 @@ public class DataMerger extends Task {
 
         int ratio = this.input.size() / this.output.size();
 
-        if (this.input.size() == 0 || this.input.size() % this.output.size() !=  0){
+        if (this.input.isEmpty() || this.input.size() % this.output.size() !=  0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
 
@@ -105,6 +105,7 @@ public class DataMerger extends Task {
     /**
      * Tries to merge several input files into one output, using WEKA code.
      *
+     * @todo merge possible values for attributes (by creating new attributes first and then by writing down all the data using the old ones)
      * @param in the list of input files to be merged
      * @param out the output file to write to
      */
