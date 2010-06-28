@@ -32,10 +32,12 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.classifiers.AbstractClassifier;
+import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 
@@ -54,10 +56,15 @@ public class WekaClassifier extends GeneralClassifier {
 
     /** Name of the select_args parameter */
     static final String SELECT_ARGS = "select_args";
+    /** The name of the 'prob_dist' parameter */
+    private static final String PROB_DIST = "prob_dist";
 
     /* DATA */
 
+    /** The WEKA classifier object */
     private AbstractClassifier classif;
+    /** Output probability distribution instead of classification ? */
+    private boolean probabilities;
 
     /* METHODS */
  
@@ -84,6 +91,8 @@ public class WekaClassifier extends GeneralClassifier {
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
+     * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
+     * supported and/or switched on for the classifier</li>
      * </ul>
      * <p>
      * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
@@ -108,10 +117,36 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.parameters.get(WEKA_CLASS) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
+        this.probabilities = this.parameters.remove(PROB_DIST) != null;
 
         // initialize the classifier and set its parameters
         this.initClassifier();
 
+    }
+
+    /**
+     * This adds the features for the various values of the target class -- in order to set the probabilities for
+     * the instances and classes.
+     * @param eval the evaluation data
+     * @return the index of the first distribution feature
+     */
+    private int addDistributionFeatures(Instances eval) {
+
+        String className = eval.classAttribute().name();
+        String[] classVals = new String[eval.classAttribute().numValues()];
+        Enumeration<String> vals = eval.classAttribute().enumerateValues();
+        int i = 0;
+
+        while (vals.hasMoreElements()) {
+            classVals[i++] = vals.nextElement();
+        }
+        int classIndex = eval.classIndex();
+        eval.setClassIndex(-1);
+        eval.deleteAttributeAt(classIndex);
+        for (i = 0; i < classVals.length; i++) {
+            eval.insertAttributeAt(new Attribute(className + "_" + classVals[i]), classIndex + i);
+        }
+        return classIndex;
     }
 
     /**
@@ -177,13 +212,25 @@ public class WekaClassifier extends GeneralClassifier {
 
         // use the classifier and store the results       
         Enumeration instances;
+        ArrayList<double []> distributions = this.probabilities ? new ArrayList<double []>() : null;
         
         instances = eval.enumerateInstances();
         while(instances.hasMoreElements()){
             
             Instance inst = (Instance) instances.nextElement();
-            double val = this.classif.classifyInstance(inst);
-            inst.setClassValue(val);
+
+            if (!this.probabilities){ // just set the most likely class
+                double val = this.classif.classifyInstance(inst);
+                inst.setClassValue(val);
+            }
+             else { // save the probability distribution aside
+                distributions.add(this.classif.distributionForInstance(inst));
+             }
+        }
+
+        // store the probability distributions, if supposed to
+        if (this.probabilities){
+            this.addDistributions(eval, distributions);
         }
         
         // write the output
@@ -244,6 +291,31 @@ public class WekaClassifier extends GeneralClassifier {
                 }
             }
         }
+    }
+
+    /**
+     * This adds the results of the classification -- the probability distributions of classes for each
+     * instance -- to the evaluation data as new features.
+     *
+     * @param eval the evaluation data
+     * @param distributions the classes probability distributions for the individual instances
+     */
+    private void addDistributions(Instances eval, ArrayList<double []> distributions) {
+        
+        int index = addDistributionFeatures(eval);
+        int instNo = 0;
+
+        Enumeration<Instance> instances = eval.enumerateInstances();
+        while (instances.hasMoreElements()) {
+
+            Instance inst = instances.nextElement();
+            double [] dist = distributions.get(instNo++);
+            
+            for (int i = 0; i < dist.length; ++i){
+                inst.setValue(index + i, dist[i]);
+            }
+        }
+
     }
 
 }
