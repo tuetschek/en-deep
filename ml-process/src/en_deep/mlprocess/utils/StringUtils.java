@@ -245,4 +245,23 @@ public class StringUtils {
         return sb.toString();
     }
 
+    /**
+     * This joins the members of the given arrays to an array of bigrams, using the given
+     * separator. It is assumed that the arrays are of the same length.
+     *
+     * @param left the left parts of the bigrams
+     * @param right the right parts of the bigrams
+     * @param sep the bigram separator
+     * @return the members of both arrays, joined with the given separator
+     */
+    public static String [] bigrams(String [] left, String [] right, String sep){
+
+        String [] results = new String [left.length];
+
+        for (int i = 0; i < left.length; i++) {
+            results[i] = left[i] + sep + right[i];
+        }
+        return results;
+    }
+
 }

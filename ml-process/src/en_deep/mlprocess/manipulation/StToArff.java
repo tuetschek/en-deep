@@ -59,6 +59,8 @@ public class StToArff extends StManipulation {
     private static final String MULTICLASS = "multiclass";
     /** The pred_only parameter name */
     private static final String PRED_ONLY = "pred_only";
+    /** The prune parameter name */
+    private static final String PRUNE = "prune";
     /** The generate parameter name */
     private static final String GENERATE = "generate";
     /** The omit_semclass parameter name */
@@ -117,6 +119,8 @@ public class StToArff extends StManipulation {
     private boolean omitSemClass;
     /** Divide the data according to pred, not lemma ? */
     private boolean divideSenses;
+    /** Prune the argument candidates to the syntactical neighborhood of the predicate ? */
+    private boolean prune;
 
     /** Features to be generated */
     private Vector<Feature> genFeats;
@@ -145,6 +149,7 @@ public class StToArff extends StManipulation {
      * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, omitting all other words in a sentence</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * <li><tt>divide_senses</tt> -- if set to non-false, the data are divided according to the sense of predicates, too</li>
+     * <li><tt>prune</tt> -- if set, the argument candidates are pruned (syntactical neighborhood of the predicate only)</li>
      * </ul>
      * <p>
      * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
@@ -166,6 +171,7 @@ public class StToArff extends StManipulation {
         this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
+        this.prune = this.getBooleanParameterVal(PRUNE);
 
         // initialize features to be generated
         this.initGenFeats();
@@ -252,8 +258,9 @@ public class StToArff extends StManipulation {
 
                     String [] word = this.reader.getWord(j);
 
-                    // skip non-predicate lines if such setting is imposed
-                    if (this.predOnly && j != predNums[i]){
+                    // skip non-predicate or pruned lines if such setting is imposed
+                    if (this.predOnly && j != predNums[i]
+                            || this.prune && !this.reader.isInNeighborhood(predNums[i], j)){
                         continue;
                     }
 

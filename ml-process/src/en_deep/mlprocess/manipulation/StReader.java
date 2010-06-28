@@ -28,6 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -505,4 +506,27 @@ public class StReader {
         }
         return predType;
     }
+
+    /**
+     * This returns true if the argument candidate is in the syntactical neighborhood of the predicate.
+     * I.e. this means that it's a dependent of one of the predicates ancestors (including the
+     * predicate itself).
+     * 
+     * @param pred the position of the predicate
+     * @param argCand the position of the argument candidate
+     * @return true if the argument candidate is in the syntactical neighborhood of the predicate
+     */
+    boolean isInNeighborhood(int pred, int argCand) {
+
+        int curNode = pred;
+        while (curNode >= 0){
+            int [] kids = this.getChildrenPos(curNode);
+            if (curNode == argCand || MathUtils.find(kids, argCand) != -1){
+                return true;
+            }
+            curNode = this.getHeadPos(curNode);
+        }
+        return false;
+    }
+
 }

@@ -158,7 +158,7 @@ public class Worker implements Runnable {
         catch(SchedulingException ex){
             
             int suspendTime = SUSPEND_TIME + (int) (Math.random() * SUSPEND_RANDOM);
-            Logger.getInstance().message("Worker thread #" + this.id + "suspending for " + suspendTime + " msecs.",
+            Logger.getInstance().message("Worker thread #" + this.id + " suspending for " + suspendTime + " msecs.",
                     Logger.V_DEBUG);
 
             // wait, if there's nothing to be processed
