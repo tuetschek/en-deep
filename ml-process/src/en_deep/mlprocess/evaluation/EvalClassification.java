@@ -51,12 +51,19 @@ public class EvalClassification extends Task {
     /* CONSTANTS */
     
     /** The name of the "class_arg" parameter */
-    private static String CLASS_ARG = GeneralClassifier.CLASS_ARG;
+    private static final String CLASS_ARG = GeneralClassifier.CLASS_ARG;
+    /** The name of the 'diffs' parameter */
+    private static final String DIFFS = "diffs";
     
     /** The value that's used as "empty" */
     private static String EMPTY = "_";
 
     /* DATA */
+
+    /** Output also prediction logs with errors marked ? */
+    private boolean produceDiffs;
+    /** An open file for log output */
+    private PrintStream diffFile;
 
     /* METHODS */
 
@@ -70,6 +77,12 @@ public class EvalClassification extends Task {
      * <ul>
      * <li><tt>class_arg</tt> -- the name of the class attribute that is to be checked.</li>
      * </ul>
+     * And one voluntary parameter:
+     * <ul>
+     * <li><tt>diffs</tt> -- if set, the number of outputs should be 2 and the second output is
+     * for pairs of golden x predicted with errors marked.</li>
+     * </ul>
+     *
      *
      * @param id
      * @param parameters
@@ -84,11 +97,16 @@ public class EvalClassification extends Task {
         if (this.parameters.get(CLASS_ARG) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter class_arg is missing.");
         }
+        this.produceDiffs = this.getBooleanParameterVal(DIFFS);
+
         if (this.input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be pairs of inputs.");
         }
-        if (this.output.size() != 1){
+        if (!this.produceDiffs && this.output.size() != 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
+        }
+        else if (this.output.size() != 2){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 2 outputs.");
         }
     }
 
@@ -97,6 +115,10 @@ public class EvalClassification extends Task {
 
         try {
             Stats labeled = new Stats(), unlabeled = new Stats();
+
+            if (this.produceDiffs){
+                this.diffFile = new PrintStream(this.output.get(1));
+            }
 
             for (int i = 0; i < this.input.size() / 2; i++) {
 
@@ -110,6 +132,9 @@ public class EvalClassification extends Task {
 
             }
 
+            if (this.produceDiffs){
+                this.diffFile.close();
+            }
             this.printStats(labeled, unlabeled, this.output.get(0));
         }
         catch (TaskException e){
@@ -148,10 +173,16 @@ public class EvalClassification extends Task {
         }
 
         // test everything
-        Stats labeled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
-                test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), true);
-        Stats unlabeled = this.getStats(gold.attributeToDoubleArray(attrGold.index()),
-                test.attributeToDoubleArray(attrTest.index()), attrGold.indexOfValue(EMPTY), false);
+        double [] goldenValues = gold.attributeToDoubleArray(attrGold.index());
+        double [] testValues = test.attributeToDoubleArray(attrTest.index());
+        String [] labels = this.getLabels(attrGold);
+
+        Stats labeled = this.getStats(goldenValues, testValues, attrGold.indexOfValue(EMPTY), true);
+        Stats unlabeled = this.getStats(testValues, testValues, attrGold.indexOfValue(EMPTY), false);
+
+        if (this.produceDiffs){
+            this.printLog(goldFile + " x " + testFile + ":", goldenValues, testValues, labels);
+        }
 
         return new Pair<Stats, Stats>(labeled, unlabeled);
     }
@@ -218,5 +249,44 @@ public class EvalClassification extends Task {
 
         // first - precision, second - recall
         return stats;
+    }
+
+    /**
+     * This prints the prediction log for the given instances (pairs of golden x predicted class values) + error markings
+     * into the open {@link #diffFile}.
+     * @param caption log caption
+     * @param gold the golden values
+     * @param test the predicted values
+     * @param labels the value labels for both data
+     */
+    private void printLog(String caption, double [] gold, double [] test, String [] labels) {
+
+        this.diffFile.println(caption);
+
+        for (int i = 0; i < gold.length; i++) {
+            if (gold[i] != test[i]){
+                this.diffFile.print("X\t");
+            }
+            else {
+                this.diffFile.print("\t");
+            }
+            this.diffFile.println(labels[(int) gold[i]] + "\t" + labels[(int) test[i]]);
+        }
+        this.diffFile.println();
+    }
+
+    /**
+     * This returns all the labels for the given attribute, in the correct order.
+     * @param attr the attribute to be processed
+     * @return all the labels for the values of the given attribute
+     */
+    private String [] getLabels(Attribute attr) {
+
+        String [] labels = new String [attr.numValues()];
+
+        for (int i = 0; i < attr.numValues(); i++) {
+            labels[i] = attr.value(i);
+        }
+        return labels;
     }
 }
