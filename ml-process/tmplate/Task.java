@@ -19,13 +19,6 @@ import java.util.Vector;
  */
 public class ${name} extends Task {
     
-    /** The 'distr' parameter name */
-    private static final String DISTR = "distr";
-    /** The 'sentence' parameter name */
-    private static final String SENTENCE = "sentence";
-    /** The 'no_duplicate' parameter name */
-    private static final String NO_DUP = "no_duplicate";
-
     /**
      * This creates a new {@link ${name}} task, checking the numbers of inputs and outputs
      * and the necessary parameters:
