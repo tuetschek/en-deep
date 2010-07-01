@@ -29,6 +29,7 @@ package en_deep.mlprocess;
 
 import java.io.Serializable;
 import java.io.File;
+import java.util.Comparator;
 import java.util.Vector;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -40,7 +41,7 @@ import java.util.Stack;
  * 
  * @author Ondrej Dusek
  */
-public class TaskDescription implements Serializable, Comparable<TaskDescription> {
+public class TaskDescription implements Serializable/*, Comparable<TaskDescription>*/ {
   
     /* CONSTANTS */
 
@@ -211,6 +212,20 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
             return null;
         }
         return (Vector<TaskDescription>) this.dependOnMe.clone();
+    }
+
+
+    /**
+     * Returns a list of all direct prerequisites, or null if there are none. Returns
+     * a copy that is not affected by subsequent changes to the dependencies.
+     *
+     * @return a list of all tasks this task depends on
+     */
+    Vector<TaskDescription> getPrerequisites(){
+        if (this.iDependOn == null){
+            return null;
+        }
+        return (Vector<TaskDescription>) this.iDependOn.clone();
     }
 
 
@@ -447,6 +462,20 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         this.looseDeps(null);
     }
 
+    /**
+     * Removes the dependency of this task on the given other task. The other task must depend on this task,
+     * otherwise this has no effect
+     * @param other the task that should no longer depend on this one
+     */
+    public void removeDependency(TaskDescription other) {
+
+        if (this.dependOnMe != null){
+            this.dependOnMe.remove(other);
+        }
+        if (other.iDependOn != null){
+            other.iDependOn.remove(this);
+        }
+    }
 
     @Override
     public String toString() {
@@ -508,23 +537,6 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
     void replaceOutput(int pos, String replacement) {
 
         this.output.set(pos, replacement);
-    }
-
-    /**
-     * Compares two TaskDescription according to their topological order.
-     *
-     * @param other the TaskDescription to be compared to this one
-     * @return -1 if this has lower topological order, 1 for greater and 0 for equal
-     */
-    public int compareTo(TaskDescription other) {
-
-        if (this.topolOrder < other.topolOrder){
-            return -1;
-        }
-        else if (this.topolOrder > other.topolOrder){
-            return 1;
-        }
-        return 0;
     }
 
 
@@ -698,6 +710,29 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
      */
     public boolean hasOutputPattern(String pattern){
         return this.hasPattern(pattern, true);
+    }
+
+    /**
+     * This compares the tasks according to their topological order.
+     */
+    public static class TopologicalComparator implements Comparator<TaskDescription> {
+
+        /**
+         * Compares two TaskDescription according to their topological order.
+         *
+         * @param other the TaskDescription to be compared to this one
+         * @return -1 if this has lower topological order, 1 for greater and 0 for equal
+         */
+        public int compare(TaskDescription o1, TaskDescription o2) {
+
+            if (o1.topolOrder < o2.topolOrder){
+                return -1;
+            }
+            else if (o1.topolOrder > o2.topolOrder){
+                return 1;
+            }
+            return 0;
+        }
     }
 
 }

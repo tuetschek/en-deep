@@ -236,6 +236,8 @@ public class Plan {
         ScenarioParser parser = new ScenarioParser(Process.getInstance().getInputFile());
         Vector<TaskDescription> plan;
 
+        Logger.getInstance().message("Parsing the scenario file ...", Logger.V_DEBUG);
+
         // parse the input file
         parser.parse();
         
@@ -245,6 +247,8 @@ public class Plan {
 
         // write the plan into the plan file
         this.writePlan(plan, planFileIO);
+
+        Logger.getInstance().message("Plan written ...", Logger.V_DEBUG);
     }
 
 
@@ -265,6 +269,8 @@ public class Plan {
         Vector<TaskDescription> plan = this.readPlan(planFileIO);
         Vector<Task> retrieved = new Vector<Task>(RETRIEVE_TASKS);
 
+        Logger.getInstance().message("Retrieving tasks ...", Logger.V_DEBUG);
+
         for (int i = 0; i < RETRIEVE_TASKS; i++) {
             try {
                 TaskDescription nextTask = this.retrievePendingTask(plan);
@@ -281,6 +287,8 @@ public class Plan {
             }
         }
 
+        Logger.getInstance().message("Got " + retrieved.size() + ". Writing back the remaining "
+                + plan.size() + "...", Logger.V_DEBUG);        
         // update the plan file
         this.writePlan(plan, planFileIO);
 
