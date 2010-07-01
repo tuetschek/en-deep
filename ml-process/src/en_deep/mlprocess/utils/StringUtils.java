@@ -28,8 +28,10 @@
 package en_deep.mlprocess.utils;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Vector;
 
 /**
@@ -72,6 +74,32 @@ public class StringUtils {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * This concatenates all the strings from the given collection, separating them
+     * with the given string.
+     * @param data the strings to be joined
+     * @param sep field separator
+     * @return the concatenation of all strings using the given separator
+     */
+    public static String join(Collection<? extends String> data, String sep){
+
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        
+        Iterator<String> members = (Iterator<String>) data.iterator();
+        while (members.hasNext()){
+            if (!first){
+                sb.append(sep);
+            }
+            else {
+                first = false;
+            }
+            sb.append(members.next());
+        }
+        return sb.toString();
+
     }
 
     /**

@@ -30,12 +30,18 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import java.io.FileOutputStream;
+import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Vector;
 import java.util.Hashtable;
+import weka.core.Attribute;
+import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 
 /**
  * This class merges several data sets into one.
@@ -62,11 +68,13 @@ public class DataMerger extends Task {
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public DataMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) {
+    public DataMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
+            throws TaskException{
+
         super(id, parameters, input, output);
 
-        if (parameters.size() > 0){
-            Logger.getInstance().message("DataMerger parameters are ignored", Logger.V_WARNING);
+        if (this.input.isEmpty() || this.input.size() % this.output.size() !=  0){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
     }
 
@@ -82,10 +90,6 @@ public class DataMerger extends Task {
     public void perform() throws TaskException {
 
         int ratio = this.input.size() / this.output.size();
-
-        if (this.input.isEmpty() || this.input.size() % this.output.size() !=  0){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
-        }
 
         for (int j = 0; j < this.output.size(); ++j){
 
@@ -111,45 +115,90 @@ public class DataMerger extends Task {
      */
     private void mergeData(List<String> in, String out) throws Exception {
 
-        ConverterUtils.DataSource data = new ConverterUtils.DataSource(in.get(0));
-        FileOutputStream os = new FileOutputStream(out);
-        Instances firstStructure = data.getStructure();
+        Instances [] data = new Instances [in.size()];
 
-        Logger.getInstance().message(this.id + ": adding " + in.get(0) + " to " + out + "...", Logger.V_DEBUG);
+        Logger.getInstance().message(this.id + ": Merging " + StringUtils.join(in, ", ") + " to " + out + " ...",
+                Logger.V_INFO);
 
-        // write the first file, including the headers
-        os.write(firstStructure.toString().getBytes("UTF-8"));
-
-        while (data.hasMoreElements(firstStructure)){
-            os.write(data.nextElement(firstStructure).toString().getBytes("UTF-8"));
-            os.write(LF.getBytes());
+        // read all data
+        for (int i = 0; i < in.size(); i++) {
+            data[i] = FileUtils.readArff(in.get(i));
         }
 
-        data.reset();
+        // merge headers
+        Instances mergedHeaders = new Instances(data[0], 0);
+        for (int i = 1; i < in.size(); i++){
+            this.mergeHeaders(mergedHeaders, data[i]);
+        }
 
-        // add the other files
-        for (int i = 1; i < in.size(); ++i){
+        // write the merged headers and all data to the output
+        PrintStream os = new PrintStream(out);
+        os.print(mergedHeaders.toString());
 
-            data = new ConverterUtils.DataSource(in.get(i));
-            Instances structure = data.getStructure();
-            String errMsg;
-
-            Logger.getInstance().message(this.id + ": adding " + in.get(i) + " to " + out + "...", Logger.V_DEBUG);
-
-            // check for equal data format
-            if ((errMsg = structure.equalHeadersMsg(firstStructure)) != null){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                        "Cannot merge -- headers differ: " + errMsg);
+        for (int i = 0; i < data.length; i++) {
+            Enumeration<Instance> insts = data[i].enumerateInstances();
+            while (insts.hasMoreElements()){
+                os.println(insts.nextElement().toString());
             }
-
-            while (data.hasMoreElements(structure)){
-                os.write(data.nextElement(structure).toString().getBytes("UTF-8"));
-                os.write(LF.getBytes());
-            }
-            data.reset();
         }
 
         os.close();
+    }
+
+    /**
+     * This will merge the headers of two data sets, provided they have attributes with same names and types (not necessary
+     * the same possible values.
+     * @param a the first set of instances, which will then contain the result
+     * @param b the second set of instances that remains unchanged by the operation
+     */
+    private void mergeHeaders(Instances a, Instances b) throws TaskException {
+
+        if (a.numAttributes() != b.numAttributes()){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "The datasets "
+                    + a.relationName() + " and " + b.relationName() + " don't have the same number of attributes.");
+        }
+        Enumeration<Attribute> attribs = b.enumerateAttributes();
+        while (attribs.hasMoreElements()){
+            Attribute bAttr = attribs.nextElement();
+            Attribute aAttr = a.attribute(bAttr.name());
+
+            if (aAttr == null){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute "
+                        + bAttr.name() + " missing from dataset " + a.relationName() + ".");
+            }
+            if (aAttr.type() != bAttr.type()){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attributes "
+                        + aAttr.name() + " are of different types in " + a.relationName() + " and "
+                        + b.relationName() + ".");
+            }
+
+            if (aAttr.isNominal()){ // merge values for nominal attributes
+                Attribute merged = this.mergeAttribute(aAttr, bAttr);
+                int pos = aAttr.index();
+                a.deleteAttributeAt(pos);
+                a.insertAttributeAt(merged, pos);
+            }
+        }
+    }
+
+    /**
+     * This will create a merged set of values for a nominal attribute.
+     * @param a the first version of the attribute
+     * @param b the second version of the attribute
+     * @return the merged result
+     */
+    private Attribute mergeAttribute(Attribute a, Attribute b) {
+
+        HashSet<String> values = new HashSet<String>();
+        Enumeration<String> aVals = a.enumerateValues();
+        while (aVals.hasMoreElements()){
+            values.add(aVals.nextElement());
+        }
+        Enumeration<String> bVals = b.enumerateValues();
+        while (bVals.hasMoreElements()){
+            values.add(bVals.nextElement());
+        }
+        return new Attribute(a.name(), new ArrayList<String>(values));
     }
 
 

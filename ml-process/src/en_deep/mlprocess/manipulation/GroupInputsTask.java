@@ -39,7 +39,8 @@ import java.util.Vector;
  * This serves as a super-class for all classes that use several groups of inputs which need to be treated
  * in parallel.
  * @todo this should be absolutely eliminated by introducing some improvement in task expansion, so that the task
- *      remembers its 'here'-expansions.
+ *      remembers its 'here'-expansions. Probably use replaceInput() in TaskDescription to remember the original
+ *      inputs and some interface that this class will implement and whose method will be called in Task.createTask().
  * @author Ondrej Dusek
  */
 public abstract class GroupInputsTask extends Task {
@@ -84,7 +85,8 @@ public abstract class GroupInputsTask extends Task {
     }
 
     /**
-     * This sorts the inputs according to the given input patterns.
+     * This sorts the inputs according to the given input patterns. There is one hashtable for each input pattern,
+     * the keys of which are the expansions of that pattern and the values are the input file names.
      * @return the inputs, sorted according to the given input patterns.
      * @throws TaskException
      */
