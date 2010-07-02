@@ -230,6 +230,7 @@ public class ResultsToSt extends StManipulation {
 
                 if (predicts == null){
                     Logger.getInstance().message("Prediction data for " + predName + " missing.", Logger.V_WARNING);
+                    predicateNo++;
                     continue;
                 }
 
@@ -362,7 +363,7 @@ public class ResultsToSt extends StManipulation {
             // divide the word ids by sentence
             int [] sentIds = MathUtils.toInts(data.attributeToDoubleArray(sentId.index()));
             int [] wordIdsPlain = MathUtils.toInts(data.attributeToDoubleArray(wordId.index()));
-            int sentNum = 0;
+            int sentNum = 1;
             for (int i = 1; i < sentIds.length; i++) { // count sentences
                 if (sentIds[i] != sentIds[i-1]){
                     sentNum++;
@@ -377,6 +378,7 @@ public class ResultsToSt extends StManipulation {
                     sentBase = i;
                 }
             }
+            this.wordIds[this.wordIds.length-1] = Arrays.copyOfRange(wordIdsPlain, sentBase, wordIdsPlain.length);
         }
 
         /**
@@ -396,7 +398,7 @@ public class ResultsToSt extends StManipulation {
                     this.curSent++;
                 }
                 this.curSentId = sentId;
-            }
+            }            
             int pos = Arrays.binarySearch(wordIds[this.curSent], wordId);
             if (pos < 0){
                 return EMPTY;
