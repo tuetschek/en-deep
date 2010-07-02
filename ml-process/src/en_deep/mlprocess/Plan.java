@@ -287,7 +287,7 @@ public class Plan {
             }
         }
 
-        Logger.getInstance().message("Got " + retrieved.size() + ". Writing back the remaining "
+        Logger.getInstance().message("Got " + retrieved.size() + ". Writing back the status of all "
                 + plan.size() + "...", Logger.V_DEBUG);        
         // update the plan file
         this.writePlan(plan, planFileIO);

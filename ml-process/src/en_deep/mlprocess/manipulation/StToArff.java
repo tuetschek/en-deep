@@ -29,6 +29,7 @@ package en_deep.mlprocess.manipulation;
 
 import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
 import en_deep.mlprocess.utils.StringUtils;
@@ -238,20 +239,20 @@ public class StToArff extends StManipulation {
     private void convert(String st, String arff) throws TaskException, FileNotFoundException, IOException {
 
         int [] predNums;
-        Vector<String> outFiles;
+        Vector<Pair<String, String>> outputs;
 
         this.reader.setInputFile(st);
 
         while (this.reader.loadNextSentence()){
 
             predNums = this.reader.getPredicates();
-            outFiles = this.findOutputs(predNums, arff); // find correpsonding output file names
-            this.writeHeaders(outFiles); // prepare output file headers
+            outputs = this.findOutputs(predNums, arff); // find correpsonding output file names
+            this.writeHeaders(outputs); // prepare output file headers
 
             // for all predicates, write the sentence to an output file
             for (int i = 0; i < predNums.length; ++i){
 
-                FileOutputStream os = new FileOutputStream(outFiles.get(i), true);
+                FileOutputStream os = new FileOutputStream(outputs.get(i).second, true);
                 PrintStream out = new PrintStream(os);
 
                 for (int j = 0; j < this.reader.length(); ++j){
@@ -319,22 +320,26 @@ public class StToArff extends StManipulation {
  
 
     /**
-     * Writes output ARFF files headers for the given file names. Heeds the "multiclass" parameter
+     * Writes output ARFF files headers for the given predicates and file names. Heeds the "multiclass" parameter
      * (see {@link StToArff}). Some parameter types are left as STRING at first. They are converted
      * to class values later.
      *
-     * @param outFiles a list of file names to write
+     * @param outputs a list of predicate-file name pairs
      */
-    private void writeHeaders(Vector<String> fileNames) throws FileNotFoundException {
+    private void writeHeaders(Vector<Pair<String, String>> outputs) throws FileNotFoundException {
 
-        for (String fileName : fileNames){
+        for (Pair<String, String> output : outputs){
+
+            String predName = output.first;
+            String fileName = output.second;
+
             if (new File(fileName).exists()){ // only for non-existent files
                 continue;
             }
             FileOutputStream os = new FileOutputStream(fileName);
             PrintStream out = new PrintStream(os);
 
-            out.println(RELATION + " " + StringUtils.truncateFileName(fileName));
+            out.println(RELATION + " " + predName);
 
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
@@ -378,35 +383,31 @@ public class StToArff extends StManipulation {
     }
 
     /**
-     * Finds out the names of the output ARFF files (which contain the names of the predicates
-     * in the output pattern) and stores them for later use. Heeds the "predicted"
+     * Finds the names of the predicates and of the output ARFF files (which contain the names of the predicates
+     * in the output pattern) and stores them for later use in {@link #usedFiles}. Heeds the "predicted"
      * parameter (see {@link StToArff}).
      *
-     * @param sentence the sentence, containing all the needed predicates
+     * @param predNums word numbers in the current sentence that contain predicates
      * @param pattern output file name pattern
-     * @return
+     * @return a list of predicate-file name pairs
      */
-    private Vector<String> findOutputs(int [] predNums, String pattern) {
+    private Vector<Pair<String, String>> findOutputs(int [] predNums, String pattern) {
 
-        Vector<String> out = new Vector<String>(predNums.length);
+        Vector<Pair<String, String>> outputs = new Vector<Pair<String, String>>(predNums.length);
 
         for (int i = 0; i < predNums.length; ++i){ // search for predicates
 
-            // a predicate has been found -> fill output file details
-            if (this.reader.getWordInfo(predNums[i], this.reader.IDXI_FILLPRED).equals("Y")){ 
+            String predicate, fileName;
 
-                String predicate, fileName;
-
-                predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
-                        : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
-                        + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
-                fileName = pattern.replace("**", predicate);
-                this.usedFiles.put(predicate, fileName); // store the used file name
-                out.add(fileName);
-            }
+            predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
+                    : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
+                    + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
+            fileName = pattern.replace("**", predicate);
+            this.usedFiles.put(predicate, fileName); // store the used file name
+            outputs.add(new Pair<String, String>(predicate, fileName));
         }
 
-        return out;
+        return outputs;
     }
 
     /**

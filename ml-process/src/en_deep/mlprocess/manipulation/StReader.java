@@ -81,7 +81,7 @@ public class StReader {
     final int COMPULSORY_FIELDS = 14;
 
     /** The default value for ST file fields. */
-    private String DEFAULT_VALUE = "_";
+    public final String EMPTY_VALUE = "_";
 
     /** Output file suffix for noun predicates */
     private static final String NOUN = ".n";
@@ -288,8 +288,8 @@ public class StReader {
     }
 
     /**
-     * Returns the number of words in the sentence.
-     * @return the length of the sentence
+     * Returns the number of words in the current sentence.
+     * @return the length of the current sentence
      */
     public int length() {
         return this.words.size();
@@ -364,7 +364,7 @@ public class StReader {
     }
 
     /**
-     * Returns the ID of the sentence that it was given in the constructor.
+     * Returns the ID of the current sentence.
      * @return the sentence ID
      */
     public int getSentenceId(){
@@ -372,8 +372,7 @@ public class StReader {
     }
 
    /**
-     * Returns a unique sentence ID.
-     *
+     * Generates a unique sentence ID.
      * @return the generated ID
      */
     private static synchronized int generateSentenceId(){
@@ -484,7 +483,7 @@ public class StReader {
             for (int i = 0; i < this.words.size(); ++i){
                 String [] tmp = new String [field + 1];
                 System.arraycopy(this.words.get(i), 0, tmp, 0, origColumns);
-                Arrays.fill(tmp, origColumns+1, field+1, DEFAULT_VALUE);
+                Arrays.fill(tmp, origColumns+1, field+1, EMPTY_VALUE);
             }
         }
         this.words.get(word)[field] = value;

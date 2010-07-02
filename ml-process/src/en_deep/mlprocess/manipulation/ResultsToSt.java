@@ -31,10 +31,13 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.MathUtils;
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Attribute;
 import weka.core.Instances;
 
 /**
@@ -47,7 +50,6 @@ public class ResultsToSt extends StManipulation {
 
     /** The 'mode' parameter name */
     private static final String MODE = "mode";
-
 
     /** This represents the possible work modes of this tasks */
     private enum Mode {
@@ -78,7 +80,10 @@ public class ResultsToSt extends StManipulation {
     /** The current work mode of the task */
     private final Mode mode;
 
+    /** This contains predictions for all predicates from the evaluation data results, if {@link #mode} is PRED */
     private Hashtable<String, PredicatePrediction> predicatePredictions;
+    /** This contains predictions for all arguments, if {@link #mode} is ARG */
+    private Hashtable<String, ArgumentPrediction> argumentPredictions;
 
     /* METHODS */
 
@@ -93,10 +98,6 @@ public class ResultsToSt extends StManipulation {
      * This checks inputs and outputs -- the first input must be the original ST file, the output must be only one
      * ST output file. The rest of inputs must be the classified predicates / arguments from the original ST file.
      *
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
      */
     public ResultsToSt(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output) 
             throws TaskException {
@@ -114,8 +115,13 @@ public class ResultsToSt extends StManipulation {
         if (this.mode == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "'mode' parameter missing or incorrect.");
         }
-        if (this.mode == Mode.PRED){
-            this.predicatePredictions = new Hashtable<String, PredicatePrediction>();
+        switch (this.mode){
+            case PRED:
+                this.predicatePredictions = new Hashtable<String, PredicatePrediction>();
+                break;
+            case ARG:
+                this.argumentPredictions = new Hashtable<String, ArgumentPrediction>();
+                break;
         }
     }
 
@@ -132,7 +138,7 @@ public class ResultsToSt extends StManipulation {
             // first, load all the predicted values
             for (String file: this.input){
                 Logger.getInstance().message("Loading predictions from " + file + "...", Logger.V_DEBUG);
-                this.loadPrediction(file);
+                this.loadPrediction(file);                
             }
 
             // then, stream-process the ST file
@@ -142,10 +148,13 @@ public class ResultsToSt extends StManipulation {
                 switch (this.mode){
                     case PRED:
                         this.rewritePredicates();
-                        out.print(this.reader.getSentenceST());
-                        out.print("\n"); // force unix-LF as in original format
+                        break;
+                    case ARG:
+                        this.rewriteArguments();
                         break;
                 }
+                out.print(this.reader.getSentenceST());
+                out.print("\n"); // force unix-LF as in original format
 
                 if (ctr > 0 && ctr % 1000 == 0){
                     Logger.getInstance().message("Processing sentence " + ctr + "...", Logger.V_DEBUG);
@@ -167,15 +176,73 @@ public class ResultsToSt extends StManipulation {
 
     /**
      * This loads all the predicted values (according to {@link #mode}) from the given file.
-     * @param file the file to be read
+     * @param file the name of the file to be read
      */
     private void loadPrediction(String file) throws Exception {
-        Instances data = FileUtils.readArff(file);
-        String predicateName = data.instance(0).stringValue(data.attribute(this.reader.LEMMA))
-                + this.reader.getPredicateType(data.instance(0).stringValue(data.attribute(this.reader.POS)));
 
-        this.predicatePredictions.put(predicateName, new PredicatePrediction(data));
+        Instances data = FileUtils.readArff(file);
+        String predicateName = data.relationName();
+
+        switch (this.mode){
+            case PRED:
+                this.predicatePredictions.put(predicateName, new PredicatePrediction(data));
+                break;
+
+            case ARG:
+                this.argumentPredictions.put(predicateName, new ArgumentPrediction(data));
+                break;
+        }
     }
+
+    /**
+     * This rewrites all the predicates in the current sentence with their predicted values that
+     * are loaded in {@link #predicatePredictions}.
+     */
+    private void rewritePredicates() {
+
+        for (int i = 0; i < this.reader.length(); ++i){
+            if (!this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals(this.reader.EMPTY_VALUE)){
+
+                String predName = this.reader.getWordInfo(i, this.reader.IDXI_LEMMA) +
+                        this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));
+
+                this.reader.setField(this.reader.IDXI_PRED, i, this.predicatePredictions.get(predName).getNext());
+            }
+        }
+    }
+
+    /**
+     * This rewrites all the predicate arguments in the current sentence with their predicted values loaded
+     * in {@link #argumentPredictions}.
+     */
+    private void rewriteArguments() {
+
+        int predicateNo = 0;
+        int sentId = this.reader.getSentenceId();
+
+        for (int i = 0; i < this.reader.length(); ++i){           
+
+            if (!this.reader.getWordInfo(i, this.reader.IDXI_PRED).equals(this.reader.EMPTY_VALUE)){ // predicate found
+
+                String predName = this.reader.getWordInfo(i, this.reader.IDXI_PRED) +
+                        this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));
+                ArgumentPrediction predicts = this.argumentPredictions.get(predName);
+
+                if (predicts == null){
+                    Logger.getInstance().message("Prediction data for " + predName + " missing.", Logger.V_WARNING);
+                    continue;
+                }
+
+                for (int j = 0; j < this.reader.length(); ++j){
+                    this.reader.setField(this.reader.IDXI_SEMROLE + predicateNo, j, predicts.get(sentId, j));
+                }
+                predicateNo++;
+            }
+        }
+    }
+
+
+    /* INNER CLASSES */
 
     /**
      * This stores all the predictions for one of the predicates (in the order they appear in the ST file.
@@ -239,19 +306,105 @@ public class ResultsToSt extends StManipulation {
     }
 
     /**
-     * This rewrites all the predicates in the current sentence with their predicted values that
-     * are loaded in {@link #predicatePredictions}.
+     * This stores all argument predictions for one predicate.
      */
-    private void rewritePredicates() {
+    private static class ArgumentPrediction {
 
-        for (int i = 0; i < this.reader.length(); ++i){
-            if (this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals("Y")){
+        /* CONSTANT */
 
-                String predName = this.reader.getWordInfo(i, this.reader.IDXI_LEMMA) +
-                        this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));
+        /** The semrel attribute name */
+        private static final String ATTR_NAME = "semrel";
+        /** The word-id attribute name */
+        private static final String WORD_ID = "word-id";
+        /** The sent-id attribute name */
+        private static final String SENT_ID = "sent-id";
+        /** The empty value for semantic relation */
+        private static final String EMPTY = "_";
 
-                this.reader.setField(this.reader.IDXI_PRED, i, this.predicatePredictions.get(predName).getNext());
+        /* DATA */
+
+        /** The current instance index */
+        private int curSentBase = 0;
+        /** The current sentence index */
+        private int curSent = 0;
+        /** The current sentence id */
+        private int curSentId = -1;
+        /** List of all the predictions */
+        private int [] values;
+        /** List of word ids for each of the values */
+        private int [] [] wordIds;
+        /** The string values of semrel to be returned */
+        private String [] semVals;
+
+        /* METHODS */
+
+        /**
+         * This loads all the argument predictions for the given predicate, along with the possible values
+         * of the semrel attribute.
+         * 
+         * @param data the data that contain the predictions
+         */
+        public ArgumentPrediction(Instances data) {
+
+            Attribute semRel = data.attribute(ATTR_NAME);
+            Attribute wordId = data.attribute(WORD_ID);
+            Attribute sentId = data.attribute(SENT_ID);
+
+            // initialize the list of possible values
+            this.semVals = new String [semRel.numValues()];
+            for (int i = 0; i < this.semVals.length; ++i){
+                this.semVals[i] = semRel.value(i);
+            }
+
+            // read all the predictions
+            this.values = MathUtils.toInts(data.attributeToDoubleArray(semRel.index()));
+
+            // divide the word ids by sentence
+            int [] sentIds = MathUtils.toInts(data.attributeToDoubleArray(sentId.index()));
+            int [] wordIdsPlain = MathUtils.toInts(data.attributeToDoubleArray(wordId.index()));
+            int sentNum = 0;
+            for (int i = 1; i < sentIds.length; i++) { // count sentences
+                if (sentIds[i] != sentIds[i-1]){
+                    sentNum++;
+                }
+            }
+            this.wordIds = new int [sentNum] [];
+            int sentBase = 0, sentIdx = 0;
+            for (int i = 1; i < sentIds.length; i++){ // fill the word ids for each sentence
+                if (sentIds[i] != sentIds[i-1]){
+                    this.wordIds[sentIdx] = Arrays.copyOfRange(wordIdsPlain, sentBase, i);
+                    sentIdx++;
+                    sentBase = i;
+                }
+            }
+        }
+
+        /**
+         * This retrieves the argument prediction for the given word in the given sentence. Please note that
+         * the sentence ids are just for comparison among subsequent calls -- if the sentId is different
+         * from the last one, this simply moves to the next sentence
+         * @param sentId the current sentence id
+         * @param wordId the id of the current word
+         * @return the argument prediction for the given word in the current sentence
+         */
+        public String get(int sentId, int wordId){
+
+            if (sentId != this.curSentId){
+
+                if (this.curSentId != -1){
+                    this.curSentBase += this.wordIds[this.curSent].length;
+                    this.curSent++;
+                }
+                this.curSentId = sentId;
+            }
+            int pos = Arrays.binarySearch(wordIds[this.curSent], wordId);
+            if (pos < 0){
+                return EMPTY;
+            }
+            else {
+                return this.semVals[this.values[this.curSentBase + pos]];
             }
         }
     }
+
 }

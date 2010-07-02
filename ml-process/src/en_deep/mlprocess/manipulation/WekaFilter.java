@@ -93,7 +93,9 @@ public class WekaFilter extends Task {
             Filter filter = this.initFilter(data[0]);
 
             for (int i = 0; i < data.length; ++i){
+                String oldName = data[i].relationName();
                 data[i] = Filter.useFilter(data[i], filter);
+                data[i].setRelationName(oldName); // keep the old relation name
                 FileUtils.writeArff(this.output.get(i), data[i]);
             }
         }

@@ -148,7 +148,7 @@ public class TaskExpander {
         }
 
         // expand outputs and dependent tasks using the expanded task name
-        this.expandOutputsAndDeps();
+        this.expandOutputsAndDeps(this.task);
 
         // remove dependencies of all original unexpanded tasks (which are selected for removal)
         for (TaskDescription t : this.expansions.keySet()){
@@ -335,18 +335,22 @@ public class TaskExpander {
 
     /**
      * Replaces all patterns in output file names according to the expansion value of input
-     * patterns, replaces patterns in dependent tasks accordingly.
+     * patterns, replaces patterns in dependent tasks accordingly. 
+     * Calls {@link #expandDependent(TaskDescription, TaskDescription)},
+     * which calls this method recursively.
+     *
+     * @param expTask the task whose outputs and dependencies should be expanded
      */
-    private void expandOutputsAndDeps() throws TaskException {
+    private void expandOutputsAndDeps(TaskDescription expTask) throws TaskException {
         
-        this.expandOutputs(this.task);
-        Vector<TaskDescription> deps = this.task.getDependent();
+        this.expandOutputs(expTask);
+        Vector<TaskDescription> deps = expTask.getDependent();
 
         // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**' and '***', yet)
         if (deps != null){
             for (TaskDescription dep : deps){
                 if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*")){
-                    this.expandDependent(this.task, dep);
+                    this.expandDependent(expTask, dep);
                 }
             }
         }
@@ -404,20 +408,7 @@ public class TaskExpander {
         }
 
         // now continue to outputs and dependent tasks expansion
-        this.expandOutputs(task);
-
-        // go deeper only if there are "*"s ("**" and pure-"***" cannot be expanded yet)
-        Vector<TaskDescription> deps = task.getDependent();
-
-        if (deps != null){
-            for (TaskDescription dep : deps){
-
-                if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*")){
-                    this.expandDependent(task, dep);
-                }
-            }
-        }
-
+        this.expandOutputsAndDeps(task);
     }
 
     /**

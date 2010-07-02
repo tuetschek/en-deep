@@ -148,4 +148,18 @@ public class MathUtils {
         }
         return -1;
     }
+
+    /**
+     * This converts an array of doubles to integers (using type-casts, not rounding).
+     * @param arr the array to be converted
+     * @return an integer version of the given array
+     */
+    public static int [] toInts(double [] arr){
+
+        int [] ret = new int [arr.length];
+        for (int i = 0; i < arr.length; i++) {
+            ret[i] = (int) arr[i];
+        }
+        return ret;
+    }
 }

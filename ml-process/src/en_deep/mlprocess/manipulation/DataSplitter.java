@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.utils.FileUtils;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.Enumeration;
@@ -134,9 +135,8 @@ public class DataSplitter extends Task {
      * @param outputPattern the name pattern for creating output files
      */
     private void splitByAttribute(String inputFile, String outputPattern) throws Exception {
-
-        ConverterUtils.DataSource source = new ConverterUtils.DataSource(inputFile);
-        Instances data = source.getDataSet(); // read input data
+        
+        Instances data = FileUtils.readArff(inputFile); // read input data
         Attribute splitAttrib;
         Enumeration values;
 
@@ -154,20 +154,19 @@ public class DataSplitter extends Task {
 
             String value = values.nextElement().toString();
             SubsetByExpression filter = new SubsetByExpression();
-            String outputFile = outputPattern.replace("**", splitAttrib.name() + "-" + value);
-            FileOutputStream os = null;
             
             filter.setInputFormat(data);
             filter.setExpression("ATT" + (splitAttrib.index()+1) + " is '" + value + "'");
-            Instances subset = Filter.useFilter(data, filter); // filter the output
 
-            Logger.getInstance().message(this.id + ": splitting " + inputFile
-                    + " to " + outputFile + "...", Logger.V_DEBUG);
-            ConverterUtils.DataSink out = new ConverterUtils.DataSink(os = new FileOutputStream(outputFile));
+            String oldName = data.relationName();
+            Instances subset = Filter.useFilter(data, filter); // filter the output
+            subset.setRelationName(oldName);
 
             // write the output to the file
-            out.write(subset);
-            os.close();
+            String outputFile = outputPattern.replace("**", splitAttrib.name() + "-" + value);
+            Logger.getInstance().message(this.id + ": splitting " + inputFile
+                    + " to " + outputFile + "...", Logger.V_DEBUG);
+            FileUtils.writeArff(outputFile, subset);
         }
     }
 
