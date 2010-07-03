@@ -74,13 +74,8 @@ public abstract class WekaSettingTrials extends EvalSelector {
      * It removes all the compulsory parameters from the parameter set so that only the WEKA classifier parameters
      * remain there. It also checks the number of outputs (must be three).
      *
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
-     * @throws TaskException
      */
-    public WekaSettingTrials(String id, Hashtable<String, String> parameters,
+    protected WekaSettingTrials(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
@@ -106,7 +101,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
     }
 
     @Override
-    public void perform() throws TaskException {
+    public final void perform() throws TaskException {
 
         this.setExpandedId();
 

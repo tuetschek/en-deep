@@ -27,18 +27,12 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.utils.FileUtils;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instance;
-import weka.core.Instances;
 
 /**
  * Given the probability distributions of the individual classifications of words in a sentence, this assigns
@@ -46,38 +40,24 @@ import weka.core.Instances;
  * 
  * @author Ondrej Dusek
  */
-public class SemanticResolver extends Task {
+public class SimpleSemanticResolver extends AbstractSemanticResolver {
 
     /* CONSTANTS */
 
-    /** The 'distr' parameter name */
-    private static final String DISTR = "distr";
-    /** The 'sentence' parameter name */
-    private static final String SENTENCE = "sentence";
-    /** The 'no_duplicate' parameter name */
-    private static final String NO_DUP = "no_duplicate";
     /** The 'threshold' parameter name */
     private static final String THRESHOLD = "threshold";
 
     /* DATA */
 
-    /** Prefix for the probability distribution attributes */
-    private final String distrPrefix;
-    /** Name of the sentence-membership identification parameter */
-    private final String sentenceId;
     /** The threshold for no-duplicate parameters */
     private final double threshold;
     
-    /** Probability distribution attributes from the input data */
-    private Vector<Attribute> distrAttribs;
-    /** The newly created class attribute */
-    private Attribute classAttrib;
 
     /* METHODS */
 
     /**
-     * This creates a new {@link SemanticResolver} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * This creates a new {@link SimpleSemanticResolver} task, checking the numbers of inputs and outputs
+     * (must be both 1) and the necessary parameters:
      * <ul>
      * <li><tt>sentence</tt> -- the name of the attribute whose identical values indicate the membership of the same 
      * sentence</li>
@@ -87,25 +67,10 @@ public class SemanticResolver extends Task {
      * likely instance in a sentence must have so that this semantic role is set at all</li>
      * </ul>
      */
-    public SemanticResolver(String id, Hashtable<String, String> parameters,
+    public SimpleSemanticResolver(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
-
-        // check the inputs and outputs
-        if (this.input.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Must have 1 input.");
-        }
-        if (this.output.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have 1 output.");
-        }
-
-        // check the parameters
-        if (this.getParameterVal(DISTR) == null || this.getParameterVal(SENTENCE) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
-        }
-        this.distrPrefix = this.getParameterVal(DISTR);
-        this.sentenceId = this.getParameterVal(SENTENCE);
 
         if (this.getParameterVal(NO_DUP) != null && this.getParameterVal(THRESHOLD) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "If no duplicate"
@@ -124,58 +89,45 @@ public class SemanticResolver extends Task {
         }
     }
 
-
-
+    /**
+     * This is a simple implementation of the semantic resolution. The most likely candidate for each 
+     * of the non-duplicate roles is selected in the whole sentence and the most probable roles are assigned
+     * to the remaining candidates.
+     */
     @Override
-    public void perform() throws TaskException {
-        
-        try {
-            Instances data = FileUtils.readArff(this.input.get(0));
+    protected void resolve() throws TaskException {
 
-            this.getDistrAttrib(data);
-            this.createClassAttrib(data);
-            
-            if (this.getParameterVal(NO_DUP) != null) {
-                String [] noDupRoles = this.getParameterVal(NO_DUP).split("\\s+");
-                this.resolveNoDuplicate(data, noDupRoles);
-            }
-            this.assignMaxProb(data);
-            this.removeDistrAttrib(data);
-            
-            FileUtils.writeArff(this.output.get(0), data);
+        if (this.getParameterVal(NO_DUP) != null) {
+            String [] noDupRoles = this.getParameterVal(NO_DUP).split("\\s+");
+            this.resolveNoDuplicate(noDupRoles);
         }
-        catch (TaskException e){
-            throw e;
-        }
-        catch (Exception e) {
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
-        }
+        this.assignMaxProb();
     }
+
+
 
     /**
      * This resolves the no-duplicate semantic roles: it selects the instance with the best probability for the given
      * role in the sentence and sets the probabilities of all others to 0 for this role.
-     * @param data the data to be processed
      * @param noDupRoles list of no-duplicate roles
      */
-    private void resolveNoDuplicate(Instances data, String[] noDupRoles) throws TaskException {
+    private void resolveNoDuplicate(String[] noDupRoles) throws TaskException {
 
         int sentBase = 0;
         int sentLen = 0;
-        Attribute sentIdAttr = data.attribute(this.sentenceId);
+        Attribute sentIdAttr = this.data.attribute(this.sentenceId);
 
         if (sentIdAttr == null){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute "
                     + this.sentenceId + " missing.");
         }
 
-        while (sentBase < data.numInstances()){
+        while (sentBase < this.data.numInstances()){
 
             // find out the length of the sentence
-            double sentId = data.instance(sentBase).value(sentIdAttr);
-            while (sentLen + sentBase < data.numInstances()
-                    && data.instance(sentBase + sentLen).value(sentIdAttr) == sentId){
+            double sentId = this.data.instance(sentBase).value(sentIdAttr);
+            while (sentLen + sentBase < this.data.numInstances()
+                    && this.data.instance(sentBase + sentLen).value(sentIdAttr) == sentId){
                 sentLen++;
             }
 
@@ -186,25 +138,25 @@ public class SemanticResolver extends Task {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "No-duplicate role not found: "
                             + noDupRoles[roleNo]);
                 }
-                Attribute attr = data.attribute(this.distrPrefix + "_" + noDupRoles[roleNo]);
+                Attribute attr = this.data.attribute(this.distrPrefix + "_" + noDupRoles[roleNo]);
 
                 // select the most-likely instance and set its role
                 int bestInst = -1;
                 double bestProb = -1.0;
                 for (int i = sentBase; i < sentBase + sentLen; i++) {
-                    double val = data.instance(i).value(attr);
+                    double val = this.data.instance(i).value(attr);
                     if (val > this.threshold && val > bestProb){
                         bestInst = i;
                         bestProb = val;
                     }
                 }
                 if (bestInst != -1){
-                    data.instance(bestInst).setValue(this.classAttrib, noDupRoles[roleNo]);
+                    this.data.instance(bestInst).setValue(this.classAttrib, noDupRoles[roleNo]);
                 }
 
                 // set the probabilities of all others to zero
                 for (int i = sentBase; i < sentBase + sentLen; i++) {
-                    data.instance(i).setValue(attr, 0.0);
+                    this.data.instance(i).setValue(attr, 0.0);
                 }
             }
 
@@ -215,11 +167,10 @@ public class SemanticResolver extends Task {
 
     /**
      * Assign the most likely semantic role to each instance that hasn't got the class attribute assigned.
-     * @param data the data to be processed
      */
-    private void assignMaxProb(Instances data) {
+    private void assignMaxProb() {
 
-        Enumeration<Instance> insts = data.enumerateInstances();
+        Enumeration<Instance> insts = this.data.enumerateInstances();
         while (insts.hasMoreElements()){
             Instance inst = insts.nextElement();
 
@@ -239,57 +190,6 @@ public class SemanticResolver extends Task {
         }
     }
 
-    /**
-     * Given that {@link #distrAttribs} are already set, this finds out the possible values of the class
-     * attribute and adds it to the data with no values set.
-     *
-     * @param data the data to be processed
-     */
-    private void createClassAttrib(Instances data) {
 
-        ArrayList<String> classVals = new ArrayList<String>();
-        for (Attribute attr : this.distrAttribs){
-            classVals.add(attr.name().substring(this.distrPrefix.length() + 1));
-        }
-        Attribute attr = new Attribute(this.distrPrefix, classVals);
-        data.insertAttributeAt(attr, data.numAttributes());
-        this.classAttrib = data.attribute(data.numAttributes()-1);
-    }
-
-    /**
-     * This finds all the attributes from the data that are a part of the probability distribution of semantic
-     * roles.
-     * @param data the data to be examined
-     */
-    private void getDistrAttrib(Instances data) {
-
-        this.distrAttribs = new Vector<Attribute>();
-
-        Enumeration<Attribute> attribs = data.enumerateAttributes();
-        while (attribs.hasMoreElements()){
-            Attribute curAttr = attribs.nextElement();
-            if (curAttr.name().startsWith(this.distrPrefix)){
-                this.distrAttribs.add(curAttr);
-            }
-        }
-    }
-
-    /**
-     * This removes all the attributes that are a part of the probability distribution of semantic roles,
-     * but keeps the final class attribute.
-     * @param data the data to be processed
-     */
-    private void removeDistrAttrib(Instances data) {
-
-        int [] indexes = new int [this.distrAttribs.size()];
-        for (int i = 0; i < indexes.length; i++) {
-            indexes[i] = this.distrAttribs.get(i).index();
-        }
-
-        Arrays.sort(indexes);
-        for (int i = indexes.length - 1; i >= 0; i--) {
-            data.deleteAttributeAt(indexes[i]);
-        }
-    }
 
 }

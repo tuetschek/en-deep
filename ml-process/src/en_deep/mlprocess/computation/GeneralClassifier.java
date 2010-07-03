@@ -53,12 +53,8 @@ public abstract class GeneralClassifier extends Task {
     /**
      * This just checks if there are only two inputs and one output and no patterns in them.
      * @todo rename class_arg to class_attr
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
      */
-    public GeneralClassifier(String id, Hashtable<String, String> parameters,
+    protected GeneralClassifier(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
@@ -146,7 +142,7 @@ public abstract class GeneralClassifier extends Task {
      * @throws TaskException
      */
     @Override
-    public void perform() throws TaskException {
+    public final void perform() throws TaskException {
         try {
             this.classify(this.input.get(0), this.input.get(1), this.output.get(0));
         }
