@@ -139,6 +139,8 @@ public class PredicateMerger extends GroupInputsTask {
     /**
      * This loads all the predicate information from the pred_info file. For the file format, see
      * {@link PredInfo#PredInfo(java.lang.String)}.
+     * If the loaded predicate information contains no frame specifications, this will consider it to be a POS mistake
+     * and try to copy the frame from the same predicate with the other POS. Some predicates may still remain null.
      */
     private void loadPredInfos() throws IOException {
 
@@ -153,11 +155,25 @@ public class PredicateMerger extends GroupInputsTask {
             PredInfo pi = new PredInfo(line);
             this.predInfo.put(pi.name, pi);
         }
+        for (String pred : this.predInfo.keySet()){
+            PredInfo pi = this.predInfo.get(pred);
+            if (pi.frame == null){
+                PredInfo otherPOS = this.predInfo.get(switchFramePOS(pred));
+                if (otherPOS != null){
+                    pi.frame = otherPOS.frame;
+                }
+            }
+        }
+        Logger.getInstance().message("Total " + this.predInfo.size() + " frames loaded.", Logger.V_DEBUG);
         in.close();
     }
 
     /**
      * According to the {@link #predInfo}, this merges the inputs and creates the output sets.
+     * If a predicate frame is not found, this will first try a mistaken POS, then group the predicate with a null
+     * frame.
+     * @todo for mistaken POS and the other POS with high occurrence number, group the mistaken POS with the correct
+     *      POS, not
      */
     private void createOutputSets() throws TaskException {
 
@@ -167,9 +183,17 @@ public class PredicateMerger extends GroupInputsTask {
 
             PredInfo pi = this.predInfo.get(pred);
 
-            if (pi == null){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Predicate "
-                        + pred + " not found in the predicate information file.");
+            if (pi == null){  // no info: was it a bad POS setting ?
+                String otherPOS = switchFramePOS(pred);
+                pi = this.predInfo.get(otherPOS);
+
+                if (pi == null){ // it wasn't -- now we got no info at all, group with null frame
+                    this.grouped.put(PredInfo.getNullFrameName(pred.substring(pred.length()-1)), predicates.get(pred));
+                    continue;
+                }
+                else {
+                    this.predInfo.put(pred, pi = new PredInfo(pred, 0, pi.frame, null));
+                }
             }
             if (pi.count < this.minSent){
                 this.grouped.put(pi.getFrameName(), predicates.get(pred));
@@ -178,6 +202,15 @@ public class PredicateMerger extends GroupInputsTask {
                 this.single.add(new Pair(pred, predicates.get(pred)));
             }
         }
+    }
+
+    /**
+     * This returns the predicate name with the POS switched from noun to verb or the other way round.
+     * @param pred the original predicate name
+     * @return the predicate name with the other POS
+     */
+    private static String switchFramePOS(String pred) {
+        return pred.substring(pred.length() - 1) + (pred.endsWith("n") ? "v" : "n");
     }
 
     /**
@@ -217,7 +250,7 @@ public class PredicateMerger extends GroupInputsTask {
 
     /**
      * This is a storage for the information about one predicate.
-     * @todo formalize statistics and valency frames
+     * @todo formalize statistics
      */
     private static class PredInfo {
 
@@ -228,7 +261,7 @@ public class PredicateMerger extends GroupInputsTask {
         /** The argument occurrence statistics */
         final String stats;
         /** The predicate valency frame */
-        final TreeSet<String> frame;
+        TreeSet<String> frame;
         /** The predicate POS (noun/verb/error) */
         final String pos;
 
@@ -240,6 +273,7 @@ public class PredicateMerger extends GroupInputsTask {
          * (predicate id):(count):(statistics):(frame)
          * predicate.01.v:10:A0 10 A1 9:A0 A1
          * </pre>
+         * The last two fields may be missing. In that case, the corresponding members are set to null.
          */
         public PredInfo(String dataLine) {
             
@@ -253,6 +287,22 @@ public class PredicateMerger extends GroupInputsTask {
         }
 
         /**
+         * This creates a new PredInfo object, given all the data that PredInfo usually stores.
+         * @param predName the predicate name
+         * @param occurrenceCount the occurrence count of the predicate
+         * @param frame the predicate valency frame
+         * @param stats the argument statistics
+         */
+        private PredInfo(String predName, int occurrenceCount, TreeSet<String> frame, String stats) {
+
+            this.name = predName;
+            this.pos = predName.substring(predName.length() - 1);
+            this.count = occurrenceCount;
+            this.frame = frame;
+            this.stats = stats;
+        }
+
+        /**
          * This returns the string representation of the predicate frame. The members of the
          * frame are alphabetically sorted, so if two predicates have the same frame, this string
          * representation will also be equal for both of them.
@@ -260,6 +310,15 @@ public class PredicateMerger extends GroupInputsTask {
          */
         public String getFrameName(){
             return this.pos.toUpperCase() + "-" + (this.frame != null ? StringUtils.join(this.frame, "_") : "NULL");
+        }
+
+        /**
+         * This returns the name of a NULL (unknown) frame for the given POS.
+         * @param POS the POS of the word whose frame is unknown
+         * @return the name of the NULL frame for the given POS
+         */
+        public static String getNullFrameName(String POS){
+            return POS.toUpperCase() + "-NULL";
         }
     }
 }
