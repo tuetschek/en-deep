@@ -189,16 +189,19 @@ public class DataMerger extends Task {
      */
     private Attribute mergeAttribute(Attribute a, Attribute b) {
 
-        HashSet<String> values = new HashSet<String>();
-        Enumeration<String> aVals = a.enumerateValues();
-        while (aVals.hasMoreElements()){
-            values.add(aVals.nextElement());
+        ArrayList<String> values = new ArrayList<String>();
+        for (int i = 0; i < a.numValues(); i++){ // this ensures the values will always end up in the same order
+            values.add(a.value(i));
         }
-        Enumeration<String> bVals = b.enumerateValues();
-        while (bVals.hasMoreElements()){
-            values.add(bVals.nextElement());
+        for (int i = 0; i < b.numValues(); i++){
+
+            String val = b.value(i);
+            
+            if (!values.contains(val)){
+                values.add(val);
+            }
         }
-        return new Attribute(a.name(), new ArrayList<String>(values));
+        return new Attribute(a.name(), values);
     }
 
 
