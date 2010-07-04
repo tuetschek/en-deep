@@ -162,4 +162,20 @@ public class MathUtils {
         }
         return ret;
     }
+
+    /**
+     * This creates an array that contains the given sequence of integers.
+     * @param base the starting number of the sequence
+     * @param size the size of the sequence
+     * @param step the sequence step
+     * @return the array with the specified integer sequence
+     */
+    public static int[] sequence(int base, int size, int step) {
+
+        int [] ret = new int [size];
+        for (int i = 0; i < size; i++){
+            ret [i] = base + i * step;
+        }
+        return ret;
+    }
 }

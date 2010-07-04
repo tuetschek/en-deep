@@ -63,10 +63,14 @@ public abstract class AbstractSemanticResolver extends Task {
     protected final String sentenceId;
     /** Probability distribution attributes from the input data */
     protected Vector<Attribute> distrAttribs;
-    /** The newly created class attribute */
-    protected Attribute classAttrib;
     /** The data to be processed */
     protected Instances data;
+    /** The sentence-id attribute */
+    protected Attribute sentIdAttrib;
+    /** The starting index of the currently processed sentence in the data */
+    protected int curSentBase;
+    /** The length of the currently processed sentence */
+    protected int curSentLen;
 
     /* METHODS */
 
@@ -133,17 +137,17 @@ public abstract class AbstractSemanticResolver extends Task {
 
     /**
      * Given that {@link #distrAttribs} are already set, this finds out the possible values of the class
-     * attribute and adds it to the data with no values set.
+     * attribute (in the same order they appear in {@link #distrAttribs}) and adds it to the data with no values set.
      */
     private void createClassAttrib() {
 
         ArrayList<String> classVals = new ArrayList<String>();
-        for (Attribute attr : this.distrAttribs){
-            classVals.add(attr.name().substring(this.distrPrefix.length() + 1));
+        for (int i = 0; i < this.distrAttribs.size(); ++i){
+            classVals.add(this.distrAttribs.get(i).name().substring(this.distrPrefix.length() + 1));
         }
         Attribute attr = new Attribute(this.distrPrefix, classVals);
         this.data.insertAttributeAt(attr, this.data.numAttributes());
-        this.classAttrib = this.data.attribute(this.data.numAttributes()-1);
+        this.data.setClassIndex(this.data.numAttributes()-1);
     }
 
 
@@ -175,6 +179,42 @@ public abstract class AbstractSemanticResolver extends Task {
     /**
      * This is the actual semantic label resolution process -- to be implemented by the individual resolver classes.
      */
-    protected abstract void resolve() throws TaskException;
+    protected abstract void resolve() throws Exception;
 
+    
+    /**
+     * This moves to the next sentence for semantic resolution. It saves the starting index and length
+     * of the sentence in {@link #curSentBase} and {@link #curSentLen}, respectively.
+     * @return true if there is a next sentence, false otherwise (at the end of the data).
+     * @throws TaskException if the sentence id attribute is not found
+     */
+    protected boolean loadNextSentence() throws TaskException {
+
+        // initializiation
+        if (this.sentIdAttrib == null){
+            this.sentIdAttrib = this.data.attribute(this.sentenceId);
+
+            if (this.sentIdAttrib == null){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute "
+                        + this.sentenceId + " missing.");
+            }
+        }
+        // move to the next sentence
+        else {
+            this.curSentBase = this.curSentBase + this.curSentLen;
+            this.curSentLen = 0;
+        }
+
+        if (this.curSentBase >= this.data.numInstances()){
+            return false;
+        }
+
+        // find out the length of the sentence
+        double sentId = this.data.instance(this.curSentBase).value(this.sentIdAttrib);
+        while (this.curSentLen + this.curSentBase < this.data.numInstances()
+                && this.data.instance(this.curSentBase + this.curSentLen).value(this.sentIdAttrib) == sentId){
+            this.curSentLen++;
+        }
+        return true;
+    }
 }

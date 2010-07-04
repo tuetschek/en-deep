@@ -113,28 +113,13 @@ public class SimpleSemanticResolver extends AbstractSemanticResolver {
      */
     private void resolveNoDuplicate(String[] noDupRoles) throws TaskException {
 
-        int sentBase = 0;
-        int sentLen = 0;
-        Attribute sentIdAttr = this.data.attribute(this.sentenceId);
 
-        if (sentIdAttr == null){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute "
-                    + this.sentenceId + " missing.");
-        }
-
-        while (sentBase < this.data.numInstances()){
-
-            // find out the length of the sentence
-            double sentId = this.data.instance(sentBase).value(sentIdAttr);
-            while (sentLen + sentBase < this.data.numInstances()
-                    && this.data.instance(sentBase + sentLen).value(sentIdAttr) == sentId){
-                sentLen++;
-            }
+        while (this.loadNextSentence()){
 
             // deal with all the no-duplicate roles
             for (int roleNo = 0; roleNo  < noDupRoles.length; roleNo ++) {
 
-                if (this.classAttrib.indexOfValue(noDupRoles[roleNo]) == -1){
+                if (this.data.classAttribute().indexOfValue(noDupRoles[roleNo]) == -1){
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "No-duplicate role not found: "
                             + noDupRoles[roleNo]);
                 }
@@ -143,7 +128,7 @@ public class SimpleSemanticResolver extends AbstractSemanticResolver {
                 // select the most-likely instance and set its role
                 int bestInst = -1;
                 double bestProb = -1.0;
-                for (int i = sentBase; i < sentBase + sentLen; i++) {
+                for (int i = this.curSentBase; i < this.curSentBase + this.curSentLen; i++) {
                     double val = this.data.instance(i).value(attr);
                     if (val > this.threshold && val > bestProb){
                         bestInst = i;
@@ -151,17 +136,14 @@ public class SimpleSemanticResolver extends AbstractSemanticResolver {
                     }
                 }
                 if (bestInst != -1){
-                    this.data.instance(bestInst).setValue(this.classAttrib, noDupRoles[roleNo]);
+                    this.data.instance(bestInst).setClassValue(noDupRoles[roleNo]);
                 }
 
                 // set the probabilities of all others to zero
-                for (int i = sentBase; i < sentBase + sentLen; i++) {
+                for (int i = this.curSentBase; i < this.curSentBase + this.curSentLen; i++) {
                     this.data.instance(i).setValue(attr, 0.0);
                 }
             }
-
-            sentBase += sentLen;
-            sentLen = 0;
         }
     }
 
@@ -174,7 +156,7 @@ public class SimpleSemanticResolver extends AbstractSemanticResolver {
         while (insts.hasMoreElements()){
             Instance inst = insts.nextElement();
 
-            if (inst.isMissing(this.classAttrib)){
+            if (inst.classIsMissing()){
                 
                 String bestRole = null;
                 double bestVal = -1;
@@ -185,7 +167,7 @@ public class SimpleSemanticResolver extends AbstractSemanticResolver {
                         bestVal = inst.value(attr);
                     }
                 }
-                inst.setValue(this.classAttrib, bestRole);
+                inst.setClassValue(bestRole);
             }
         }
     }
