@@ -1,17 +1,32 @@
 #!/usr/bin/perl
+#
+# Make random selection of matching train and development files.
+#
+# Usage: select-random.pl <selection size> <source dir> <target dir> [infix (after train and devel in the name)]
+#
+#
 
 use strict;
 use warnings;
 use File::Copy;
 
-my $pre_train = "train-";
-my $pre_devel = "devel-";
+my $pre_train = "train";
+my $pre_devel = "devel";
 my $ext = ".arff";
 
-if (@ARGV != 3){
-    die("Usage: ./select-random.pl N dir1 dir2");
+if (@ARGV != 3 && @ARGV != 4){
+    die("Usage: ./select-random.pl N dir1 dir2 [infix]");
 }
-my ($sample_size, $source_dir, $target_dir) = @ARGV;
+my ($sample_size, $source_dir, $target_dir, $infix) = @ARGV;
+
+if ($infix){
+    $pre_train .= $infix . "-";
+    $pre_devel .= $infix . "-";
+}
+else {
+    $pre_train .= "-";
+    $pre_devel .= "-";
+}
 
 opendir(DIR, $source_dir);
 my @files = readdir(DIR);

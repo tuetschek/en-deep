@@ -8,7 +8,8 @@
 
 ROOT=/home/odusek/work/dipl
 BINNAME=ml-process.jar
-BIN=$ROOT/bin/$BINNAME
+BINDIR=$ROOT/bin
+BIN=$BINDIR/$BINNAME
 DATA=$ROOT/data
 TRAIN=$DATA/train.txt
 DEVEL=$DATA/devel.txt
@@ -18,12 +19,32 @@ CLUSTERS="$DATA/clusters-*.txt"
 PLAN=$ROOT/plan
 EXT=".plan"
 
-if [[ $1 = "-d" ]]; then # compute in a different directory
-    DIR=$ROOT/"$2";
-    shift; shift;
+ARCH=`uname --all | sed 's/.* \([^ ]*\) [^ ]*$/\1/'`
+if [[ $ARCH = 'i686' ]]; then
+    DLL_PATH=$BINDIR/dll_32
+elif [[ $ARCH == *64* ]]; then
+    DLL_PATH=$BINDIR/dll_64
+else 
+    echo "Unknown ARCH: $ARCH";
+    exit 1;
 fi
+
+while [[ $1 = "-d" || $1 = "-r" ]]; do # compute in a different directory / reset
+    case $1 in
+        "-d")
+            DIR=$ROOT/"$2"
+            shift
+            shift 
+            ;;
+        "-r")
+            RESET=1
+            shift
+            ;;
+    esac
+done
+
 if [[ $# -lt 1 ]] || [[ ! -f $PLAN/"$1"$EXT ]]; then
-    echo "Usage: ./experiment.sh [work-dir-name] plan-name params";
+    echo "Usage: ./experiment.sh [-d work-dir-name][-r] plan-name params";
     exit 1;
 fi
 
@@ -46,5 +67,11 @@ fi
 ln -s $CONF . 2> /dev/null
 
 FILE="$1"$EXT
+
+if [[ $RESET = 1 ]]; then # remove the plan status if necessary
+    rm $FILE.* 2> /dev/null
+fi
+
 shift  #run the process
-./$BINNAME "$@" "$FILE"
+export LD_LIBRARY_PATH="$DLL_PATH:$LD_LIBRARY_PATH"
+java  -Djava.library.path=$DLL_PATH -Xms128m -Xmx2g -jar $BINNAME "$@" "$FILE"
