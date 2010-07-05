@@ -34,6 +34,7 @@ import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -189,19 +190,20 @@ public class DataMerger extends Task {
      */
     private Attribute mergeAttribute(Attribute a, Attribute b) {
 
-        ArrayList<String> values = new ArrayList<String>();
-        for (int i = 0; i < a.numValues(); i++){ // this ensures the values will always end up in the same order
-            values.add(a.value(i));
-        }
-        for (int i = 0; i < b.numValues(); i++){
+        HashSet<String> values = new HashSet<String>();
 
-            String val = b.value(i);
-            
-            if (!values.contains(val)){
-                values.add(val);
-            }
+        Enumeration<String> valA = a.enumerateValues();
+        while (valA.hasMoreElements()){
+            values.add(valA.nextElement());
         }
-        return new Attribute(a.name(), values);
+        Enumeration<String> valB = b.enumerateValues();
+        while (valB.hasMoreElements()){
+            values.add(valB.nextElement());
+        }
+
+        String [] arr = values.toArray(new String [0]);
+        Arrays.sort(arr);
+        return new Attribute(a.name(), Arrays.asList(arr));
     }
 
 

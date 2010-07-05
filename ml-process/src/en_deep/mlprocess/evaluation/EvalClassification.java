@@ -102,8 +102,10 @@ public class EvalClassification extends Task {
         if (this.input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be pairs of inputs.");
         }
-        if (!this.produceDiffs && this.output.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
+        if (!this.produceDiffs){
+            if (this.output.size() != 1){
+                throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
+            }
         }
         else if (this.output.size() != 2){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 2 outputs.");

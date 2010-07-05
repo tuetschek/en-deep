@@ -87,7 +87,8 @@ public class SettingSelector extends WekaSettingTrials {
 
 
     /**
-     * This prepares the parameter sets for the individual classifier tasks
+     * This prepares the parameter sets for the individual classifier tasks.
+     * @return the parameter sets for the individual classification trials
      */
     protected Hashtable<String, String>[] prepareParamSets() throws TaskException {
 
@@ -114,6 +115,15 @@ public class SettingSelector extends WekaSettingTrials {
             }
         }
         return paramSets;
+    }
+
+
+    @Override
+    protected Hashtable<String, String> getEvalParams() {
+
+        Hashtable<String, String> evalParams = super.getEvalParams();
+        evalParams.putAll(this.parameters);
+        return evalParams;
     }
 
     @Override

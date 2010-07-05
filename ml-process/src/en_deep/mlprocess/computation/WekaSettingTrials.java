@@ -81,7 +81,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
         super(id, parameters, input, output);
 
         // check the compulsory parameters for the evaluation case
-        if (this.parameters.get(EVAL) != null){
+        if (this.parameters.remove(EVAL) != null){
             this.evalMode = true;
             return;
         }
