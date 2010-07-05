@@ -30,6 +30,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.exception.TaskException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -130,10 +131,12 @@ public class SettingSelector extends WekaSettingTrials {
     protected void writeBestStats(String outFile, int settingNo) throws IOException {
 
         PrintStream out = new PrintStream(outFile);
+        String [] paramSet = this.parameters.keySet().toArray(new String [0]);
 
-        for (String paramName : this.parameters.keySet()){
-            String [] vals = this.parameters.get(paramName).split("\\s+");
-            out.println(paramName + ":" + vals[settingNo]);
+        Arrays.sort(paramSet);
+        for (int i = 0; i < paramSet.length; ++i){
+            String [] vals = this.parameters.get(paramSet[i]).split("\\s+");
+            out.println(paramSet[i] + ":" + vals[settingNo]);
         }
         out.close();
     }

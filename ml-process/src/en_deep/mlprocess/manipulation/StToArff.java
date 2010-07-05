@@ -68,6 +68,8 @@ public class StToArff extends StManipulation {
     private static final String OMIT_SEMCLASS = "omit_semclass";
     /** The divide_senses parameter name */
     private static final String DIVIDE_SENSES = "divide_senses";
+    /** The 'filt_pos' parameter name */
+    private static final String FILTER_POS = "filt_pos";
 
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
@@ -122,6 +124,8 @@ public class StToArff extends StManipulation {
     private boolean divideSenses;
     /** Prune the argument candidates to the syntactical neighborhood of the predicate ? */
     private boolean prune;
+    /** List of POS which should be filtered on the output (or null if none) */
+    private String [] filteredPOS;
 
     /** Features to be generated */
     private Vector<Feature> genFeats;
@@ -151,6 +155,8 @@ public class StToArff extends StManipulation {
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
      * <li><tt>divide_senses</tt> -- if set to non-false, the data are divided according to the sense of predicates, too</li>
      * <li><tt>prune</tt> -- if set, the argument candidates are pruned (syntactical neighborhood of the predicate only)</li>
+     * <li><tt>filt_pos</tt> -- (optional) provide a space-separated list of POS which should be filtered at the output,
+     * e.g. meaningful for English are: "'' ( ) , . : `` EX HYPH LS NIL POS"</li>
      * </ul>
      * <p>
      * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
@@ -173,6 +179,11 @@ public class StToArff extends StManipulation {
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
         this.prune = this.getBooleanParameterVal(PRUNE);
+
+        // initialize string parameter
+        if (this.getParameterVal(FILTER_POS) != null){
+            this.filteredPOS = this.getParameterVal(FILTER_POS).split("\\s+");
+        }
 
         // initialize features to be generated
         this.initGenFeats();
@@ -259,9 +270,10 @@ public class StToArff extends StManipulation {
 
                     String [] word = this.reader.getWord(j);
 
-                    // skip non-predicate or pruned lines if such setting is imposed
+                    // skip non-predicate or pruned lines or filtered PsOS if such setting is imposed
                     if (this.predOnly && j != predNums[i]
-                            || this.prune && !this.reader.isInNeighborhood(predNums[i], j)){
+                            || this.prune && !this.reader.isInNeighborhood(predNums[i], j)
+                            || this.isFiltered(word[this.reader.IDXI_POS])){
                         continue;
                     }
 
@@ -328,10 +340,10 @@ public class StToArff extends StManipulation {
      */
     private void writeHeaders(Vector<Pair<String, String>> outputs) throws FileNotFoundException {
 
-        for (Pair<String, String> output : outputs){
+        for (Pair<String, String> pfNames : outputs){
 
-            String predName = output.first;
-            String fileName = output.second;
+            String predName = pfNames.first;
+            String fileName = pfNames.second;
 
             if (new File(fileName).exists()){ // only for non-existent files
                 continue;
@@ -339,7 +351,7 @@ public class StToArff extends StManipulation {
             FileOutputStream os = new FileOutputStream(fileName);
             PrintStream out = new PrintStream(os);
 
-            out.println(RELATION + " " + predName);
+            out.println(RELATION + " \"" + StringUtils.escape(predName) + "\"");
 
             // print the constant fields that are always present
             for (int i = 0; i < HEADER.length; ++i){
@@ -557,6 +569,23 @@ public class StToArff extends StManipulation {
 
         in.close();
         in = null;
+    }
+
+    /**
+     * Returns true if, according to the user settings, the given part-of-speech should be filtered on the output.
+     * @param pos the part of speech
+     * @return true if the given part-of-speech should be filtered
+     */
+    private boolean isFiltered(String pos) {
+
+        if (this.filteredPOS != null){
+            for (int i = 0; i < this.filteredPOS.length; i++) {
+                if (this.filteredPOS[i].equals(pos)){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     
 }

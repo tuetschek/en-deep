@@ -67,10 +67,15 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
 
         // initialize the return value -- attribute indexes with mRMR values
         double [][] ret = new double [this.numAttrib] [];
+
         for (int i = 0; i < ret.length; ++i){
             ret[i] = new double [2];
             ret[i][0] = -1;
             ret[i][1] = Double.NEGATIVE_INFINITY;
+        }
+
+        if (ret.length == 0){ // singular case: 0 attributes !!!
+            return ret;
         }
 
         // compute the mututal information for all attributes against the class attribute
