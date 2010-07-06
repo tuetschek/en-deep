@@ -31,6 +31,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -71,7 +72,20 @@ public class IrrelevantAttributesRemoval extends Task {
     private enum Condition {
         PRESELECTED,
         UNARY,
-        NON_IDENTICAL
+        NON_IDENTICAL;
+
+        @Override
+        public String toString() {
+            switch (this){
+                case PRESELECTED:
+                    return "preselected";
+                case UNARY:
+                    return "unary";
+                case NON_IDENTICAL:
+                    return "non_identical";
+            }
+            return "";
+        }
     }
 
 
@@ -189,7 +203,6 @@ public class IrrelevantAttributesRemoval extends Task {
 
         Enumeration<Attribute> attribs = data[0].enumerateAttributes();
         Vector<String> forRemoval = new Vector<String>();
-        String reason = "";
 
         while (attribs.hasMoreElements()) {
             Attribute attr = attribs.nextElement();
@@ -199,30 +212,33 @@ public class IrrelevantAttributesRemoval extends Task {
                     case NON_IDENTICAL:
                         if (!this.checkIdenticalValues(data, attr.name())){
                             forRemoval.add(attr.name());
-                            reason = "non-identical";
                         }
                         break;
 
                     case UNARY:
                         if (!this.checkDifferentVlaues(data, attr.name())){
                             forRemoval.add(attr.name());
-                            reason = "unary";
                         }
                         break;
                         
                     case PRESELECTED:
                         if (this.removeAttribs.contains(attr.name())){
                             forRemoval.add(attr.name());
-                            reason = "preselected";
                         }
                         break;
                 }
             }
         }
+        if (!forRemoval.isEmpty()){
+            Logger.getInstance().message(this.id + " : removing " + condition.toString() + " "
+                    + StringUtils.join(forRemoval, ", ") + ".", Logger.V_DEBUG);
+        }
+        else {
+            Logger.getInstance().message(this.id + " : no " + condition.toString() + " features found.",
+                    Logger.V_DEBUG);
+        }
         for (String attrName : forRemoval) {
             for (int i = 0; i < data.length; ++i) {
-                Logger.getInstance().message(this.id + " : removing " + reason + " "
-                        + attrName + " from " + data[i].relationName(), Logger.V_DEBUG);
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
         }

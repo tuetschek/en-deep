@@ -180,7 +180,7 @@ public class EvalClassification extends Task {
         String [] labels = this.getLabels(attrGold);
 
         Stats labeled = this.getStats(goldenValues, testValues, attrGold.indexOfValue(EMPTY), true);
-        Stats unlabeled = this.getStats(testValues, testValues, attrGold.indexOfValue(EMPTY), false);
+        Stats unlabeled = this.getStats(goldenValues, testValues, attrGold.indexOfValue(EMPTY), false);
 
         if (this.produceDiffs){
             this.printLog(goldFile + " x " + testFile + ":", goldenValues, testValues, labels);

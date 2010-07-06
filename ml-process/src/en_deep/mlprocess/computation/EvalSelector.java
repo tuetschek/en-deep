@@ -101,17 +101,17 @@ public abstract class EvalSelector extends Task {
 
     /**
      * Opens the given files with evaluation statistics as output by
-     * {@link en_deep.mlprocess.evaluation.EvalClassification} and selects the one which has the
+     * {@link en_deep.mlprocess.evaluation.EvalClassification} and selects those which have the
      * best characteristics according to {@link #measure}.
      *
      * @param evalFiles a list of statistics files
      * @param testingOrder -- the order in which the files should be examined, or null for continuous examination
-     * @return the number of the best statistics within evalFiles and its value
+     * @return the indexes of the best statistics within evalFiles and the best statistics value
      */
-    protected Pair<Integer, Double> selectBest(String [] evalFiles, int [] testingOrder) throws IOException,
+    protected Pair<Vector<Integer>, Double> selectBest(String [] evalFiles, int [] testingOrder) throws IOException,
             TaskException {
 
-        int bestIndex = -1;
+        Vector<Integer> bestIdxs = new Vector<Integer>();
         double bestVal = -1.0;
 
         for (int i = 0; i < evalFiles.length; ++i) {
@@ -141,7 +141,7 @@ public abstract class EvalSelector extends Task {
 
                     measureFound = true;
                     if (val > bestVal) {
-                        bestIndex = index;
+                        bestIdxs.add(index);
                         bestVal = val;
                     }
                     break;
@@ -155,15 +155,15 @@ public abstract class EvalSelector extends Task {
                         " : measure " +  this.measure + " not found.");
             }
         }
-        return new Pair<Integer, Double>(bestIndex, bestVal);
+        return new Pair<Vector<Integer>, Double>(bestIdxs, bestVal);
     }
 
     /**
      * This writes the statistics for the best result into the given output file.
      * @param outFile the output file name
-     * @param settingNo the number of the best setting
+     * @param settingNos the best setting numbers
      */
-    protected abstract void writeBestStats(String outFile, int settingNo) throws IOException;
+    protected abstract void writeBestStats(String outFile, Vector<Integer> settingNos) throws IOException;
 
 
 

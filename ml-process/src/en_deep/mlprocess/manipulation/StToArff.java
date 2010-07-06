@@ -35,12 +35,13 @@ import en_deep.mlprocess.manipulation.genfeat.Feature;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
 import java.util.Vector;
@@ -56,6 +57,9 @@ import weka.filters.unsupervised.attribute.StringToNominal;
  * @author Ondrej Dusek
  */
 public class StToArff extends StManipulation {
+
+    /* CONSTANTS */
+
     /** The multiclass parameter name */
     private static final String MULTICLASS = "multiclass";
     /** The pred_only parameter name */
@@ -132,6 +136,8 @@ public class StToArff extends StManipulation {
 
     /** Used output files (for reprocessing) */
     private HashMultimap<String, String> usedFiles;
+    /** File names with already written headers */
+    private HashSet<String> writtenHeaders;
 
 
     /* METHODS */
@@ -188,8 +194,9 @@ public class StToArff extends StManipulation {
         // initialize features to be generated
         this.initGenFeats();
 
-        // initialize the list of used output files
+        // initialize the used output files lists
         this.usedFiles = HashMultimap.create();
+        this.writtenHeaders = new HashSet<String>();
 
         // check outputs
         if (input.size() != output.size()){
@@ -334,7 +341,11 @@ public class StToArff extends StManipulation {
     /**
      * Writes output ARFF files headers for the given predicates and file names. Heeds the "multiclass" parameter
      * (see {@link StToArff}). Some parameter types are left as STRING at first. They are converted
-     * to class values later.
+     * to class values later. 
+     * </p><p>
+     * Keeps all the file names where the headers have already been written in the
+     * {@link #writtenHeaders} member, so that no headers are written twice.
+     * <p>
      *
      * @param outputs a list of predicate-file name pairs
      */
@@ -345,7 +356,7 @@ public class StToArff extends StManipulation {
             String predName = pfNames.first;
             String fileName = pfNames.second;
 
-            if (new File(fileName).exists()){ // only for non-existent files
+            if (this.writtenHeaders.contains(fileName)){ // only for files that haven't been written yet
                 continue;
             }
             FileOutputStream os = new FileOutputStream(fileName);
@@ -391,6 +402,9 @@ public class StToArff extends StManipulation {
 
             out.close();
             out = null;
+
+            // store the filename so that we don't write the headers again
+            this.writtenHeaders.add(fileName);
         }
     }
 

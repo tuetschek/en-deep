@@ -349,7 +349,7 @@ public class GreedyAttributeSearch extends EvalSelector {
 
                 // for the final round, write the best list of attributes
                 if (this.round > this.end){
-                    this.writeBestStats(this.output.get(2), best);
+                    this.writeBestStats(this.output.get(2), best != -1 ? new Vector<Integer>() : null);
                 }
 
                 // copy the best settings to the destination location (final or temporary)
@@ -414,13 +414,13 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         // find out which trial of the previous round gave the best results
         int [] order = this.getOrderOfConsideration();
-        Pair<Integer, Double> best = this.selectBest(evalFiles, order);
+        Pair<Vector<Integer>, Double> best = this.selectBest(evalFiles, order);
 
         // find the best value of the round BEFORE the previous one
         String lastBestInfo = lastRoundStats.readLine();
         this.lastBest = Double.parseDouble(lastBestInfo.split(":")[1].trim());
 
-        for (int i = 0; i < best.first; ++i){
+        for (int i = 0; i < best.first.get(0); ++i){ // use only the first best result
             lastRoundStats.readLine();
         }
 
@@ -436,7 +436,7 @@ public class GreedyAttributeSearch extends EvalSelector {
             }
             else { // worse than the previous round -- will revert to last results
                 Logger.getInstance().message(this.id + " : worse than previous round, reverting.", Logger.V_INFO);
-                best.first = -1;
+                best.first.clear();
             }
             this.end = this.round - 1;
         }
@@ -447,7 +447,7 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         // write down the selected option
         lastRoundStats.seek(lastRoundStats.length());
-        if (best.first == -1){
+        if (best.first.isEmpty()){
             lastRoundStats.write(("Best " + best.second + " worse than previous, reverting." + LF).getBytes());
         }
         else {
@@ -456,7 +456,7 @@ public class GreedyAttributeSearch extends EvalSelector {
         }
         lastRoundStats.close();
         
-        return best.first;
+        return best.first.isEmpty() ? -1 : best.first.get(0);
     }
 
     /**
@@ -808,15 +808,16 @@ public class GreedyAttributeSearch extends EvalSelector {
 
 
     /**
-     * This writes just the list of the best attribute numbers.
+     * This writes just the list of the best attribute numbers, and considers only the first best setting.
+     * @param settingNos non-null if the last round improved the results, null otherwise (no other meaning)
      */
     @Override
-    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+    protected void writeBestStats(String outFile, Vector<Integer> settingNos) throws IOException {
 
         PrintStream out = new PrintStream(outFile);
         String bestList = this.lastBestAttributesList;
 
-        if (settingNo < 0){ // if the last round didn't improve the results, rip off one attribute
+        if (settingNos == null){ // if the last round didn't improve the results, rip off one attribute
             bestList = bestList.substring(0, bestList.lastIndexOf(" "));
         }
         

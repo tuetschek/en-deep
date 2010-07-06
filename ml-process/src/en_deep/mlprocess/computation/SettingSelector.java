@@ -128,7 +128,7 @@ public class SettingSelector extends WekaSettingTrials {
     }
 
     @Override
-    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+    protected void writeBestStats(String outFile, Vector<Integer> settingNos) throws IOException {
 
         PrintStream out = new PrintStream(outFile);
         String [] paramSet = this.parameters.keySet().toArray(new String [0]);
@@ -136,7 +136,19 @@ public class SettingSelector extends WekaSettingTrials {
         Arrays.sort(paramSet);
         for (int i = 0; i < paramSet.length; ++i){
             String [] vals = this.parameters.get(paramSet[i]).split("\\s+");
-            out.println(paramSet[i] + ":" + vals[settingNo]);
+            out.print(paramSet[i] + ":");
+
+            boolean first = true;
+            for (Integer settingNo : settingNos){
+                if (first){
+                    first = false;
+                }
+                else {
+                    out.print(",");
+                }
+                out.print(vals[settingNo]);
+            }
+            out.println();
         }
         out.close();
     }

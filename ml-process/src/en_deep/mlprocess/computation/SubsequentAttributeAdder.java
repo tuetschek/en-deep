@@ -201,15 +201,15 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
     }
 
     /**
-     * This prints out the list of best attributes.
+     * This prints out the list of best attributes. This always takes the first best setting only.
      */
     @Override
-    protected void writeBestStats(String outFile, int settingNo) throws IOException {
+    protected void writeBestStats(String outFile, Vector<Integer> settingNos) throws IOException {
 
         PrintStream out = new PrintStream(outFile);
         String [] attributeOrder = this.readAttributeOrder();
         int paramNum = (this.start < attributeOrder.length ? Math.max(this.start, 1) : attributeOrder.length)
-                + settingNo;
+                + settingNos.get(0);
 
         out.println(StringUtils.join(attributeOrder, 0, paramNum, " "));
         out.close();

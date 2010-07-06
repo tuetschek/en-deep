@@ -34,6 +34,7 @@ import en_deep.mlprocess.evaluation.EvalClassification;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.TaskDescription;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -109,7 +110,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
             // evaluation mode
             if (this.evalMode) {
                 String[] evalFiles = new String[this.input.size() / 2];
-                int best;
+                Vector<Integer> best;
 
                 Logger.getInstance().message(this.id + ": Selecting the best result ...", Logger.V_INFO);
 
@@ -118,11 +119,11 @@ public abstract class WekaSettingTrials extends EvalSelector {
                 }
                 best = this.selectBest(evalFiles, null).first;
 
-                Logger.getInstance().message(this.id + ": Best result: " + best, Logger.V_INFO);
+                Logger.getInstance().message(this.id + ": Best result(s): " + StringUtils.join(best, ","), Logger.V_INFO);
                 this.writeBestStats(this.output.get(2), best);
                 
-                FileUtils.copyFile(this.input.get(best * 2), this.output.get(1));
-                FileUtils.copyFile(this.input.get(best * 2 + 1), this.output.get(0));
+                FileUtils.copyFile(this.input.get(best.get(0) * 2), this.output.get(1));
+                FileUtils.copyFile(this.input.get(best.get(0) * 2 + 1), this.output.get(0));
 
                 if (this.deleteTempfiles){
                     this.deleteTempfiles();
