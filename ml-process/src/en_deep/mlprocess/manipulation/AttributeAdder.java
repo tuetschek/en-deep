@@ -56,6 +56,7 @@ public class AttributeAdder extends Task {
      * <ul>
      * <li><tt>attribs</tt> -- names of the attributes to be added (space-separated)</li>
      * </ul>
+     * If there is an attribute of the same name in the original file, it is replaced by the new one.
      */
     public AttributeAdder(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException {
@@ -111,12 +112,17 @@ public class AttributeAdder extends Task {
             if (orig == null){
                 throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attribs[attrNo]
                         + " not found in " + whatFile  + ".");
-            }            
+            }
+            if (base.attribute(attribs[attrNo]) != null){
+                base.deleteAttributeAt(base.attribute(attribs[attrNo]).index());
+                Logger.getInstance().message(this.id + ": Attribute overwritten -- " + attribs[attrNo], 
+                        Logger.V_WARNING);
+            }
             base.insertAttributeAt(orig, base.numAttributes());
-            Attribute copy = base.attribute(base.numAttributes()-1);
-
+            int idx = base.numAttributes()-1;
+            
             for (int i = 0; i < base.numInstances(); i++) {
-                base.instance(i).setValue(copy, add.instance(i).value(orig));
+                base.instance(i).setValue(idx, add.instance(i).value(orig));
             }
         }
 

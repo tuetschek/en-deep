@@ -33,6 +33,7 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Vector;
 import java.util.Hashtable;
 import weka.core.Attribute;
+import weka.core.Instance;
 import weka.core.Instances;
 
 /**
@@ -56,6 +58,10 @@ public class DataMerger extends Task {
     private static final String MERGE_ATTR = "merge_attr";
     /** The 'uniq' parameter name */
     private static final String UNIQ = "uniq";
+    /** The name of the 'file_attr' parameter */
+    private static final String FILE_ATTR = "file_attr";
+    /** The prefix of all 'pattern' parameters */
+    private static final String PATTERN_PREFIX = "pattern";
 
     /* DATA */
 
@@ -63,6 +69,12 @@ public class DataMerger extends Task {
     private int [] mergeAttribsIdxs;
     /** Should we discard duplicate lines (in terms of merging attribute values)? */
     private boolean uniq;
+    /** If the 'file_attr' parameter is set, this holds all the patterns to match the file names (and set only parts
+     * of them as values of the file attribute).
+     */
+    private final String[] fileNamePatterns;
+    /** The name of the 'file attribute' (if 'file_attr' is set) */
+    private final String fileAttributeName;
 
     /* METHODS */
 
@@ -72,26 +84,38 @@ public class DataMerger extends Task {
      * <ul>
      * <li><tt>merge_attr<tt>-- space-separated list of attributes whose values are used in merging (the
      * instances with lowest values of these attributes will go first).</li>
-     * <li><tt>uniq</tt> (boolean, valid only if <tt>merge_attr</tt> is set) -- if set, the instances with the
+     * <li><tt>uniq</tt> -- (boolean, valid only if <tt>merge_attr</tt> is set) -- if set, the instances with the
      * same values of the merging attributes coming from different files are discarded, only the first one is left.
-     * </ul>
-     *
-     * @param id the task id
-     * @param parameters have no sense here
-     * @param input the input data sets or files
-     * @param output the output data sets or files
+     * <li><tt>file_attr</tt> -- if set, an attribute will be created that contains an information about the
+     * file from which the given data originated (the value is the name of the new attribute). All the tasks
+     * should then match <tt>pattern0 ... patternN</tt> corresponding to the outputs and only the matches are
+     * used as attribute values. If no <tt>pattern0..patternN</tt>
+     * parameters are set, whole filenames are used as values of the attribute.</li>
+     * </ul> 
      */
     public DataMerger(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException{
 
         super(id, parameters, input, output);
 
-        if (this.input.isEmpty() || this.input.size() % this.output.size() !=  0){
+        if (this.input.isEmpty() || this.input.size() % this.output.size() != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
         if (this.getBooleanParameterVal(UNIQ) && !this.hasParameter(MERGE_ATTR)){
             Logger.getInstance().message(this.id + ": uniq setting has no sense if merge_attr is not set.", 
                     Logger.V_DEBUG);
+        }
+        if (this.hasParameter(FILE_ATTR)){
+            this.fileAttributeName = this.getParameterVal(FILE_ATTR);
+            this.fileNamePatterns = StringUtils.getValuesField(parameters, PATTERN_PREFIX, this.output.size());
+            if (this.fileNamePatterns == null){
+                Logger.getInstance().message(this.id + ": file attribute set but no file name patterns!",
+                        Logger.V_WARNING);
+            }
+        }
+        else {
+            this.fileAttributeName = null;
+            this.fileNamePatterns = null;
         }
     }
 
@@ -111,7 +135,8 @@ public class DataMerger extends Task {
         for (int j = 0; j < this.output.size(); ++j){
 
             try {
-                this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j));
+                this.mergeData(this.input.subList(ratio * j, ratio * j + ratio), this.output.get(j),
+                        this.fileNamePatterns != null ? this.fileNamePatterns[j] : null);
             }
             catch(TaskException e){
                 throw e;
@@ -128,8 +153,10 @@ public class DataMerger extends Task {
      *
      * @param in the list of input files to be merged
      * @param out the output file to write to
+     * @param fileAttrPattern pattern to match on file names to get the values of the file_attribute,
+     *  if such setting is imposed.
      */
-    private void mergeData(List<String> in, String out) throws Exception {
+    private void mergeData(List<String> in, String out, String fileAttrPattern) throws Exception {
 
         Instances [] data = new Instances [in.size()];
 
@@ -146,6 +173,11 @@ public class DataMerger extends Task {
         for (int i = 1; i < in.size(); i++){
             this.mergeHeaders(mergedHeaders, data[i]);
         }
+        // add the file attribute, if needed
+        if (fileAttrPattern != null){
+            this.addFileAttribute(in, fileAttrPattern, mergedHeaders, data);
+        }
+
         // write the merged headers to the output
         PrintStream os = new PrintStream(out);
         os.print(mergedHeaders.toString());
@@ -307,6 +339,38 @@ public class DataMerger extends Task {
         String [] arr = values.toArray(new String [0]);
         Arrays.sort(arr);
         return new Attribute(a.name(), Arrays.asList(arr));
+    }
+
+    private void addFileAttribute(List<String> fileNames, String fileAttrPattern, Instances mergedHeaders,
+            Instances[] data) {
+
+        ArrayList<String> values = new ArrayList<String>();
+
+        for (String fileName : fileNames){
+            
+            fileName = StringUtils.truncateFileName(fileName);
+            String match = StringUtils.matches(fileName, fileAttrPattern);
+
+            if (match != null){
+                values.add(match);
+            }
+            else {
+                values.add(fileName);
+                Logger.getInstance().message(this.id + ": the file name " + fileName
+                        + " doesn't match the pattern " + fileAttrPattern + ".", Logger.V_WARNING);
+            }
+        }
+
+        Attribute fileAttr = new Attribute(this.fileAttributeName, values);
+        mergedHeaders.insertAttributeAt(fileAttr, 0);
+
+        for (int i = 0; i < data.length; ++i){
+            data[i].insertAttributeAt(fileAttr, 0);
+            Enumeration<Instance> insts = data[i].enumerateInstances();
+            while (insts.hasMoreElements()){
+                insts.nextElement().setValue(0, (double) i);
+            }
+        }
     }
 
 }

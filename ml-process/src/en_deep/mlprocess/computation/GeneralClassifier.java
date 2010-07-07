@@ -74,14 +74,15 @@ public abstract class GeneralClassifier extends Task {
 
     /**
      * Finds out which of the features is the target one and sets it as "class" in the evaluation data.
-     * It is THE one feature that is present in the train dataset and missing in eval dataset, or the
-     * one set-up in the class_arg parameter, if the train and eval datasets have equal features.
+     * It is THE one feature that is present in the train dataset and missing in evaluation dataset, or the
+     * one set-up in the class_arg parameter, if the train and evaluation datasets have equal features.
      * If both data sets have equal features and no parameter is given, the last feature in train is selected.
-     * If two or more features from train are missing in eval, an error is raised. If the attribute is
-     * missing in the eval dataset, it is created with empty values.
+     * If two or more features from train are missing in evaluation, an error is raised. If the attribute is
+     * missing in the evaluation dataset, it is created with empty values. If the class attribute is present
+     * in both data sets, it is overwritten in the evaluation data (so that new possible values are added).
      *
-     * @param train
-     * @param eval
+     * @param train the training data
+     * @param eval the evaluation data
      */
     protected void findTargetFeature(Instances train, Instances eval) throws TaskException {
 
@@ -98,7 +99,8 @@ public abstract class GeneralClassifier extends Task {
                     missing = att;
                 }
                 else {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Cannot find target attribute.");
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Other attribute "
+                            + "than class is missing from the evaluation data.");
                 }
             }
         }
@@ -109,16 +111,15 @@ public abstract class GeneralClassifier extends Task {
             String classArg = this.parameters.remove(CLASS_ARG);
 
             if (missing != null && !missing.name().equals(classArg)) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find target attribute.");
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Other attribute than"
+                        + " class attribute missing from the evaluation data.");
             }
             if (train.attribute(classArg) == null) {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
                         + "in training data.");
             }
-            if (missing == null) {
-                train.setClass(train.attribute(classArg));
-                eval.setClass(eval.attribute(classArg));
-                return;
+            if (missing == null) { // ensure the class attribute will be overwritten
+                eval.deleteAttributeAt(eval.attribute(classArg).index());
             }
             missing = train.attribute(classArg);
         }

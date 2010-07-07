@@ -292,4 +292,56 @@ public class StringUtils {
         return results;
     }
 
+    /**
+     * Given parameters of a {@link en_deep.mlprocess.Task} and a name prefix, this extracts the values
+     * of all the parameters whose names are composed of the prefix and an ordinal number 0..count-1.
+     * If some of the parameters is missing or its name doesn't continue with an ordinal number, null
+     * is returned.
+     *
+     * @param parameters the parameters that contain some whose names are composed of the prefix and ordinal numbers
+     * @param prefix the prefix for parameter names that must be followed by ordinal numbers
+     * @param count the maximum boundary for numbers in parameter names (0..count-1)
+     * @return the ordered list of values for parameters with number 0..count-1
+     */
+    public static String [] getValuesField(Hashtable<String, String> parameters, String prefix, int count){
+
+        Enumeration<String> paramNames = parameters.keys();
+        String [] field = new String[count];
+
+        while (paramNames.hasMoreElements()) {
+
+            String paramName = paramNames.nextElement();
+
+            if (paramName.startsWith(prefix)) {
+                try {
+                    int paramNum = Integer.parseInt(paramName.substring(prefix.length()));
+                    field[paramNum] = parameters.get(paramName);
+                }
+                catch (Exception e) {
+                    return null;
+                }
+            }
+        }
+        for (int i = 0; i < field.length; ++i) {
+            if (field[i] == null) {
+                return null;
+            }
+        }
+        return field;
+    }
+
+    /**
+     * This returns the expansion, if the given string matches the given "*"-pattern (only one "*" allowed).
+     * @param string the string to be tested
+     * @param pattern the pattern to be matched
+     * @return the expansion, if the string matches the pattern, or null
+     */
+    public static String matches(String string, String pattern){
+
+        String patternStart = pattern.substring(0, pattern.indexOf("*"));
+        String patternEnd = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);
+
+        return (string.startsWith(patternStart) && string.endsWith(patternEnd))
+                ? string.substring(patternStart.length(), string.length()-patternEnd.length()): null;
+    }
 }

@@ -199,8 +199,10 @@ public class WekaClassifier extends GeneralClassifier {
 
         // read the evaluation train and find out the target class
         Instances eval = FileUtils.readArff(evalFile);
+        Instances output;
 
         this.findTargetFeature(train, eval);
+        output =  new Instances(eval); // save a copy w/o attribute preselection
 
         // pre-select the attributes
         this.attributesPreselection(train, eval);
@@ -211,30 +213,26 @@ public class WekaClassifier extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": evaluation on " + evalFile + "...", Logger.V_DEBUG);
 
         // use the classifier and store the results       
-        Enumeration instances;
-        ArrayList<double []> distributions = this.probabilities ? new ArrayList<double []>() : null;
-        
-        instances = eval.enumerateInstances();
-        while(instances.hasMoreElements()){
+        double [][] distributions = this.probabilities ? new double [eval.numInstances()][] : null;
+                
+        for (int i = 0; i < eval.numInstances(); ++i){
             
-            Instance inst = (Instance) instances.nextElement();
-
             if (!this.probabilities){ // just set the most likely class
-                double val = this.classif.classifyInstance(inst);
-                inst.setClassValue(val);
+                double val = this.classif.classifyInstance(eval.get(i));
+                output.get(i).setClassValue(val);
             }
              else { // save the probability distribution aside
-                distributions.add(this.classif.distributionForInstance(inst));
-             }
+                distributions[i] = this.classif.distributionForInstance(eval.get(i));
+            }
         }
 
         // store the probability distributions, if supposed to
         if (this.probabilities){
-            this.addDistributions(eval, distributions);
+            this.addDistributions(output, distributions);
         }
         
         // write the output
-        FileUtils.writeArff(outFile, eval);
+        FileUtils.writeArff(outFile, output);
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
     }
@@ -314,19 +312,19 @@ public class WekaClassifier extends GeneralClassifier {
      * This adds the results of the classification -- the probability distributions of classes for each
      * instance -- to the evaluation data as new features.
      *
-     * @param eval the evaluation data
+     * @param output the output data
      * @param distributions the classes probability distributions for the individual instances
      */
-    private void addDistributions(Instances eval, ArrayList<double []> distributions) {
+    private void addDistributions(Instances output, double [][] distributions) {
         
-        int index = addDistributionFeatures(eval);
+        int index = addDistributionFeatures(output);
         int instNo = 0;
 
-        Enumeration<Instance> instances = eval.enumerateInstances();
+        Enumeration<Instance> instances = output.enumerateInstances();
         while (instances.hasMoreElements()) {
 
             Instance inst = instances.nextElement();
-            double [] dist = distributions.get(instNo++);
+            double [] dist = distributions[instNo++];
             
             for (int i = 0; i < dist.length; ++i){
                 inst.setValue(index + i, dist[i]);

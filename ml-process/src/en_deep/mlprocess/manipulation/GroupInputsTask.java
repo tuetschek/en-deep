@@ -91,26 +91,23 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
 
             String file = StringUtils.truncateFileName(path);
             int matchingPatNo = -1;
-            String matchingPatStart = "";
-            String matchingPatEnd = "";
+            String matchingPart = null;
+            String shortestExp = null;
 
             for (int i = 0; i < this.patterns.length; ++i) {
 
                 String pattern = this.patterns[i];
-                String patternStart = pattern.substring(0, pattern.indexOf("*"));
-                String patternEnd = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);
 
-                if (file.startsWith(patternStart) && file.endsWith(patternEnd)) {
+                if ((matchingPart = StringUtils.matches(file, pattern)) != null) {
 
                     if (matchingPatNo != -1) {
                         Logger.getInstance().message(this.id + " : more patterns match " + file + ".",
                                 Logger.V_WARNING);
                     }
                     // longest matching pattern is prefered
-                    if (matchingPatNo == -1 || pattern.length() > this.patterns[matchingPatNo].length()) {
+                    if (matchingPatNo == -1 || shortestExp.length() < matchingPart.length()) {
                         matchingPatNo = i;
-                        matchingPatStart = patternStart;
-                        matchingPatEnd = patternEnd;
+                        shortestExp = matchingPart;
                     }
                 }
             }
@@ -118,8 +115,7 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Input file "
                         + file + " doesn\'t match " + " any of the input patterns.");
             }
-            tables[matchingPatNo].put(file.substring(matchingPatStart.length(),
-                    file.length() - matchingPatEnd.length()), path);
+            tables[matchingPatNo].put(shortestExp, path);
         }
         return tables;
     }
@@ -133,32 +129,13 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
      *   transferred to the outputs
      * @throws TaskException if some of the patterns are missing.
      */
-    protected  void extractPatterns(int divideBy) throws TaskException {
+    protected void extractPatterns(int divideBy) throws TaskException {
 
-        Enumeration<String> params = this.parameters.keys();
-        this.patterns = new String[this.output.size() / divideBy];
+        this.patterns = StringUtils.getValuesField(this.parameters, PATTERN_PREFIX, this.output.size() / divideBy);
 
-        while (params.hasMoreElements()) {
-
-            String param = params.nextElement();
-
-            if (param.startsWith(PATTERN_PREFIX)) {
-                try {
-                    int paramNum = Integer.parseInt(param.substring(PATTERN_PREFIX.length()));
-                    this.patterns[paramNum] = this.parameters.get(param);
-                }
-                catch (Exception e) {
-                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                            "Pattern params must end " + "with a number that matches the number of outputs / "
-                            + divideBy + ".");
-                }
-            }
-        }
-        for (int i = 0; i < this.patterns.length; ++i) {
-            if (this.patterns[i] == null) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                        "Parameter pattern" + i + " is missing.");
-            }
+        if (this.patterns == null){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid pattern"
+                    + "specifications in task parameters.");
         }
     }
 
