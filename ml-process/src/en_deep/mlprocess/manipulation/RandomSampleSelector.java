@@ -71,11 +71,6 @@ public class RandomSampleSelector extends GroupInputsTask {
      * <p>
      * The outputs must contain "**" patterns. The selected files are copied to the output destinations.
      * </p>
-     *
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
      */
     public RandomSampleSelector(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException{
@@ -119,7 +114,7 @@ public class RandomSampleSelector extends GroupInputsTask {
         for (String key : selectedKeys){
             for (int i = 0; i < tables.length; ++i){
 
-                String dest = this.output.get(i).replace("**", key);
+                String dest = this.output.get(i).replace("**", this.outPrefix + key);
                 String src = tables[i].get(key);
 
                 try {

@@ -223,7 +223,7 @@ public class PredicateMerger extends GroupInputsTask {
 
             Logger.getInstance().message(this.id + ": Copying single " + in.second + " to the output ...",
                     Logger.V_INFO);
-            FileUtils.copyFile(in.second, out.replace("**", in.first));
+            FileUtils.copyFile(in.second, out.replace("**", this.outPrefix + in.first));
         }
     }
 
@@ -240,7 +240,7 @@ public class PredicateMerger extends GroupInputsTask {
 
             Vector<String> mergeIn = new Vector<String>(this.grouped.get(frame));
             Vector<String> mergeOut = new Vector<String>(1);
-            mergeOut.add(this.output.get(0).replace("**", frame));
+            mergeOut.add(this.output.get(0).replace("**", this.outPrefix + frame));
 
             DataMerger merger = new DataMerger(this.id, dummyParams, mergeIn, mergeOut);
             merger.perform();

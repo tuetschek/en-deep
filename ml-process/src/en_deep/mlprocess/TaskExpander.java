@@ -28,7 +28,6 @@
 package en_deep.mlprocess;
 
 import com.google.common.collect.HashMultimap;
-import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -69,7 +68,7 @@ public class TaskExpander {
     /** Positions in the task output listings, where are wildcard patterns to be found */
     private Vector<Integer> inputTrans, inputHere, inputCarth;
     /** Positions in the task input listings, where are wildcard patterns to be found */
-    private Vector<Integer> outputTrans;
+    private Vector<Integer> outputTrans, outputHere;
 
     /** Expansion pattern matches for all affected tasks */
     private HashMultimap<TaskDescription, TaskDescription> expansions;
@@ -141,14 +140,19 @@ public class TaskExpander {
             this.expandCarthesian();
         }
 
-        // check if all the outputs have "*"s (otherwise, there's no point in using "*" or "***" for inputs)
-        if (this.outputTrans == null || this.outputTrans.size() != task.getOutput().size()){
+        // check if all the outputs have "*" or "**"'s (otherwise, there's no point in using "*" or "***"
+        // for inputs)
+        if ((this.outputTrans != null && this.outputTrans.size() != task.getOutput().size())
+                || (this.outputHere != null && this.outputHere.size() != task.getOutput().size())
+                || (this.outputHere == null && this.outputTrans == null)){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
-                    "All outputs must have '*' patterns if inputs have '*' or '***' patterns.");
+                    "All outputs must have '*' or '**' patterns if inputs have '*' or '***' patterns.");
         }
 
-        // expand outputs and dependent tasks using the expanded task name
-        this.expandOutputsAndDeps(this.task);
+        // expand outputs and dependent tasks using the expanded task name (if we can--"**"'s are never expanded)
+        if (this.outputHere == null){
+            this.expandOutputsAndDeps(this.task);
+        }
 
         // remove dependencies of all original unexpanded tasks (which are selected for removal)
         for (TaskDescription t : this.expansions.keySet()){
@@ -271,6 +275,7 @@ public class TaskExpander {
         this.inputHere = this.task.getInputPatternPos("**");
         this.inputCarth = this.task.getInputPatternPos("***");
         this.outputTrans = this.task.getOutputPatternPos("*");
+        this.outputHere = this.task.getOutputPatternPos("**");
     }
 
     /**
@@ -368,7 +373,7 @@ public class TaskExpander {
 
         // this means there are no more dependent expansions and we need only to put all outputs
         // from expanded anc as inputs to this task
-        if (!task.hasOutputPattern("*")){
+        if (!task.hasOutputPattern("*") && !task.hasOutputPattern("**")){
 
             Vector<String> replacements = new Vector<String>();
             Vector<String> taskInput = task.getInput();
@@ -403,7 +408,7 @@ public class TaskExpander {
         }
 
         // if there are "**" or "***" left to be expanded, we can't expand outputs and go deeper, yet
-        if (task.hasInputPattern("**") || task.hasInputPattern("***")){
+        if (task.hasOutputPattern("**") || task.hasInputPattern("**") || task.hasInputPattern("***")){
             return;
         }
 

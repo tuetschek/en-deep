@@ -97,15 +97,11 @@ public class AttributeSelector extends Task {
         }
 
         // check inputs & outputs
-        if (input.size() != output.size()){
+        if (this.input.size() != this.output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
         // checks if there are no "**" patterns in outputs (other patterns should have been already expanded)
-        for (String outputFile: this.output){
-            if (outputFile.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id);
-            }
-        }
+        this.eliminatePatterns(this.output);
 
     }
 

@@ -54,17 +54,14 @@ public abstract class GroupInputsTask extends Task {
 
     /** The patterns for sorting the inputs */
     protected String [] patterns;
+    /** Output file prefix, if this task resulted from task expansion */
+    protected String outPrefix;
 
     /* METHODS */
 
     /**
-     * This just checks the inputs and outputs. 
-     * 
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
-     * @throws TaskException
+     * This just checks the inputs and outputs and sets the output file prefix (for tasks that resulted
+     * from expansions).
      */
     protected GroupInputsTask(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -81,6 +78,12 @@ public abstract class GroupInputsTask extends Task {
         }
         if (this.output.isEmpty()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have some outputs.");
+        }
+
+        // set the output file prefix
+        this.outPrefix = this.getExpandedPartOfId();
+        if (!this.outPrefix.equals("")){
+            this.outPrefix += "_";
         }
     }
 

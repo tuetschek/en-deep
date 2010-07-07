@@ -140,9 +140,13 @@ public abstract class EvalSelector extends Task {
                     }
 
                     measureFound = true;
-                    if (val > bestVal) {
+                    if (val > bestVal){
+                        bestIdxs.clear();
                         bestIdxs.add(index);
                         bestVal = val;
+                    }
+                    else if(val == bestVal) {
+                        bestIdxs.add(index);
                     }
                     break;
                 }

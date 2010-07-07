@@ -138,6 +138,8 @@ public class StToArff extends StManipulation {
     /** File names with already written headers */
     private HashSet<String> writtenHeaders;
 
+    /** The expanded part of the id, or empty string */
+    private String outPrefix;
 
     /* METHODS */
 
@@ -207,6 +209,11 @@ public class StToArff extends StManipulation {
             if (!outputFile.contains("**")){
                 throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "Outputs must contain '**' pattern.");
             }
+        }
+
+        this.outPrefix = this.getExpandedPartOfId();
+        if (!this.outPrefix.equals("")){
+            this.outPrefix += "_";
         }
     }
 
@@ -427,7 +434,7 @@ public class StToArff extends StManipulation {
             predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
                     : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
                     + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
-            fileName = pattern.replace("**", predicate);
+            fileName = pattern.replace("**", this.outPrefix + predicate);
             this.usedFiles.put(predicate, fileName); // store the used file name
             outputs.add(new Pair<String, String>(predicate, fileName));
         }

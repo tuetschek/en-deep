@@ -31,14 +31,11 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.utils.FileUtils;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
 import weka.filters.unsupervised.instance.SubsetByExpression;
 
@@ -58,7 +55,7 @@ public class DataSplitter extends Task {
     private static final String ONE_VS_OTHERS = "one_vs_others";
 
     /** The expanded part of the id */
-    private String expandedId;
+    private String outPrefix;
     /** The selected value, if one_vs_others is set */
     private String selectedVal;
 
@@ -110,7 +107,10 @@ public class DataSplitter extends Task {
             }
         }
 
-        this.expandedId = this.getExpandedPartOfId();
+        this.outPrefix = this.getExpandedPartOfId();
+        if (!this.outPrefix.equals("")){
+            this.outPrefix += "_";
+        }
 
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Numbers of inputs and outputs" +
@@ -191,8 +191,7 @@ public class DataSplitter extends Task {
             subset.setRelationName(oldName);
 
             // write the output to the file
-            String outputFile = outputPattern.replace("**", this.expandedId
-                    + "_" + splitAttrib.name() + "-" + value);
+            String outputFile = outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-" + value);
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
             FileUtils.writeArff(outputFile, subset);
@@ -230,9 +229,9 @@ public class DataSplitter extends Task {
 
         Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
 
-        FileUtils.writeArff(outputPattern.replace("**", this.expandedId + "_" + splitAttrib.name() + "-"
+        FileUtils.writeArff(outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-"
                 + this.selectedVal), positive);
-        FileUtils.writeArff(outputPattern.replace("**", this.expandedId + "_" + splitAttrib.name() + "-other"),
+        FileUtils.writeArff(outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-other"),
                 negative);
 
     }
@@ -263,7 +262,7 @@ public class DataSplitter extends Task {
 
             int partLen = data.numInstances() / parts + (i < data.numInstances() % parts ? 1 : 0);
             Instances part = new Instances(data, pos, partLen);
-            String outputFile = outputPattern.replace("**", Integer.toString(i));
+            String outputFile = outputPattern.replace("**", this.outPrefix + Integer.toString(i));
             
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
