@@ -33,7 +33,6 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -54,15 +53,22 @@ public class DataMerger extends Task {
     
     /** Line feed character */
     private static final String LF = System.getProperty("line.separator");
+    /** The 'merge_attr' parameter name */
+    private static final String MERGE_ATTR = "merge_attr";
+    /** Indexes of attributes used in merging */
+    private int [] mergeAttribsIdxs;
 
     /* DATA */
 
     /* METHODS */
 
     /**
-     * This creates a new {@link DataMerger} task. It doesn't take any parameter except the
-     * input and output data sets' descriptions. Therefore, the number of output
-     * data sources must be divisible by the number of input data sources.
+     * This creates a new {@link DataMerger} task. The number of output data sources must be divisible by the number
+     * of input data sources. This has one voluntary parameter:
+     * <ul>
+     * <li><tt>merge_attr<tt></li> -- space-separated list of attributes whose values are used in merging (the
+     * instances with lowest values of these attributes will go first).
+     * </ul>
      *
      * @param id the task id
      * @param parameters have no sense here
@@ -131,20 +137,89 @@ public class DataMerger extends Task {
         for (int i = 1; i < in.size(); i++){
             this.mergeHeaders(mergedHeaders, data[i]);
         }
-
-        // write the merged headers and all data to the output
+        // write the merged headers to the output
         PrintStream os = new PrintStream(out);
         os.print(mergedHeaders.toString());
 
-        for (int i = 0; i < data.length; i++) {
-            Enumeration<Instance> insts = data[i].enumerateInstances();
-            while (insts.hasMoreElements()){
-                os.println(insts.nextElement().toString());
-            }
+        this.findMergeAttribsIndexes(mergedHeaders);
+
+        // write the data to the output
+        int [] dataPos = new int [data.length];
+        int first;
+        while ((first = this.selectFirst(data, dataPos)) != -1){
+            os.println(data[first].get(dataPos[first]).toString());
+            dataPos[first]++;
         }
 
         os.close();
     }
+
+    /**
+     * This finds out the indexes of the merge attributes.
+     * @param dataHeaders  the headers of the data, where the attributes are looked up
+     */
+    private void findMergeAttribsIndexes(Instances dataHeaders) throws TaskException {
+        
+        if (this.getParameterVal(MERGE_ATTR) != null) {
+
+            String [] mergeAttribsNames = this.getParameterVal(MERGE_ATTR).split("\\s+");
+            this.mergeAttribsIdxs = new int[mergeAttribsNames.length];
+
+            for (int i = 0; i < mergeAttribsNames.length; ++i) {
+                try {
+                    this.mergeAttribsIdxs[i] = dataHeaders.attribute(mergeAttribsNames[i]).index();
+                }
+                catch (NullPointerException e) {
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Merginng attribute "
+                            + mergeAttribsNames[i] + " missing.");
+                }
+            }
+        }
+    }
+
+    /**
+     * This selects the instance of all data files that goes first (has the lowest values of {@link #mergeAttribsIdxs}.
+     * If there are no merge attributes, it always selects the first file.
+     * @param data the data to be examined
+     * @param dataPos the current positions in the data
+     * @return the number of data set whose current instance should go first
+     */
+    private int selectFirst(Instances[] data, int[] dataPos) {
+        
+        int bestIdx = -1;
+        double [] bestVals = null;
+
+        if (this.mergeAttribsIdxs != null){
+            bestVals = new double [this.mergeAttribsIdxs.length];
+            Arrays.fill(bestVals, Double.POSITIVE_INFINITY);
+        }
+
+        for (int i = 0; i < data.length; ++i){
+            if (dataPos[i] >= data[i].numInstances()){ // skip ended files
+                continue;
+            }
+            if (this.mergeAttribsIdxs == null){ // if there are no merged attributes, always select the first one
+                return i;
+            }
+            for (int j = 0; j < this.mergeAttribsIdxs.length; ++j){
+                double val = data[i].get(dataPos[i]).value(this.mergeAttribsIdxs[j]);
+                if (val < bestVals[j]){
+                    bestIdx = i;
+                    break;
+                }
+                else if (val > bestVals[j]){
+                    break;
+                }
+            }
+            if (bestIdx == i){
+                for (int j = 0; j < this.mergeAttribsIdxs.length; ++j){
+                    bestVals[j] = data[i].get(dataPos[i]).value(this.mergeAttribsIdxs[j]);
+                }
+            }
+        }
+        return bestIdx;
+    }
+
 
     /**
      * This will merge the headers of two data sets, provided they have attributes with same names and types (not necessary
@@ -171,6 +246,10 @@ public class DataMerger extends Task {
                 throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attributes "
                         + aAttr.name() + " are of different types in " + a.relationName() + " and "
                         + b.relationName() + ".");
+            }
+            if (aAttr.index() != bAttr.index()){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attributes "
+                        + "don't have the same order in " + a.relationName() + " and " + b.relationName());
             }
 
             if (aAttr.isNominal()){ // merge values for nominal attributes
@@ -205,6 +284,5 @@ public class DataMerger extends Task {
         Arrays.sort(arr);
         return new Attribute(a.name(), Arrays.asList(arr));
     }
-
 
 }

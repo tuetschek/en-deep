@@ -58,7 +58,8 @@ public abstract class Task implements Serializable {
     /* METHODS */
 
     /**
-     * A constructor to be used with the derived classes. Just sets the needed values.
+     * A constructor to be used with the derived classes. Just sets the needed values. It performs cloning of all the
+     * structures so that the originals are not harmed by changes performed by the task itself.
      * 
      * @param id the unique id of the task
      * @param parameters the parameters of this algorithm
@@ -67,9 +68,9 @@ public abstract class Task implements Serializable {
      */
     protected Task(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output){
         this.id = id;
-        this.parameters = parameters;
-        this.input = input;
-        this.output = output;
+        this.parameters = (Hashtable<String, String>) parameters.clone();
+        this.input = (Vector<String>) input.clone();
+        this.output = (Vector<String>) output.clone();
     }
 
     /**
