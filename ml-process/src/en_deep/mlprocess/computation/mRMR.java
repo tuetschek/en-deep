@@ -156,9 +156,11 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
     }
 
     /**
-     * This
-     * @return
-     * @throws Exception
+     * This returns the attributes in the order of the incremental mRMR algorithm. However, the rankings
+     * are not guaranteed to be sorted (which follows from the nature of the algorithm).
+     * 
+     * @return the list of attributes in their mRMR order, along with their merits (that are valid only for the \
+     *  given iteration of the mRMR algorithm, and therefor not sorted descending
      */
     public double[][] rankedAttributes() throws Exception {
         return this.computemRMR();
@@ -173,7 +175,7 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
 
     /**
      * Not used. Always returns negative infinity.
-     * @return
+     * @return always negative infinity
      */
     public double getThreshold() {
         return Double.NEGATIVE_INFINITY;
@@ -193,7 +195,7 @@ public class mRMR extends ASEvaluation implements RankedOutputSearch, Capabiliti
 
     /**
      * Not used. Same as {@link #getNumToSelect() }
-     * @return
+     * @return always the number of attributes
      */
     public int getCalculatedNumToSelect() {
         return this.numAttrib;

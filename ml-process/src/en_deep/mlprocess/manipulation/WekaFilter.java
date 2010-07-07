@@ -59,13 +59,17 @@ public class WekaFilter extends Task {
      * <ul>
      * <li><tt>filter_class</tt> -- the WEKA filter class to be used</li>
      * </ul>
+     * <p>
      * All the input data must have the same headers.
+     * </p>
+     * <p>
+     * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
+     * a parameter with the name "X", it's passed to the weka class as "-X". Parameters with empty value
+     * are used as switches (e.g. param X="").
+     * Some of these WEKA parameters may be compulsory to the classifier, too. See the particular
+     * classifier definition to check what parameters are possible.
+     * </p>
      * 
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
-     * @throws TaskException
      */
     public WekaFilter(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException {

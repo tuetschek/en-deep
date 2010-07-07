@@ -54,6 +54,13 @@ public class DataSplitter extends Task {
     private static final String BY_ATTRIBUTE = "by_attribute";
     /** The num_parts parameter name */
     private static final String NUM_PARTS = "num_parts";
+    /** The one_vs_others parameter name */
+    private static final String ONE_VS_OTHERS = "one_vs_others";
+
+    /** The expanded part of the id */
+    private String expandedId;
+    /** The selected value, if one_vs_others is set */
+    private String selectedVal;
 
     /* DATA */
 
@@ -63,16 +70,21 @@ public class DataSplitter extends Task {
      * This creates a new {@link DataSplitter} task. 
      * <p>
      * The output specification must have a "**" pattern, in order to produce more output files. If there
-     * are more input files, the exactly same number of outputs (with "**") must be given.
-     * </p><p>
-     * There are two possible parameters: by_attribute or num_parts, just one of them must be given.
-     * </p><p>
-     * If the by_attribute parameter is present, it specifies the attribute based on whose values the
-     * instances should be split.
-     * </p><p>
-     * If the num_parts parameter is specified, it determines the number of output parts (which are split
-     * sequentially).
+     * are more input files, the exactly same number of outputs (with "**") must be given. If the inputs
+     * have "*" in them, the expansion is handled upon output file name creation.
      * </p>
+     * <p>
+     * There are two possible parameters: just one of them must be given.
+     * <ul>
+     * <li><tt>by_attribute</tt> -- specifies the name of the attribute based on whose values the instances
+     * should be split</li>
+     * <li><tt>num_parts</tt> -- determines the number of output parts (which are split sequentially).</li>
+     * </ul>
+     * If <tt>by_attribute</tt> is specified, there is one more voluntary parameter:
+     * <ul>
+     * <li><tt>one_vs_others</tt> -- specifies the one value that should be selected out, versus all others
+     * (the filename will have "others" in it)</li>
+     * </u>
      *
      * @param id the task id
      * @param parameters the task parameters
@@ -83,10 +95,23 @@ public class DataSplitter extends Task {
             Vector<String> input, Vector<String> output) throws TaskException {
         
         super(id, parameters, input, output);
-        if (parameters.size() != 1 || (!parameters.containsKey(BY_ATTRIBUTE) && !parameters.containsKey(NUM_PARTS))){
+
+        if ((!this.hasParameter(BY_ATTRIBUTE) && !this.hasParameter(NUM_PARTS))
+                || (this.hasParameter(BY_ATTRIBUTE) && this.hasParameter(NUM_PARTS))){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter by_attribute OR num_parts" +
                     "must be set.");
         }
+        if (this.hasParameter(ONE_VS_OTHERS)){
+            if (this.hasParameter(BY_ATTRIBUTE)){
+                this.selectedVal = this.getParameterVal(ONE_VS_OTHERS);
+            }
+            else {
+                Logger.getInstance().message("Parameter " + ONE_VS_OTHERS + " is meaningless.", Logger.V_WARNING);
+            }
+        }
+
+        this.expandedId = this.getExpandedPartOfId();
+
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Numbers of inputs and outputs" +
                     "don't match.");
@@ -109,10 +134,13 @@ public class DataSplitter extends Task {
     @Override
     public void perform() throws TaskException {
 
-        try {
+        try {         
             for (int i = 0; i < this.input.size(); ++i){
-                if (this.parameters.containsKey(BY_ATTRIBUTE)){
-                        this.splitByAttribute(this.input.get(i), this.output.get(i));
+                if (this.selectedVal != null){
+                    this.splitOneVsOthers(this.input.get(i), this.output.get(i));
+                }
+                else if(this.hasParameter(BY_ATTRIBUTE)){
+                    this.splitByAttribute(this.input.get(i), this.output.get(i));
                 }
                 else {
                     this.splitByPartsNumber(this.input.get(i), this.output.get(i));
@@ -146,7 +174,7 @@ public class DataSplitter extends Task {
                 || (values = splitAttrib.enumerateValues()) == null){
 
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Attribute "
-                    + this.parameters.get(BY_ATTRIBUTE) + " not found or not string.");
+                    + this.parameters.get(BY_ATTRIBUTE) + " not found or not nominal/string.");
         }
 
         // filter out all attribute values and create output files for them
@@ -163,11 +191,50 @@ public class DataSplitter extends Task {
             subset.setRelationName(oldName);
 
             // write the output to the file
-            String outputFile = outputPattern.replace("**", splitAttrib.name() + "-" + value);
+            String outputFile = outputPattern.replace("**", this.expandedId
+                    + "_" + splitAttrib.name() + "-" + value);
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
             FileUtils.writeArff(outputFile, subset);
         }
+    }
+
+    /**
+     * This splits one file into two -- according to one value of one attribute (and its comparison to
+     * {@link #selectedVal}).
+     *
+     * @param inputFile the input file
+     * @param outputPattern the output file pattern
+     */
+    private void splitOneVsOthers(String inputFile, String outputPattern) throws Exception {
+
+        Instances data = FileUtils.readArff(inputFile);
+        Attribute splitAttrib;
+
+        if ((splitAttrib = data.attribute(this.getParameterVal(BY_ATTRIBUTE))) == null
+                || splitAttrib.indexOfValue(this.selectedVal) == -1){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute "
+                    + this.getParameterVal(BY_ATTRIBUTE) + " or the value " + this.selectedVal + " missing.");
+        }
+
+        SubsetByExpression filter = new SubsetByExpression();
+        filter.setInputFormat(data);
+
+        filter.setExpression("ATT" + (splitAttrib.index()+1) + " is '" + this.selectedVal + "'");
+        Instances positive = Filter.useFilter(data, filter);
+        positive.setRelationName(data.relationName());
+
+        filter.setExpression("not " + filter.getExpression());
+        Instances negative = Filter.useFilter(data, filter);
+        negative.setRelationName(data.relationName());
+
+        Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
+
+        FileUtils.writeArff(outputPattern.replace("**", this.expandedId + "_" + splitAttrib.name() + "-"
+                + this.selectedVal), positive);
+        FileUtils.writeArff(outputPattern.replace("**", this.expandedId + "_" + splitAttrib.name() + "-other"),
+                negative);
+
     }
 
 
@@ -178,13 +245,9 @@ public class DataSplitter extends Task {
      */
     private void splitByPartsNumber(String inputFile, String outputPattern) throws Exception {
 
-        FileInputStream is = new FileInputStream (inputFile);
-        ConverterUtils.DataSource source = new ConverterUtils.DataSource(is); 
-        Instances data = source.getDataSet(); // read input data
+        Instances data = FileUtils.readArff(inputFile); // read input data
         int pos = 0; // position in data file at which the next part starts
         int parts = 0;
-
-        is.close();
 
         // check parts number for validity
         try {
@@ -192,7 +255,7 @@ public class DataSplitter extends Task {
         }
         catch (NumberFormatException e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter " + NUM_PARTS + " must be" 
-                    + " numberic.");
+                    + " numeric.");
         }
 
         // write all the subsequent parts
@@ -201,13 +264,10 @@ public class DataSplitter extends Task {
             int partLen = data.numInstances() / parts + (i < data.numInstances() % parts ? 1 : 0);
             Instances part = new Instances(data, pos, partLen);
             String outputFile = outputPattern.replace("**", Integer.toString(i));
-            FileOutputStream os = new FileOutputStream(outputFile);
-            ConverterUtils.DataSink out = new ConverterUtils.DataSink(os);
-
+            
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
-            out.write(part);
-            os.close();
+            FileUtils.writeArff(outputFile, part);
             pos += partLen;
         }
     }

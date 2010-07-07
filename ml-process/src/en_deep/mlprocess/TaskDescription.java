@@ -192,7 +192,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
 
     /**
      * Sets the task's topological order (as done in task topological sorting in
-     * {@link Plan.sortPlan(Vector<TaskDescription> Plan)}).
+     * {@link Plan#sortPlan(Vector)}).
      *
      * @param order the topological order for the task
      */
@@ -319,8 +319,8 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
 
     /**
      * Sets new task status, updating all the statuses of the dependent tasks (if the
-     * new status is {@link TaskStatus.DONE}.
-     * @param taskStatus the new task status
+     * new status is {@link TaskStatus#DONE}.
+     * @param status the new task status
      */
     public void setStatus(TaskStatus status) {
 
@@ -720,8 +720,9 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         /**
          * Compares two TaskDescription according to their topological order.
          *
-         * @param other the TaskDescription to be compared to this one
-         * @return -1 if this has lower topological order, 1 for greater and 0 for equal
+         * @param o1 the first object to be compared
+         * @param o2 the second object for comparison
+         * @return -1 if the first one has lower topological order, 1 for greater and 0 for equal
          */
         public int compare(TaskDescription o1, TaskDescription o2) {
 

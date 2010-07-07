@@ -30,6 +30,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -58,6 +59,8 @@ public class WekaClassifier extends GeneralClassifier {
     static final String SELECT_ARGS = "select_args";
     /** The name of the 'prob_dist' parameter */
     private static final String PROB_DIST = "prob_dist";
+    /** Name of the ignore_attr parameter */
+    private static final String IGNORE_ATTRIBS = "ignore_attr";
 
     /* DATA */
 
@@ -91,6 +94,7 @@ public class WekaClassifier extends GeneralClassifier {
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
+     * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
      * </ul>
@@ -103,10 +107,6 @@ public class WekaClassifier extends GeneralClassifier {
      * </p>
      *
      * @todo rename select_args to select_attrib, so that the name reflects the function
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
      */
     public WekaClassifier(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -240,46 +240,63 @@ public class WekaClassifier extends GeneralClassifier {
     }
 
     /**
-     * This selects only the given attributes if there is a {@link #SELECT_ARGS} setting.
+     * This selects only the given attributes if there is a {@link #SELECT_ARGS} setting and removes
+     * all the attributes specified in the {@link #IGNORE_ATTRIBS} setting.
      * 
      * @param train the training data
      * @param eval the evaluation data
      */
-    private void attributesPreselection(Instances train, Instances eval) {
+    private void attributesPreselection(Instances train, Instances eval) throws TaskException {
 
-        String [] selection;
+        
         boolean [] selectionMask = new boolean [train.numAttributes()];
 
-        if (this.parameters.get(SELECT_ARGS) == null){
+        if (this.hasParameter(IGNORE_ATTRIBS)){
+            String [] selection = this.parameters.remove(IGNORE_ATTRIBS).split("\\s+");
+            for (int i = 0; i < selection.length; ++i){
+
+                if (train.attribute(selection[i]) == null || eval.attribute(selection[i]) == null){
+                    Logger.getInstance().message("The ignored attribute " + selection[i] + "not present", 
+                            Logger.V_WARNING);
+                }
+                else if(selection[i].equals(train.classAttribute().name())){
+                    Logger.getInstance().message("Cannot ignore class attribute " + train.classAttribute().name(),
+                            Logger.V_WARNING);
+                }
+                else {
+                    train.deleteAttributeAt(train.attribute(selection[i]).index());
+                    eval.deleteAttributeAt(eval.attribute(selection[i]).index());
+                }
+            }
+        }
+
+        if (!this.hasParameter(SELECT_ARGS)){
             return;
         }
-        selection = this.parameters.remove(SELECT_ARGS).split("\\s+");
+        int [] selectNos;
+
+        try {
+            selectNos = StringUtils.readListOfInts(this.parameters.remove(SELECT_ARGS));
+        }
+        catch (NumberFormatException e){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "The preselected attributes"
+                    + "must all be numbers.");
+        }
 
         // find the attributes selected for removal
-        for (String attr : selection){
+        for (int i = 0; i < selectNos.length; ++i){
 
-            int attrNo = -1;
-
-            try {
-                attrNo = Integer.valueOf(attr);
-            }
-            catch(NumberFormatException e){
-                Logger.getInstance().message(this.id + " preselected attribute " + attr + " is not a number.",
-                        Logger.V_WARNING);
-                continue;
-            }
-
-            if (attrNo >= 0 && attrNo < train.numAttributes()){
-                selectionMask[attrNo] = true;
+            if (selectNos[i] >= 0 && selectNos[i] < train.numAttributes()){
+                selectionMask[selectNos[i]] = true;
             }
             else {
-                Logger.getInstance().message(this.id + " preselected attribute " + attr + " out of range.",
+                Logger.getInstance().message(this.id + " preselected attribute " + selectNos[i] + " out of range.",
                         Logger.V_WARNING);
             }
         }
         selectionMask[train.classIndex()] = true;
 
-        // remove the selected attributes
+        // remove the not-selected attributes
         for (int i = selectionMask.length - 1; i >= 0; --i){
             if (!selectionMask[i]){
 

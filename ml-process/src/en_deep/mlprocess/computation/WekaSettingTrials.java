@@ -211,7 +211,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
 
     /**
      * This prepares the parameters for the default evaluation task.
-     * @return
+     * @return the parameters of the default evaluation task
      */
     protected Hashtable<String, String> getEvalParams() {
 

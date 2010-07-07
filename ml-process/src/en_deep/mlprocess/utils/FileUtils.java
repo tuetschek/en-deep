@@ -53,7 +53,7 @@ public class FileUtils{
 
     /**
      * This copies the given file to the given location (both names must be valid).
-     * (modified after {@link http://www.rgagnon.com/javadetails/java-0064.html})
+     * (modified after <a href="http://www.rgagnon.com/javadetails/java-0064.html">this. webpage</a>.)
      *
      * @param source the source file
      * @param destination the destination file
@@ -193,7 +193,7 @@ public class FileUtils{
      * This deletes the specified file. If the file is still open, it won't be deleted and false
      * is returned.
      * @param fileName the file name
-     * @returns true if the file was really deleted, false otherwise
+     * @return true if the file was really deleted, false otherwise
      * @throws SecurityException if the file is not accessible
      */
     public static boolean deleteFile(String fileName) throws SecurityException {

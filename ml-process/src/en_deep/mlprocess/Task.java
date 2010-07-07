@@ -134,6 +134,19 @@ public abstract class Task implements Serializable {
     }
 
     /**
+     * This returns the part of ID that resulted from task expansions, with '#'s replaced by '_'s.
+     * @return the part of the task ID after '#', or "" if not applicable
+     */
+    public String getExpandedPartOfId(){
+        String expPart = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
+        if (expPart.startsWith("#")) {
+            expPart = expPart.substring(1);
+        }
+        expPart = expPart.replace('#', '_');
+        return expPart;
+    }
+
+    /**
      * Returns a boolean value of a class {@link #parameters parameter}, which is false if the parameter
      * value is "0" or "false" and true otherwise
      *
@@ -160,6 +173,15 @@ public abstract class Task implements Serializable {
      */
     public String getParameterVal(String paramName) {
         return this.parameters.get(paramName);
+    }
+
+    /**
+     * Returns true, if the parameter with the given name is set.
+     * @param paramName the name of the parameter to be examined
+     * @return true, if the parameter is set
+     */
+    public boolean hasParameter(String paramName){
+        return this.parameters.containsKey(paramName);
     }
 
     /**

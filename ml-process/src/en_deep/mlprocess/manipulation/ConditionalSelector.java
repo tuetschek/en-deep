@@ -85,10 +85,10 @@ public class ConditionalSelector extends GroupInputsTask {
 
     /** The condition for the selection */
     private final Condition condition;
-    /** If {@link #condition} is {@link Condition.UNARY} or {@link Condition.DIVIDE_BY_NUM_VAL}, this
+    /** If {@link #condition} is {@link Condition#UNARY} or {@link Condition#DIVIDE_BY_NUM_VAL}, this
      * stores the name of the attribute to be checked. */
     private String attrName;
-    /** If {@link #condition} is {@link Condition.DIVIDE_BY_NUM_VAL}, this stores the boundaries of 
+    /** If {@link #condition} is {@link Condition#DIVIDE_BY_NUM_VAL}, this stores the boundaries of
      * division.     */
     private int [] boundaries;
     /** The tables that contain all the files matching the different input patterns sorted unter the same expansion keys */

@@ -182,15 +182,14 @@ public abstract class EvalSelector extends Task {
      *
      * @param type type of the tempfile
      * @param order the number of the file (not used for ROUND_STATS, BEST_STATS and BEST_CLASSIF)
-     * @return
+     * @return the name of the desired temporary file
      */
     protected String getTempfileName(TempfileTypes type, int order){
         return this.getTempfileName(type, -1, order);
     }
 
     /**
-     * Creates a file name out of the {@link #tempFilePattern} and the given
-     * {@link GreedyAttributeSearch.TempfileTypes type}.
+     * Creates a file name out of the {@link #tempFilePattern} and the given {@link TempfileTypes type}.
      *
      * @param type the type of the file
      * @param round the round for which the file is ment (-1 if not used)
@@ -227,11 +226,7 @@ public abstract class EvalSelector extends Task {
      * different tasks. This must be called before any tempfile names are generated.
      */
     protected void setExpandedId() {
-        this.expandedId = this.id.indexOf('#') == -1 ? "" : this.id.substring(this.id.indexOf('#'));
-        if (this.expandedId.startsWith("#")) {
-            this.expandedId = this.expandedId.substring(1);
-        }
-        this.expandedId = this.expandedId.replace('#', '_');
+        this.expandedId = this.getExpandedPartOfId();
     }
 
 

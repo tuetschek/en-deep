@@ -43,8 +43,8 @@ import weka.core.Instance;
 import weka.core.Instances;
 
 /**
- * This uses some of the classes in {@link weka.attributeSelection} to rank a list of attributes in ARFF file(s) and
- * produces a file with the list of attribute numbers ordered by the ranking on the first line.
+ * This uses some of the classes in the <tt>weka.attributeSelection</li> package to rank a list of attributes
+ * in ARFF file(s) and produces a file with the list of attribute numbers ordered by the ranking on the first line.
  *
  * @author Ondrej Dusek
  */

@@ -155,7 +155,7 @@ public class StringUtils {
 
 
     /**
-     * This takes the parameters of a {@link Task} and creates the options for the WEKA
+     * This takes the parameters of a {@link en_deep.mlprocess.Task} and creates the options for the WEKA
      * classifier/filter class out of it. Boolean WEKA parameters should
      * be set without any value in the Task parameters.
      *
@@ -190,7 +190,7 @@ public class StringUtils {
      * 
      * @param origParams the original parameters
      * @param prefix the prefix
-     * @return
+     * @return all the parameters that start with the given prefix, with that prefix stripped off
      */
     public static Hashtable<String, String> getPrefixParams(Hashtable<String, String> origParams, String prefix){
 
@@ -211,7 +211,7 @@ public class StringUtils {
      * @param arr the array of strings to make the substrings of
      * @param start the starting index of the substring (incl.)
      * @param end the ending index of the substring (excl.)
-     * @return
+     * @return substrings of the specified range for all the strings in the given array
      */
     public static String[] substrings(String[] arr, int start, int end) {
 

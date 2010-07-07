@@ -69,7 +69,6 @@ public class MathUtils {
      * This returns the list of all k-tuple combinations out of the values in the
      * given array (they must not repeat).
      *
-     * @param base the lower bound of the interval (included)
      * @param k how big should the combinations be
      * @param values the list of possible values (from which the combinations are taken)
      * @return the list of all k-tuple combinations
