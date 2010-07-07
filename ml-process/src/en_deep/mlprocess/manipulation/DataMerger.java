@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Vector;
 import java.util.Hashtable;
 import weka.core.Attribute;
-import weka.core.Instance;
 import weka.core.Instances;
 
 /**
@@ -55,19 +54,26 @@ public class DataMerger extends Task {
     private static final String LF = System.getProperty("line.separator");
     /** The 'merge_attr' parameter name */
     private static final String MERGE_ATTR = "merge_attr";
-    /** Indexes of attributes used in merging */
-    private int [] mergeAttribsIdxs;
+    /** The 'uniq' parameter name */
+    private static final String UNIQ = "uniq";
 
     /* DATA */
+
+    /** Indexes of attributes used in merging */
+    private int [] mergeAttribsIdxs;
+    /** Should we discard duplicate lines (in terms of merging attribute values)? */
+    private boolean uniq;
 
     /* METHODS */
 
     /**
      * This creates a new {@link DataMerger} task. The number of output data sources must be divisible by the number
-     * of input data sources. This has one voluntary parameter:
+     * of input data sources. This has two voluntary parameters:
      * <ul>
-     * <li><tt>merge_attr<tt></li> -- space-separated list of attributes whose values are used in merging (the
-     * instances with lowest values of these attributes will go first).
+     * <li><tt>merge_attr<tt>-- space-separated list of attributes whose values are used in merging (the
+     * instances with lowest values of these attributes will go first).</li>
+     * <li><tt>uniq</tt> (boolean, valid only if <tt>merge_attr</tt> is set) -- if set, the instances with the
+     * same values of the merging attributes coming from different files are discarded, only the first one is left.
      * </ul>
      *
      * @param id the task id
@@ -82,6 +88,10 @@ public class DataMerger extends Task {
 
         if (this.input.isEmpty() || this.input.size() % this.output.size() !=  0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+        if (this.getBooleanParameterVal(UNIQ) && !this.hasParameter(MERGE_ATTR)){
+            Logger.getInstance().message(this.id + ": uniq setting has no sense if merge_attr is not set.", 
+                    Logger.V_DEBUG);
         }
     }
 
@@ -116,7 +126,6 @@ public class DataMerger extends Task {
     /**
      * Tries to merge several input files into one output, using WEKA code.
      *
-     * @todo merge possible values for attributes (by creating new attributes first and then by writing down all the data using the old ones)
      * @param in the list of input files to be merged
      * @param out the output file to write to
      */
@@ -145,10 +154,18 @@ public class DataMerger extends Task {
 
         // write the data to the output
         int [] dataPos = new int [data.length];
-        int first;
-        while ((first = this.selectFirst(data, dataPos)) != -1){
-            os.println(data[first].get(dataPos[first]).toString());
-            dataPos[first]++;
+        Vector<Integer> first;
+        while (!(first = this.selectFirst(data, dataPos)).isEmpty()){
+
+            os.println(data[first.get(0)].get(dataPos[first.get(0)]).toString());
+            if (!this.uniq){
+                dataPos[first.get(0)]++;
+            }
+            else {
+                for (Integer oneOfFirst : first){ // skip lines with the same merging attrib values
+                    dataPos[oneOfFirst]++;
+                }
+            }
         }
 
         os.close();
@@ -160,7 +177,7 @@ public class DataMerger extends Task {
      */
     private void findMergeAttribsIndexes(Instances dataHeaders) throws TaskException {
         
-        if (this.getParameterVal(MERGE_ATTR) != null) {
+        if (this.hasParameter(MERGE_ATTR)) {
 
             String [] mergeAttribsNames = this.getParameterVal(MERGE_ATTR).split("\\s+");
             this.mergeAttribsIdxs = new int[mergeAttribsNames.length];
@@ -174,6 +191,7 @@ public class DataMerger extends Task {
                             + mergeAttribsNames[i] + " missing.");
                 }
             }
+            this.uniq = this.getBooleanParameterVal(UNIQ);
         }
     }
 
@@ -184,9 +202,9 @@ public class DataMerger extends Task {
      * @param dataPos the current positions in the data
      * @return the number of data set whose current instance should go first
      */
-    private int selectFirst(Instances[] data, int[] dataPos) {
+    private Vector<Integer> selectFirst(Instances[] data, int[] dataPos) {
         
-        int bestIdx = -1;
+        Vector<Integer> bestIdxs = new Vector<Integer>();
         double [] bestVals = null;
 
         if (this.mergeAttribsIdxs != null){
@@ -199,25 +217,31 @@ public class DataMerger extends Task {
                 continue;
             }
             if (this.mergeAttribsIdxs == null){ // if there are no merged attributes, always select the first one
-                return i;
+                bestIdxs.add(i);
+                return bestIdxs;
             }
             for (int j = 0; j < this.mergeAttribsIdxs.length; ++j){
                 double val = data[i].get(dataPos[i]).value(this.mergeAttribsIdxs[j]);
+
                 if (val < bestVals[j]){
-                    bestIdx = i;
+                    bestIdxs.clear();
+                    bestIdxs.add(i);
                     break;
                 }
                 else if (val > bestVals[j]){
                     break;
                 }
+                if (j == this.mergeAttribsIdxs.length-1){
+                    bestIdxs.add(i);
+                }
             }
-            if (bestIdx == i){
+            if (bestIdxs.size() == 1 && bestIdxs.get(0) == i){
                 for (int j = 0; j < this.mergeAttribsIdxs.length; ++j){
                     bestVals[j] = data[i].get(dataPos[i]).value(this.mergeAttribsIdxs[j]);
                 }
             }
         }
-        return bestIdx;
+        return bestIdxs;
     }
 
 

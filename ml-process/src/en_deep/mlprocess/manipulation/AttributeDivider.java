@@ -30,43 +30,131 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Attribute;
+import weka.core.Instance;
+import weka.core.Instances;
 
 /**
- *
+ * This divides an attribute in two, filling the missing values with an empty one.
  * @author Ondrej Dusek
  */
-public class AttributeDivider extends Task {
+public class AttributeDivider extends AbstractAttributeManipulation {
     
+    /* CONSTANTS */
+
+    /** The 'attr' parameter name */
+    private static final String ATTR = "attr";
+    /** The 'other_name' parameter name */
+    private static final String OTHER_NAME = "other_name";
+    /** The 'removed_vals' parameter name */
+    private static final String REMOVED_VALS = "removed_vals";
+
+    /* DATA */
+
+    /** The name of the attribute that should be split in two. */
+    private String attribName;
+    /** The name of the newly created attribute */
+    private String newName;
+    /** Prefixes of values that should be moved to the new attribute */
+    private String [] moveValues;
+
+    /* METHODS */
 
     /**
      * This creates a new {@link AttributeDivider} task, checking the numbers of inputs and outputs
      * and the necessary parameters:
      * <ul>
+     * <li><tt>attr</tt> -- the name of the attribute that should be split in two.</li>
+     * <li><tt>other_name</tt> -- the name of the new attribute</li>
+     * <li><tt>removed_vals</tt> -- space-separated prefixes of all values that should be moved
+     * to the other attribute</li>
      * </ul>
+     * The number of inputs must be the same as the number of outputs.
      */
     public AttributeDivider(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
+
+        if (!this.hasParameter(ATTR) || !this.hasParameter(OTHER_NAME) || !this.hasParameter(REMOVED_VALS)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
+        }
+        this.attribName = this.getParameterVal(ATTR);
+        this.newName = this.getParameterVal(OTHER_NAME);
+        this.moveValues = this.getParameterVal(REMOVED_VALS).split("\\s+");
     }
 
 
+    /**
+     * Divide the attribute in the given data set.
+     * @param data the data set to be processed
+     */
+    protected void manipulateAttributes(Instances data) throws TaskException{
 
-    @Override
-    public void perform() throws TaskException {
-        
-        try {
-
+        if (data.attribute(this.attribName) == null){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "The attribute "
+                    + this.attribName + " has not been found in " + data.relationName());
         }
-/*        catch (TaskException e){
-            throw e;
-        }*/
-        catch (Exception e) {
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
+        if (data.attribute(this.newName) != null){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "The attribute "
+                    + this.newName + " already exists in " + data.relationName());
+        }
+
+        // find out which values should be moved
+        Attribute attr = data.attribute(this.attribName);
+        HashSet<String> kept = new HashSet<String>(), moved = new HashSet<String>();
+        String [] stringVals = new String [attr.numValues()];
+
+        for (int i = 0; i < stringVals.length; ++i){
+
+            stringVals[i] = attr.value(i);
+            boolean isMoved = false;
+            
+            for (int j = 0; !isMoved && j < this.moveValues.length; ++j){
+                if (stringVals[i].startsWith(this.moveValues[j])){
+                    moved.add(stringVals[i]);
+                    isMoved = true;
+                }
+            }
+            if (!isMoved){
+                kept.add(stringVals[i]);
+            }
+        }
+        kept.add(EMPTY);
+        moved.add(EMPTY);
+
+        // create new attributes and delete the old one
+        String [] keptArr = kept.toArray(new String [0]);
+        String [] movedArr = moved.toArray(new String [0]);
+        Arrays.sort(keptArr);
+        Arrays.sort(movedArr);
+        Attribute keptAttr = new Attribute(attr.name(), Arrays.asList(keptArr));
+        Attribute movedAttr = new Attribute(this.newName, Arrays.asList(movedArr));
+
+        int attrIndex = attr.index();
+        double [] numericVals = data.attributeToDoubleArray(attrIndex);
+        data.deleteAttributeAt(attrIndex);
+        data.insertAttributeAt(keptAttr, attrIndex);
+        data.insertAttributeAt(movedAttr, attrIndex+1);
+
+        // move the values to the new attributes
+        for (int i = 0; i < numericVals.length; ++i){
+            Instance inst = data.get(i);
+
+            if (moved.contains(stringVals[(int) numericVals[i]])){
+                inst.setValue(attrIndex, EMPTY);
+                inst.setValue(attrIndex+1, stringVals[(int) numericVals[i]]);
+            }
+            else {
+                inst.setValue(attrIndex, stringVals[(int) numericVals[i]]);
+                inst.setValue(attrIndex+1, EMPTY);
+            }
         }
     }
-
 }

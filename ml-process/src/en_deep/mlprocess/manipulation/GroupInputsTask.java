@@ -28,7 +28,6 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
@@ -43,7 +42,7 @@ import java.util.Vector;
  *      inputs and some interface that this class will implement and whose method will be called in Task.createTask().
  * @author Ondrej Dusek
  */
-public abstract class GroupInputsTask extends Task {
+public abstract class GroupInputsTask extends MultipleOutputsTask {
 
     /* CONSTANTS */
 
@@ -54,8 +53,6 @@ public abstract class GroupInputsTask extends Task {
 
     /** The patterns for sorting the inputs */
     protected String [] patterns;
-    /** Output file prefix, if this task resulted from task expansion */
-    protected String outPrefix;
 
     /* METHODS */
 
@@ -68,22 +65,11 @@ public abstract class GroupInputsTask extends Task {
 
         super(id, parameters, input, output);
 
-        for (String file : this.output){
-            if (!file.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "Outputs must contain '**' patterns.");
-            }
-        }
         if (this.input.isEmpty()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Must have some inputs.");
         }
         if (this.output.isEmpty()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have some outputs.");
-        }
-
-        // set the output file prefix
-        this.outPrefix = this.getExpandedPartOfId();
-        if (!this.outPrefix.equals("")){
-            this.outPrefix += "_";
         }
     }
 

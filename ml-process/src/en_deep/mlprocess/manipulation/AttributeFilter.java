@@ -114,11 +114,6 @@ public class AttributeFilter extends Task {
      * <li><tt>merge_inputs</tt> -- merge all the inputs before processing (inputs are assumed to have the same format,
      *      including the possible values</li>
      * </ul>
-     *
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
      */
     public AttributeFilter(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException {

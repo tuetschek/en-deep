@@ -43,7 +43,7 @@ import weka.filters.unsupervised.instance.SubsetByExpression;
  * This class splits the data into equal pieces by lines.
  * @author Ondrej Dusek
  */
-public class DataSplitter extends Task {
+public class DataSplitter extends MultipleOutputsTask {
 
     /* CONSTANTS */
 
@@ -54,12 +54,10 @@ public class DataSplitter extends Task {
     /** The one_vs_others parameter name */
     private static final String ONE_VS_OTHERS = "one_vs_others";
 
-    /** The expanded part of the id */
-    private String outPrefix;
+    /* DATA */
+
     /** The selected value, if one_vs_others is set */
     private String selectedVal;
-
-    /* DATA */
 
     /* METHODS */
 
@@ -107,22 +105,9 @@ public class DataSplitter extends Task {
             }
         }
 
-        this.outPrefix = this.getExpandedPartOfId();
-        if (!this.outPrefix.equals("")){
-            this.outPrefix += "_";
-        }
-
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Numbers of inputs and outputs" +
                     "don't match.");
-        }
-        // checks if there are "**" patterns in outputs (just simple string check is sufficient, Task expansion
-        // ensures that there are no unwanted "*"'s.
-        for (String outputFile: this.output){
-            if (!outputFile.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "There must be '**' patterns" +
-                        "in all outputs.");
-            }
         }
     }
 
