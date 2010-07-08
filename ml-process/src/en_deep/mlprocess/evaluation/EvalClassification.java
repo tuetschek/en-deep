@@ -39,6 +39,8 @@ import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.SortLabels;
 
 /**
  * This computes accuracy, precision, recall and F1 (labeled and unlabeled) for the
@@ -173,6 +175,14 @@ public class EvalClassification extends Task {
                     "Attribute for evaluation not found or not nominal, or the numbers of instances in gold " +
                     "and evaluation data mismatch (" + goldFile + " / " + testFile + ").");
         }
+        if (!attrGold.equals(attrTest) && attrGold.numValues() == attrTest.numValues()){
+            gold = this.sortLabels(gold, attrGold);
+            test = this.sortLabels(test, attrTest);
+        }
+        if (!attrGold.equals(attrTest)){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                    "The class attributes in " + goldFile + " and " + testFile + " are not the same.");
+        }
 
         // test everything
         double [] goldenValues = gold.attributeToDoubleArray(attrGold.index());
@@ -187,6 +197,22 @@ public class EvalClassification extends Task {
         }
 
         return new Pair<Stats, Stats>(labeled, unlabeled);
+    }
+
+    /**
+     * This sorts the labels of the given attribute alphabetically (changing the data values)
+     * @param data the data to be processed
+     * @param attr the attribute whose labels should be sorted
+     * @return the data with the attribute labels sorted
+     */
+    private Instances sortLabels(Instances data, Attribute attr) throws Exception {
+
+        SortLabels sorting = new SortLabels();
+        sorting.setAttributeIndices(Integer.toString(attr.index() + 1));
+        sorting.setInputFormat(data);
+        
+        data = Filter.useFilter(data, sorting);
+        return data;
     }
 
 

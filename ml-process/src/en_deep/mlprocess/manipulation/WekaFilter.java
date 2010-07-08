@@ -146,10 +146,10 @@ public class WekaFilter extends Task {
             Constructor filterConstructor = filterClass.getConstructor();
             filter = (Filter) filterConstructor.newInstance();
 
-            filter.setInputFormat(data);
             if (filter instanceof OptionHandler){
                 ((OptionHandler) filter).setOptions(StringUtils.getWekaOptions(this.parameters));
             }
+            filter.setInputFormat(data); // first, parameters must be set, then the input format
         }
         catch (Exception e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Filter class not found or"

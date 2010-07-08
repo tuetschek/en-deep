@@ -27,7 +27,6 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.utils.FileUtils;
@@ -37,6 +36,7 @@ import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
 import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.MergeManyValues;
 import weka.filters.unsupervised.instance.SubsetByExpression;
 
 /**
@@ -201,18 +201,17 @@ public class DataSplitter extends MultipleOutputsTask {
                     + this.getParameterVal(BY_ATTRIBUTE) + " or the value " + this.selectedVal + " missing.");
         }
 
-        SubsetByExpression filter = new SubsetByExpression();
-        filter.setInputFormat(data);
-
-        filter.setExpression("ATT" + (splitAttrib.index()+1) + " is '" + this.selectedVal + "'");
-        Instances positive = Filter.useFilter(data, filter);
-        positive.setRelationName(data.relationName());
-
-        filter = new SubsetByExpression(); // alas, apparently WEKA filters aren't reusable
-        filter.setInputFormat(data);
-        filter.setExpression("not (ATT" + (splitAttrib.index()+1) + " is '" + this.selectedVal + "')");
-        Instances negative = Filter.useFilter(data, filter);
-        negative.setRelationName(data.relationName());
+        Instances positive = this.subsetByExpression(data,
+                "ATT" + (splitAttrib.index()+1) + " is '" + this.selectedVal + "'");       
+        Instances negative = this.subsetByExpression(data,
+                "not (ATT" + (splitAttrib.index() + 1) + " is '" + this.selectedVal + "')");
+        
+        positive = this.mergeAttributeValues(positive, this.selectedVal, splitAttrib.index()+1, "first-last");
+        negative = this.mergeAttributeValues(negative,
+                splitAttrib.indexOfValue(this.selectedVal) == 0 ? splitAttrib.value(1) : splitAttrib.value(0),
+                splitAttrib.index()+1,
+                splitAttrib.indexOfValue(this.selectedVal) == 0 ? "1,2" :
+                    "1," + (splitAttrib.indexOfValue(this.selectedVal)+1));
 
         Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
 
@@ -221,6 +220,18 @@ public class DataSplitter extends MultipleOutputsTask {
         FileUtils.writeArff(outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-other"),
                 negative);
 
+    }
+
+    private Instances subsetByExpression(Instances data, String expr) throws Exception {
+
+        SubsetByExpression filter = new SubsetByExpression();
+
+        filter.setInputFormat(data);
+        filter.setExpression(expr);
+        Instances selected = Filter.useFilter(data, filter);
+        selected.setRelationName(data.relationName());
+        
+        return selected;
     }
 
 
@@ -256,6 +267,29 @@ public class DataSplitter extends MultipleOutputsTask {
             FileUtils.writeArff(outputFile, part);
             pos += partLen;
         }
+    }
+
+    /**
+     * This merges the given attribute values using the MergeManyValues filter.
+     *
+     * @param data the data to be processed
+     * @param newLabel the new (merged) value label
+     * @param attIdx the index of the attribute to be processed (1-based)
+     * @param range list/range of values to be merged (1-based)
+     * @return the data with the merged attribute values
+     */
+    private Instances mergeAttributeValues(Instances data, String newLabel, int attIdx, String range) throws Exception {
+
+        MergeManyValues filter = new MergeManyValues();
+        
+        filter.setLabel(newLabel);
+        filter.setAttributeIndex(Integer.toString(attIdx));
+        filter.setMergeValueRange(range);
+        filter.setInputFormat(data);
+        String oldName = data.relationName();
+        data = Filter.useFilter(data, filter);
+        data.setRelationName(oldName);
+        return data;
     }
 
 
