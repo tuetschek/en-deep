@@ -199,10 +199,10 @@ public class WekaClassifier extends GeneralClassifier {
 
         // read the evaluation train and find out the target class
         Instances eval = FileUtils.readArff(evalFile);
-        Instances output;
+        Instances outData;
 
         this.findTargetFeature(train, eval);
-        output =  new Instances(eval); // save a copy w/o attribute preselection
+        outData =  new Instances(eval); // save a copy w/o attribute preselection
 
         // pre-select the attributes
         this.attributesPreselection(train, eval);
@@ -219,7 +219,7 @@ public class WekaClassifier extends GeneralClassifier {
             
             if (!this.probabilities){ // just set the most likely class
                 double val = this.classif.classifyInstance(eval.get(i));
-                output.get(i).setClassValue(val);
+                outData.get(i).setClassValue(val);
             }
              else { // save the probability distribution aside
                 distributions[i] = this.classif.distributionForInstance(eval.get(i));
@@ -228,11 +228,11 @@ public class WekaClassifier extends GeneralClassifier {
 
         // store the probability distributions, if supposed to
         if (this.probabilities){
-            this.addDistributions(output, distributions);
+            this.addDistributions(outData, distributions);
         }
         
         // write the output
-        FileUtils.writeArff(outFile, output);
+        FileUtils.writeArff(outFile, outData);
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
     }
@@ -312,15 +312,15 @@ public class WekaClassifier extends GeneralClassifier {
      * This adds the results of the classification -- the probability distributions of classes for each
      * instance -- to the evaluation data as new features.
      *
-     * @param output the output data
+     * @param outData the output data
      * @param distributions the classes probability distributions for the individual instances
      */
-    private void addDistributions(Instances output, double [][] distributions) {
+    private void addDistributions(Instances outData, double [][] distributions) {
         
-        int index = addDistributionFeatures(output);
+        int index = addDistributionFeatures(outData);
         int instNo = 0;
 
-        Enumeration<Instance> instances = output.enumerateInstances();
+        Enumeration<Instance> instances = outData.enumerateInstances();
         while (instances.hasMoreElements()) {
 
             Instance inst = instances.nextElement();

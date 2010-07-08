@@ -208,7 +208,9 @@ public class DataSplitter extends MultipleOutputsTask {
         Instances positive = Filter.useFilter(data, filter);
         positive.setRelationName(data.relationName());
 
-        filter.setExpression("not " + filter.getExpression());
+        filter = new SubsetByExpression(); // alas, apparently WEKA filters aren't reusable
+        filter.setInputFormat(data);
+        filter.setExpression("not (ATT" + (splitAttrib.index()+1) + " is '" + this.selectedVal + "')");
         Instances negative = Filter.useFilter(data, filter);
         negative.setRelationName(data.relationName());
 

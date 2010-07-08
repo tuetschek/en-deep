@@ -123,18 +123,16 @@ public abstract class GeneralClassifier extends Task {
             }
             missing = train.attribute(classArg);
         }
-
-        // no attribute from train is missing in eval
-        if (missing == null) {
-            train.setClassIndex(train.numAttributes() - 1);
-            eval.setClass(eval.attribute(train.attribute(train.numAttributes() - 1).name()));
+        // no attribute from train is missing in eval, no attribute preset -> select the last one
+        else if(missing == null) {
+            missing = train.attribute(train.numAttributes() - 1);
+            eval.deleteAttributeAt(eval.attribute(missing.name()).index());
         }
-        else {
-            Attribute att = missing.copy(missing.name());
-            eval.insertAttributeAt(att, eval.numAttributes());
-            eval.setClass(att);
-            train.setClass(missing);
-        }
+        
+        Attribute att = missing.copy(missing.name());
+        eval.insertAttributeAt(att, missing.index());
+        eval.setClassIndex(missing.index());
+        train.setClassIndex(missing.index());
     }
 
     /**
