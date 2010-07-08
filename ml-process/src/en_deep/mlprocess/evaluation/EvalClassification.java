@@ -176,8 +176,11 @@ public class EvalClassification extends Task {
                     "and evaluation data mismatch (" + goldFile + " / " + testFile + ").");
         }
         if (!attrGold.equals(attrTest) && attrGold.numValues() == attrTest.numValues()){
+
             gold = this.sortLabels(gold, attrGold);
             test = this.sortLabels(test, attrTest);
+            attrGold = gold.attribute(attr);
+            attrTest = test.attribute(attr);
         }
         if (!attrGold.equals(attrTest)){
             throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
