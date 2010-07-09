@@ -192,8 +192,8 @@ class ScenarioParser {
         Occurrences oc;
 
         // treat "**" and "***" as "*" in patterns
-        if (file.matches(".*\\*+.*") && !file.matches(".*\\*[^*]+\\*.*")){
-            file = file.replaceFirst("\\*+", "*");
+        if (file.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?.*") && !file.matches(".*\\*[^*]+\\*.*")){
+            file = file.replaceFirst("\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?", "*");
         }
 
         oc = this.fileOccurrences.get(file);

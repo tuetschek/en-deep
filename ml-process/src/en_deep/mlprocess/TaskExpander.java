@@ -298,14 +298,13 @@ public class TaskExpander {
         // must be always a valid path name, not a pattern, and the filePattern must not be empty
         if (pattern.indexOf(File.separator) != -1){
             dirName = pattern.substring(0, pattern.lastIndexOf(File.separator));
-            filePattern = StringUtils.truncateFileName(pattern);
+            filePattern = StringUtils.normalizeFilePattern(StringUtils.truncateFileName(pattern));
         }
         else {
             dirName = ".";
-            filePattern = pattern;
+            filePattern = StringUtils.normalizeFilePattern(pattern);
         }
 
-        filePattern = filePattern.replaceFirst("\\*+", "*"); // ensure we have just one star in the pattern
         files = new File(dirName).list();
 
         // no files in the directory
@@ -318,9 +317,9 @@ public class TaskExpander {
         // find all matching files and push the expansions or whole file names to the results list
         for (String file : files){
 
-            String expansion;
+            String expansion = StringUtils.matches(file, filePattern);
 
-            if ((expansion = this.matches(filePattern, file)) != null && new File(dirName + File.separator + file).isFile()){
+            if (expansion != null && new File(dirName + File.separator + file).isFile()){
                 if (justExpansions){
                     ret.add(expansion);
                 }
@@ -416,25 +415,6 @@ public class TaskExpander {
         this.expandOutputsAndDeps(task);
     }
 
-    /**
-     * Matches a file name pattern against a real file name. Only patterns
-     * with just one single "*" are supported. Returns null or the expansion of the pattern.
-     *
-     * @param pattern the pattern (see detailed method description for restrictions)
-     * @param fileName the file name to match against the pattern
-     * @return the expansion of the pattern if successful, null otherwise
-     */
-    private String matches(String pattern, String fileName) {
-
-        String beg = pattern.substring(0, pattern.indexOf("*"));
-        String end = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);
-
-        if (fileName.startsWith(beg) && fileName.endsWith(end)
-                && fileName.length() >= beg.length() + end.length()){
-            return fileName.substring(beg.length(), fileName.length() - end.length());
-        }
-        return null;
-    }
 
     /**
      * This removes all the unnecessary expansions of prerequisites of the given task. E.g. if

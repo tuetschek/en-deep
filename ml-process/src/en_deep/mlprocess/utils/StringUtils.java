@@ -332,16 +332,47 @@ public class StringUtils {
 
     /**
      * This returns the expansion, if the given string matches the given "*"-pattern (only one "*" allowed).
+     * If file sub-specifications are needed, call {@link #normalizeFilePattern(java.lang.String)} first.
+     * 
      * @param string the string to be tested
      * @param pattern the pattern to be matched
      * @return the expansion, if the string matches the pattern, or null
      */
     public static String matches(String string, String pattern){
 
+        pattern = pattern.replaceFirst("\\*+", "*"); // ensure we have just one star in the pattern
+
         String patternStart = pattern.substring(0, pattern.indexOf("*"));
         String patternEnd = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);
 
-        return (string.startsWith(patternStart) && string.endsWith(patternEnd))
-                ? string.substring(patternStart.length(), string.length()-patternEnd.length()): null;
+        if (string.startsWith(patternStart) && string.endsWith(patternEnd)
+                && string.length() >= patternStart.length() + patternEnd.length()){
+            return string.substring(patternStart.length(), string.length()-patternEnd.length());
+        }
+        return null;
+    }
+
+    /**
+     * This simplifies a filename pattern, i.e. removes all the file sub-specifications and puts them into
+     * the constant part of the pattern, so that only a pattern with a single "*"/"***" remains.
+     *
+     * @param pattern the pattern to be processed
+     * @return a simplified version of the pattern
+     */
+    public static String normalizeFilePattern(String pattern) {
+
+        if (pattern.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?).*")){
+
+            if (pattern.matches(".*\\*+\\|\\|[^|]+\\|\\|.*")){ // ||file|| pattern - just one file matches
+                return pattern.replaceFirst("\\*\\|\\|([^|]+)\\|\\|", "$1");
+            }
+            else if (pattern.matches(".*\\*\\|[^|]+\\|\\|.*")){ // must end with a specified suffix
+                return pattern.replaceFirst("(\\*+)\\|([^|]+)\\|\\|", "$1$2");
+            }
+            else if (pattern.matches(".*\\*\\|\\|[^|]+\\|.*")){ // must begin with a specified prefix
+                return pattern.replaceFirst("(\\*+)\\|\\|([^|]+)\\|", "$2$1");
+            }
+        }
+        return pattern;
     }
 }

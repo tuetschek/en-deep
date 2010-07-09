@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.Serializable;
 import java.io.File;
 import java.util.Comparator;
@@ -355,25 +356,26 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
 
 
     /**
-     * Creates a copy of this task with input file patterns "*" expanded for
-     * the given string. All the other parameters, including dependencies, are preserved.
+     * Creates a copy of this task with input file patterns "*" (incl. "||"sub-specifications) expanded for
+     * the given string. All the other properties of the original task, including dependencies, are preserved.
      *
-     * @param expPat the pattern expansion to be used
-     * @return a copy of this task, expanded
+     * @param expansion the pattern expansion to be used
+     * @return a copy of this task, expanded, or a total copy, if the expansions are not valid
      */
-    public TaskDescription expand(String expPat) {
-        
-        TaskDescription copy = new TaskDescription(this, expPat);
+    public TaskDescription expand(String expansion) {
 
-        for (int i = 0; i < copy.input.size(); ++i){
+        TaskDescription copy = new TaskDescription(this, expansion);
 
-            String elem = copy.input.get(i);
-            int pos = elem.indexOf("*");
-            if (pos != -1 && pos == elem.lastIndexOf("*")){
-                elem = elem.substring(0, pos) + expPat
-                        + (elem.length() > pos + 1 ? elem.substring(pos + 1) : "");
+        for (int i = 0; i < this.input.size(); ++i){
+
+            String pattern = StringUtils.normalizeFilePattern(copy.input.get(i));
+            int pos = pattern.indexOf("*");
+            
+            if (pos != -1 && pos == pattern.lastIndexOf("*")){
+                pattern = pattern.substring(0, pos) + expansion
+                        + (pattern.length() > pos + 1 ? pattern.substring(pos + 1) : "");
             }
-            copy.input.set(i, elem);
+            copy.input.set(i, pattern);
         }
 
         return copy;
@@ -383,22 +385,23 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Creates a copy of this task the input file pattern "***" at the given position expanded for
      * the given string. All the other parameters, including dependencies, are preserved.
-     * If there's no "***" at the given position in the inputs, just a copy is returned.
+     * If there's no "***" at the given position in the inputs or the pattern "||"-sub-specification
+     * doesn't match, this returns null.
      *
-     * @param expPat the pattern expansion to be used
-     * @return a copy of this task, expanded
+     * @param expansion the pattern expansion to be used
+     * @return a copy of this task, expanded, or null if the expansion is not valid.
      */
-    public TaskDescription expand(String expPat, int inputNo){
+    public TaskDescription expand(String expansion, int inputNo){
 
-        TaskDescription copy = new TaskDescription(this, expPat);
-        String elem = copy.input.get(inputNo);
-        int pos = elem.indexOf("***");
+        TaskDescription copy = new TaskDescription(this, expansion);
+        String pattern = StringUtils.normalizeFilePattern(copy.input.get(inputNo));
+        int pos = pattern.indexOf("***");
 
-        if (pos != -1 && pos == elem.lastIndexOf("***")){
-            elem = elem.substring(0, pos) + expPat
-                    + (elem.length() < pos - 1 ? elem.substring(pos + 1) : "");
+        if (pos != -1 && pos == pattern.lastIndexOf("***")){
+            pattern = pattern.substring(0, pos) + expansion
+                    + (pattern.length() < pos - 1 ? pattern.substring(pos + 1) : "");
         }
-        copy.input.set(inputNo, elem);
+        copy.input.set(inputNo, pattern);
 
         return copy;
     }
