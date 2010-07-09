@@ -60,6 +60,12 @@ public class SettingSelector extends WekaSettingTrials {
      * the file extension (automatically adds ".arff" for data and ".txt" for statistics)</li>
      * </ul>
      * <p>
+     * There is one voluntary parameter:
+     * </p>
+     * <ul>
+     * <li><tt>delete_tempfiles</tt> -- deletes all the tempfiles afterwards</li>
+     * </ul>
+     * <p>
      * There must be exactly two inputs (first of which is the training data and second the
      * testing data) and three outputs (one is for the classification output, one for
      * the best classification statistics and one for the best parameter set).

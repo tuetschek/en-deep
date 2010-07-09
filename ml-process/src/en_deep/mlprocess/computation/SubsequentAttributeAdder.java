@@ -80,6 +80,7 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
      * <ul>
      * <li><tt>start</tt> -- the starting number of attributes</li>
      * <li><tt>end</tt> -- the maximum number of attributes that are to be tried</li>
+     * <li><tt>delete_tempfiles</tt> -- deletes all the tempfiles afterwards</li>
      * </ul>
      * There is a special parameter reserved for the program (the process ends with this
      * parameter). If the task is run with this parameter, more inputs are allowed.

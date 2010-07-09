@@ -149,8 +149,9 @@ public class GreedyAttributeSearch extends EvalSelector {
      * <li><tt>attrib_order</tt> -- if this parameter is set, the last input file is considered to be
      * the file with the desired order in which the attributes with the same performance should be added to
      * the set of used attributes.</li>
-     * <li><tt>startOutOf</tt> -- if the <tt>attrib_order</tt> parameter is set, this limits the selection
+     * <li><tt>start_outof</tt> -- if the <tt>attrib_order</tt> parameter is set, this limits the selection
      * of combinations to the first <i>n</i> attributes from the attribute order file. Must be greater than start.</li>
+     * <li><tt>delete_tempfiles</tt> -- deletes all the tempfiles but the best result of each round</li>
      * </li>
      * There are special parameters reserved for the program (which control the process):
      * <ul>
