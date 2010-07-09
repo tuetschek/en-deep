@@ -96,12 +96,12 @@ public class SumEval extends Task {
             out.println(totalLabelled.toString());
             out.println(totalUnlabelled.toString());
             out.println("accuracy:" + totalLabelled.getAcc());
-            out.println("labelled precision:" + totalLabelled.getPrec());
-            out.println("labelled recall:" + totalLabelled.getRecall());
-            out.println("labelled f1:" + totalLabelled.getF1());
-            out.println("unlabelled precision:" + totalUnlabelled.getPrec());
-            out.println("unlabelled recall:" + totalUnlabelled.getRecall());
-            out.println("unlabelled f1:" + totalUnlabelled.getF1());
+            out.println("labeled precision:" + totalLabelled.getPrec());
+            out.println("labeled recall:" + totalLabelled.getRecall());
+            out.println("labeled f1:" + totalLabelled.getF1());
+            out.println("unlabeled precision:" + totalUnlabelled.getPrec());
+            out.println("unlabeled recall:" + totalUnlabelled.getRecall());
+            out.println("unlabeled f1:" + totalUnlabelled.getF1());
 
             out.close();
 
