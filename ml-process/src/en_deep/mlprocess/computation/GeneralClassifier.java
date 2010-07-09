@@ -68,8 +68,8 @@ public abstract class GeneralClassifier extends Task {
         }
 
         // check if there are no patterns in inputs and outputs
-        this.eliminatePatterns(input);
-        this.eliminatePatterns(output);
+        this.eliminatePatterns(this.input);
+        this.eliminatePatterns(this.output);
     }
 
     /**

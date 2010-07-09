@@ -179,10 +179,10 @@ public class GreedyAttributeSearch extends EvalSelector {
         this.checkParameters();
 
         // check the number of inputs and outputs
-        if (this.round == this.start && input.size() != 2 || input.size() < 2 || input.size() % 2 != 0){
+        if (this.round == this.start && this.input.size() != 2 || this.input.size() < 2 || this.input.size() % 2 != 0){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
-        if (output.size() != 3){
+        if (this.output.size() != 3){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }

@@ -96,7 +96,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
         this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
-        if (output.size() != 3){
+        if (this.output.size() != 3){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }

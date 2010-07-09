@@ -156,7 +156,7 @@ public class ConcatClassifier extends Task {
             }
             catch (Exception e) {
                 throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + concatAttNames[i]
-                        + " not found in " + input);
+                        + " not found in " + data.relationName());
             }
         }
 

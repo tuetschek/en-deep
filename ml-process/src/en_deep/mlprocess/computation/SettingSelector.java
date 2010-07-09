@@ -87,7 +87,7 @@ public class SettingSelector extends WekaSettingTrials {
         super(id, parameters, input, output);
 
         // check the number of inputs and outputs
-        if ((!this.evalMode && input.size() != 2) || (input.size() < 2) || (input.size() % 2 != 0)){
+        if ((!this.evalMode && this.input.size() != 2) || (this.input.size() < 2) || (this.input.size() % 2 != 0)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
     }
