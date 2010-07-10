@@ -252,7 +252,7 @@ public class CollectingAdder extends Task {
 
         int numTokens = 0;
         Object [] data = new Object [this.numAttribs];
-       
+
         while (numTokens < data.length){
 
             this.arffTokenizer.nextToken();
@@ -275,7 +275,7 @@ public class CollectingAdder extends Task {
                             data[numTokens] = Double.valueOf(this.arffTokenizer.sval);
                         }
                     }
-                    catch (Exception e){                       
+                    catch (Exception e){
                     }
                     numTokens++;
                     break;
@@ -293,26 +293,23 @@ public class CollectingAdder extends Task {
      */
     private void init() throws IOException {
 
-        RandomAccessFile ra = new RandomAccessFile(this.mainFileName, "r");        
-        while (!ra.readLine().matches("^@[Dd][Aa][Tt][Aa]\\s*")){
-        }
-        long pos = ra.getFilePointer();
-        ra.close();
-
         FileInputStream in = new FileInputStream(this.mainFileName);
-        in.skip(pos);
 
         this.arffTokenizer = new StreamTokenizer(new InputStreamReader(in));
         this.arffTokenizer.resetSyntax();
         this.arffTokenizer.whitespaceChars(0, ' ');
-        this.arffTokenizer.wordChars(' '+1,'\u00FF');
-        this.arffTokenizer.whitespaceChars(',',',');
+        this.arffTokenizer.wordChars(' ' + 1, '\u00ff');
+        this.arffTokenizer.whitespaceChars(',', ',');
         this.arffTokenizer.commentChar('%');
         this.arffTokenizer.quoteChar('"');
         this.arffTokenizer.quoteChar('\'');
         this.arffTokenizer.ordinaryChar('{');
         this.arffTokenizer.ordinaryChar('}');
         this.arffTokenizer.eolIsSignificant(true);
+        while (!"@data".equalsIgnoreCase(this.arffTokenizer.sval)) {
+            // skip headers
+            this.arffTokenizer.nextToken();
+        }
     }
 
     /**

@@ -32,6 +32,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
+import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -379,7 +380,7 @@ public class StToArff extends StManipulation {
             }
         }
     }
- 
+
 
     /**
      * Writes output ARFF files headers for the given predicates and file names. Heeds the "multiclass" parameter
@@ -531,30 +532,11 @@ public class StToArff extends StManipulation {
     private void stringToNominal(String predicate) throws Exception {
 
         Instances bulk = this.getAllData(this.usedFiles.get(predicate)); // read all instances
-        String oldName = bulk.relationName();
-        StringToNominal filter = new StringToNominal();
-        StringBuilder toConvert = new StringBuilder();
-        String newHeader;
-
-        // getWord the list of attributes to be converted
-        for (int i = 0; i < bulk.numAttributes(); ++i){
-            if (bulk.attribute(i).isString()){
-                if (toConvert.length() != 0){
-                    toConvert.append(",");
-                }
-                toConvert.append(Integer.toString(i+1));
-            }
-        }
-
-        // convert the strings to nominal
-        filter.setAttributeRange(toConvert.toString());
-        filter.setInputFormat(bulk);
-        bulk = Filter.useFilter(bulk, filter);
+        bulk = FileUtils.allStringToNominal(bulk);
 
         // write the new nominal header into the old files
         bulk.delete();
-        bulk.setRelationName(oldName);
-        newHeader = bulk.toString();
+        String newHeader = bulk.toString();
         newHeader = newHeader.substring(0, newHeader.indexOf("\n@data\n") + 1);
         for (String file : this.usedFiles.get(predicate)){
             this.rewriteHeader(file, newHeader);

@@ -31,6 +31,8 @@ import java.io.*;
 import java.nio.channels.*;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * A class that unites some basic file manipulation functions.
@@ -201,6 +203,37 @@ public class FileUtils{
         File file = new File(fileName);
 
         return file.delete();
+    }
+
+    /**
+     * This converts all the string attributes in the data set to nominal attributes.
+     * @param data the data to be processed
+     * @return the data, with string attributes converted to nominal
+     * @throws Exception
+     */
+    public static Instances allStringToNominal(Instances data) throws Exception {
+
+        StringToNominal filter = new StringToNominal();
+        StringBuilder toConvert = new StringBuilder();
+        String oldName = data.relationName();
+
+        // get the list of attributes to be converted
+        for (int i = 0; i < data.numAttributes(); ++i) {
+            if (data.attribute(i).isString()) {
+                if (toConvert.length() != 0) {
+                    toConvert.append(",");
+                }
+                toConvert.append(Integer.toString(i + 1));
+            }
+        }
+
+        // convert the strings to nominal
+        filter.setAttributeRange(toConvert.toString());
+        filter.setInputFormat(data);
+        data = Filter.useFilter(data, filter);
+        data.setRelationName(oldName);
+        
+        return data;
     }
 
 }
