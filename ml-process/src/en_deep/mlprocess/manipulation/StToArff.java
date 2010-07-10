@@ -73,6 +73,8 @@ public class StToArff extends StManipulation {
     private static final String DIVIDE_SENSES = "divide_senses";
     /** The 'filt_pos' parameter name */
     private static final String FILTER_POS = "filt_pos";
+    /** The 'one_file' parameter name */
+    private static final String ONE_FILE_MODE = "one_file";
 
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
@@ -111,6 +113,8 @@ public class StToArff extends StManipulation {
         "@ATTRIBUTE pred STRING"
     };
 
+    private static final String FILE_ATTR_HEADER = "@ATTRIBUTE file STRING";
+
     
     /** Index of the FEAT attribute in the output ARFF file */
     private static final int IDXO_FEAT = 7;
@@ -127,6 +131,8 @@ public class StToArff extends StManipulation {
     private boolean divideSenses;
     /** Prune the argument candidates to the syntactical neighborhood of the predicate ? */
     private boolean prune;
+    /** Is the whole thing running in one-file mode */
+    private boolean oneFileMode;
     /** List of POS which should be filtered on the output (or null if none) */
     private String [] filteredPOS;
 
@@ -164,6 +170,8 @@ public class StToArff extends StManipulation {
      * <li><tt>prune</tt> -- if set, the argument candidates are pruned (syntactical neighborhood of the predicate only)</li>
      * <li><tt>filt_pos</tt> -- (optional) provide a space-separated list of POS which should be filtered at the output,
      * e.g. meaningful for English are: "'' ( ) , . : `` EX HYPH LS NIL POS"</li>
+     * <li><tt>one_file</tt> -- this turns the one-file-mode on. If set, the headers won't be set to nominal and the output
+     * will go into one file only</li>
      * </ul>
      * <p>
      * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
@@ -186,6 +194,7 @@ public class StToArff extends StManipulation {
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
         this.prune = this.getBooleanParameterVal(PRUNE);
+        this.oneFileMode = this.getBooleanParameterVal(ONE_FILE_MODE);
 
         // initialize string parameter
         if (this.getParameterVal(FILTER_POS) != null){
@@ -197,18 +206,27 @@ public class StToArff extends StManipulation {
 
         // initialize the used output files lists
         this.usedFiles = HashMultimap.create();
-        this.writtenHeaders = new HashSet<String>();
+        if (!this.oneFileMode){
+            this.writtenHeaders = new HashSet<String>();
+        }
+
 
         // check outputs
         if (input.size() != output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
-        // checks if there are "**" patterns in outputs (just simple string check is sufficient, Task expansion
-        // ensures that there are no unwanted "*"'s.
-        for (String outputFile: this.output){
-            if (!outputFile.contains("**")){
-                throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "Outputs must contain '**' pattern.");
+        if (!this.oneFileMode){
+            // checks if there are "**" patterns in outputs (just simple string check is sufficient, Task expansion
+            // ensures that there are no unwanted "*"'s.
+            for (String outputFile: this.output){
+                if (!outputFile.contains("**")){
+                    throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "Outputs must contain '**' pattern.");
+                }
             }
+        }
+        else {
+            // however, we don't want any patterns in one-file mode !
+            this.eliminatePatterns(this.output);
         }
 
         this.outPrefix = this.getExpandedPartOfId();
@@ -232,11 +250,13 @@ public class StToArff extends StManipulation {
                 this.convert(this.input.get(i), this.output.get(i));
             }
 
-            // now convert the string attributes to nominal types in the output
-            for (String predicate : this.usedFiles.keySet()){
-                
-                Logger.getInstance().message(this.id + ": Rewriting header(s) for " + predicate + " ...", Logger.V_DEBUG);
-                this.stringToNominal(predicate);
+            if (!this.oneFileMode){
+                // now convert the string attributes to nominal types in the output
+                for (String predicate : this.usedFiles.keySet()){
+                    Logger.getInstance().message(this.id + ": Rewriting header(s) for " + predicate + " ...",
+                            Logger.V_DEBUG);
+                    this.stringToNominal(predicate);
+                }
             }
         }
         catch (TaskException e){
@@ -255,7 +275,7 @@ public class StToArff extends StManipulation {
 
 
     /**
-     * Performs one file conversion.
+     * Performs the conversion of one ST-file into multiple (or one) ARFF files.
      * @param st the input file name
      * @param arff the output file name
      * @throws TaskException
@@ -263,21 +283,33 @@ public class StToArff extends StManipulation {
     private void convert(String st, String arff) throws TaskException, FileNotFoundException, IOException {
 
         int [] predNums;
-        Vector<Pair<String, String>> outputs;
+        Vector<Pair<String, String>> outputs = null;
+        FileOutputStream os = null;
+        PrintStream out = null;
 
         this.reader.setInputFile(st);
+
+        if (this.oneFileMode){
+            os = new FileOutputStream(arff);
+            out = new PrintStream(os);
+            this.writeHeader(out, StringUtils.truncateFileName(arff));
+        }
 
         while (this.reader.loadNextSentence()){
 
             predNums = this.reader.getPredicates();
-            outputs = this.findOutputs(predNums, arff); // find correpsonding output file names
-            this.writeHeaders(outputs); // prepare output file headers
+            outputs = this.findOutputs(predNums, arff); // find corresponding output predicate & file names
+            if (!this.oneFileMode){
+                this.writeHeaders(outputs); // prepare output file headers
+            }
 
             // for all predicates, write the sentence to an output file
             for (int i = 0; i < predNums.length; ++i){
 
-                FileOutputStream os = new FileOutputStream(outputs.get(i).second, true);
-                PrintStream out = new PrintStream(os);
+                if (!this.oneFileMode){
+                    os = new FileOutputStream(outputs.get(i).second, true);
+                    out = new PrintStream(os);
+                }
 
                 for (int j = 0; j < this.reader.length(); ++j){
 
@@ -291,6 +323,9 @@ public class StToArff extends StManipulation {
                     }
 
                     // print the compulsory fields
+                    if (this.oneFileMode){
+                        out.print("\"" + StringUtils.escape(outputs.get(i).first) + "\",");
+                    }
                     out.print(this.reader.getSentenceId());
 
                     for (int k = 0; k < this.reader.COMPULSORY_FIELDS; ++k){
@@ -332,8 +367,10 @@ public class StToArff extends StManipulation {
                     out.println();
                 }
 
-                out.close();
-                out = null;
+                if (!this.oneFileMode){
+                    out.close();
+                    out = null;
+                }
             }
 
             if (this.reader.getSentenceId() % 1000 == 0){
@@ -368,43 +405,7 @@ public class StToArff extends StManipulation {
             FileOutputStream os = new FileOutputStream(fileName);
             PrintStream out = new PrintStream(os);
 
-            out.println(RELATION + " \"" + StringUtils.escape(predName) + "\"");
-
-            // print the constant fields that are always present
-            for (int i = 0; i < HEADER.length; ++i){
-
-                if (this.reader.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)){
-                    out.println(HEADER[i]);
-                }
-                else if (i == IDXO_FEAT || i == IDXO_FEAT + 1){ // do not print FEAT headers if we're not using them
-                    continue;
-                }
-                else {
-                    out.println(HEADER[i]);
-                }
-            }
-
-            // print generated features' headers
-            for (Feature f : this.genFeats){
-                out.println(f.getHeader());
-            }
-
-            // print the target class / classes header(s) (according to the "multiclass" parameter),
-            // if supposed to do so at all (heed the "omit_semclass" parameter)
-            if (!this.omitSemClass){
-                if (!this.useMulticlass){
-                    for (String role : this.reader.semRoles){
-                        out.println(ATTRIBUTE + " " + role + " " + INTEGER);
-                    }
-                }
-                else {
-                    out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
-                    out.print(this.reader.getSemRoles());
-                    out.println("}");
-                }
-            }
-
-            out.println(DATA);
+            this.writeHeader(out, predName);
 
             out.close();
             out = null;
@@ -412,6 +413,54 @@ public class StToArff extends StManipulation {
             // store the filename so that we don't write the headers again
             this.writtenHeaders.add(fileName);
         }
+    }
+
+    /**
+     * This writes one ARFF file header with STRING fields into the given output stream.
+     * @param out the output stream to write to
+     * @param relationName the new ARFF relation name
+     */
+    private void writeHeader(PrintStream out, String relationName) {
+
+        out.println(RELATION + " \"" + StringUtils.escape(relationName) + "\"");
+
+        // print the "file" parameter, if in one-file mode
+        if (this.oneFileMode){
+            out.println(FILE_ATTR_HEADER);
+        }
+
+        // print the constant fields that are always present
+        for (int i = 0; i < HEADER.length; ++i) {
+            if (this.reader.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)) {
+                out.println(HEADER[i]);
+            }
+            else if (i == IDXO_FEAT || i == IDXO_FEAT + 1) {
+                // do not print FEAT headers if we're not using them
+                continue;
+            }
+            else {
+                out.println(HEADER[i]);
+            }
+        }
+        // print generated features' headers
+        for (Feature f : this.genFeats) {
+            out.println(f.getHeader());
+        }
+        // print the target class / classes header(s) (according to the "multiclass" parameter),
+        // if supposed to do so at all (heed the "omit_semclass" parameter)
+        if (!this.omitSemClass) {
+            if (!this.useMulticlass) {
+                for (String role : this.reader.semRoles) {
+                    out.println(ATTRIBUTE + " " + role + " " + INTEGER);
+                }
+            }
+            else {
+                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
+                out.print(this.reader.getSemRoles());
+                out.println("}");
+            }
+        }
+        out.println(DATA);
     }
 
     /**
