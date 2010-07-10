@@ -47,8 +47,6 @@ import java.util.Set;
 import java.util.Vector;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * This class converts the original ST file format of the CoNLL task to ARFF file format
@@ -60,8 +58,8 @@ public class StToArff extends StManipulation {
 
     /* CONSTANTS */
 
-    /** The multiclass parameter name */
-    private static final String MULTICLASS = "multiclass";
+    /** The divide_ams parameter name */
+    private static final String DIVIDE_AMS = "divide_ams";
     /** The pred_only parameter name */
     private static final String PRED_ONLY = "pred_only";
     /** The prune parameter name */
@@ -86,8 +84,10 @@ public class StToArff extends StManipulation {
     /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
     public static final String STRING = "STRING";
 
-    /** Semantic relation (multiclass) attribute name in ARFF files */
+    /** Semantic relation (all/valency args) attribute name in ARFF files */
     private static final String SEM_REL = "semrel";
+    /** Semantic relation (adveribials/references) name */
+    private static final String SEM_REL_AMS = "semrel-ams";
 
     /** Start of the data section in ARFF files */
     private static final String DATA = "@DATA";
@@ -114,6 +114,7 @@ public class StToArff extends StManipulation {
         "@ATTRIBUTE pred STRING"
     };
 
+    /** The header for the "file attribute */
     private static final String FILE_ATTR_HEADER = "@ATTRIBUTE file STRING";
 
     
@@ -122,8 +123,8 @@ public class StToArff extends StManipulation {
 
     /* DATA */
 
-    /** Create a multiclass semantic relation description ? */
-    private boolean useMulticlass;
+    /** Divide AM-s and references ? */
+    private boolean divideAMs;
     /** Output predicates only ? */
     private boolean predOnly;
     /** Omit semantic class in the ouptut ? */
@@ -162,8 +163,8 @@ public class StToArff extends StManipulation {
      * <li><tt>lang_conf</tt> -- path to the language reader file, that contains a FEAT usage indication ("1"/isEmpty line), followed
      * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (one line, space-separated).</li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
-     * <li><tt>multiclass</tt> -- if set to non-false, one attribute named "semrel" is created, otherwise, multiple classes
-     * (one semantic class each) with 0/1 values are created.</li>
+     * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
+     * valency arguments and for adverbials &amp; references.</li>
      * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
      * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, omitting all other words in a sentence</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
@@ -190,7 +191,7 @@ public class StToArff extends StManipulation {
         super(id, parameters, input, output);
 
         // initialize boolean parameters
-        this.useMulticlass = this.getBooleanParameterVal(MULTICLASS);
+        this.divideAMs = this.getBooleanParameterVal(DIVIDE_AMS);
         this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
@@ -350,14 +351,12 @@ public class StToArff extends StManipulation {
 
                     // print the resulting semantic relation to the given predicate
                     if (!this.omitSemClass){
-                        if (!this.useMulticlass){
-                            for (String role : this.reader.semRoles){
-                                if (word[this.reader.IDXI_SEMROLE + i].equals(role)){
-                                    out.print(",1");
-                                }
-                                else {
-                                    out.print(",0");
-                                }
+                        if (this.divideAMs){
+                            if (word[this.reader.IDXI_SEMROLE + i].matches(this.reader.amsPat)){
+                                out.print(",_,\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");
+                            }
+                            else {
+                                out.print(",\"" + word[this.reader.IDXI_SEMROLE + i] + "\",_");
                             }
                         }
                         else {
@@ -450,10 +449,13 @@ public class StToArff extends StManipulation {
         // print the target class / classes header(s) (according to the "multiclass" parameter),
         // if supposed to do so at all (heed the "omit_semclass" parameter)
         if (!this.omitSemClass) {
-            if (!this.useMulticlass) {
-                for (String role : this.reader.semRoles) {
-                    out.println(ATTRIBUTE + " " + role + " " + INTEGER);
-                }
+            if (this.divideAMs) {
+                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
+                out.print(this.reader.getSemRoles(false));
+                out.println("}");
+                out.print(ATTRIBUTE + " " + SEM_REL_AMS + " " + CLASS + " {_,");
+                out.print(this.reader.getSemRoles(true));
+                out.println("}");
             }
             else {
                 out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");

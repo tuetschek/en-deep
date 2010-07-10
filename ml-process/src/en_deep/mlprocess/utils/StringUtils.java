@@ -28,6 +28,7 @@
 package en_deep.mlprocess.utils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -399,6 +400,26 @@ public class StringUtils {
             }
         }
         return pattern;
+    }
+
+    /**
+     * Out of an array of strings, this returns only those that match the given pattern.
+     *
+     * @param data the data to be filtered
+     * @param pattern the pattern to be matched
+     * @param negate if set to true, the function returns the strings that DON'T match the pattern
+     * @return the filtered version of the original array
+     */
+    public static String[] getMatching(String[] data, String pattern, boolean negate) {
+
+        ArrayList<String> matching = new ArrayList<String>(data.length);
+        for (int i = 0; i < data.length; i++) {
+            boolean matches = data[i].matches(pattern);
+            if ((matches && !negate) || (!matches && negate)){
+                matching.add(data[i]);
+            }
+        }
+        return matching.toArray(new String [matching.size()]);
     }
 
 }

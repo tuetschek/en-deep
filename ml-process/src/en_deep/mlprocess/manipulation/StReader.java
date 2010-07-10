@@ -103,6 +103,8 @@ public class StReader {
     public String nounPat;
     /** Tag pattern for nouns in the ST file */
     public String verbPat;
+    /** Semrel pattern for adverbials and references in the ST file */
+    public String amsPat;
     /** The current input file */
     private RandomAccessFile inputFile;
     /** The name of the current input file */
@@ -167,10 +169,11 @@ public class StReader {
         this.verbPat = config.readLine();
 
         String semRolesStr = config.readLine();
+        this.amsPat = config.readLine();
 
         config.close();
         config = null;
-        if (semRolesStr == null || this.nounPat == null || this.verbPat == null) {
+        if (semRolesStr == null || this.nounPat == null || this.verbPat == null || this.amsPat == null) {
             throw new IOException();
         }
 
@@ -194,6 +197,19 @@ public class StReader {
      */
     String getSemRoles() {
         return this.listMembers(this.semRoles);
+    }
+
+    /**
+     * Returns either a list of valency arguments, or a list of adverbials and references,
+     * according to the {@link #amsPat} setting.
+     *
+     * @param adverbials if true, return adverbials and references
+     * @return list of valency arguments semantic roles or a list of adverbial and reference roles
+     */
+    String getSemRoles(boolean adverbials){
+
+        String [] matchingRoles = StringUtils.getMatching(this.semRoles, this.amsPat, !adverbials);
+        return this.listMembers(matchingRoles);
     }
 
     /**

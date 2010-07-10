@@ -33,13 +33,11 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.InputStreamReader;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ArffLoader;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
  * This will split a big ARFF file into chunks based on the number of input instances and then convert all string
