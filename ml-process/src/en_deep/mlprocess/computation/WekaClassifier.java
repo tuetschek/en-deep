@@ -60,7 +60,7 @@ public class WekaClassifier extends GeneralClassifier {
     /** The name of the 'prob_dist' parameter */
     private static final String PROB_DIST = "prob_dist";
     /** Name of the ignore_attr parameter */
-    private static final String IGNORE_ATTRIBS = "ignore_attr";
+    static final String IGNORE_ATTRIBS = "ignore_attr";
 
     /* DATA */
 

@@ -718,7 +718,9 @@ public class Plan {
     }
 
     /**
-     * Reset all the tasks that are listed in the resetFile. Writes the updated plan.
+     * Reset all the tasks that are listed in the resetFile. Writes the updated plan. Resets the plan position
+     * to -1, so that the reading starts from 0.
+     * 
      * @param planFileIO locked and open plan I/O file
      * @param resetFileIO locked and open reset I/O file
      */
@@ -749,6 +751,7 @@ public class Plan {
 
         // update unchanged tasks' statuses to the current progress in the old plan
         this.updateStatuses(newPlan, oldPlanByName);
+        this.lastPlanPos = -1; // reset the current plan position
 
         resetFileIO.setLength(0); // clear the reset file
         this.writePlan(newPlan, planFileIO); // write down the new plan

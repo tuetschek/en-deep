@@ -33,6 +33,7 @@ import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.attributeSelection.ASEvaluation;
@@ -60,6 +61,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private static final String EVALUATOR_PARAM_PREFIX = "E_";
     /** Ranker parameter prefix */
     private static final String RANKER_PARAM_PREFIX = "R_";
+    /** The ignore_attr parameter name */
+    private static final String IGNORE_ATTRIBS = WekaClassifier.IGNORE_ATTRIBS;
 
     private static final String LF = System.getProperty("line.separator");
 
@@ -74,7 +77,10 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private RankedOutputSearch ranker;
     /** The WEKA attribute evaluator */
     private AttributeEvaluator evaluator;
+    /** List of ignored attributes' indexes */
+    private HashSet<Integer> ignoredIdxs;
 
+    
     /* METHODS */
 
     /**
@@ -86,6 +92,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
      * <li><tt>class_arg</tt> -- the name of the target argument used for classification. If the parameter
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
+     * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * </ul>
      * If ranker and evaluator are selected at once, the evaluator is considered to be a subset evaluator
      * and the ranker to be a search procedure.
@@ -104,7 +111,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
                 || (this.getParameterVal(RANKER) == null && this.getParameterVal(EVALUATOR) == null)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
-        
+
+        this.ignoredIdxs = new HashSet<Integer>();
     }
 
     /**
@@ -132,6 +140,11 @@ public class WekaAttributeRanker extends GeneralClassifier {
         Enumeration<Instance> evalInst = eval.enumerateInstances();
         while (evalInst.hasMoreElements()){
             train.add(evalInst.nextElement());
+        }
+
+        // find the indexes of the ignored attributes so that they are not written to the output
+        if (this.hasParameter(IGNORE_ATTRIBS)){
+            this.findIgnoredAttributes(train);
         }
 
         this.initRanker(train);
@@ -233,7 +246,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
     /**
      * This sorts the attributes by their merits and produces a list of their numbers sorted on the first
-     * line and their names with merits on the following lines.
+     * line and their names with merits on the following lines. The ignored attributes are skipped.
      *
      * @param data the data which need to have their attributes sorted
      * @param merits the merits of the individual attributes in the data
@@ -245,16 +258,20 @@ public class WekaAttributeRanker extends GeneralClassifier {
         StringBuilder out = new StringBuilder();
 
         for (int i = 0; i < order.length - 1; ++i){ // assume the class attribute itself is at the end
-            out.append(order[i]);
-            if (i < order.length-2){
-                out.append(" ");
+            if (!this.ignoredIdxs.contains(order[i])){
+                out.append(order[i]);
+                if (i < order.length-2){
+                    out.append(" ");
+                }
             }
         }
         out.append(LF);
 
         for (int i = 0; i < order.length -1; ++i){
-            out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(
-                    ": ").append(merits[i]).append(LF);
+            if (!this.ignoredIdxs.contains(order[i])){ 
+                out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(
+                        ": ").append(merits[i]).append(LF);
+            }
         }
 
         return out.toString();
@@ -270,14 +287,18 @@ public class WekaAttributeRanker extends GeneralClassifier {
         
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < order.length; ++i){
-            out.append(order[i]);
-            if (i < order.length-1){
-                out.append(" ");
+            if (!this.ignoredIdxs.contains(order[i])){
+                out.append(order[i]);
+                if (i < order.length-1){
+                    out.append(" ");
+                }
             }
         }
         out.append(LF);
         for (int i = 0; i < order.length; ++i){
-            out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(LF);
+            if (!this.ignoredIdxs.add(order[i])){
+                out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(LF);
+            }
         }
         return out.toString();
     }
@@ -292,17 +313,41 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < order.length; ++i){
-            out.append((int) order[i][0]);
-            if (i < order.length-1){
-                out.append(" ");
+            if (!this.ignoredIdxs.contains((int) order[i][0])){
+                out.append((int) order[i][0]);
+                if (i < order.length-1){
+                    out.append(" ");
+                }
             }
         }
         out.append(LF);
         for (int i = 0; i < order.length; ++i){
-            out.append((int) order[i][0]).append(" ").append(data.attribute((int) order[i][0]).name()).append(
-                    ": ").append(order[i][1]).append(LF);
+            if (!this.ignoredIdxs.contains((int) order[i][0])){
+                out.append((int) order[i][0]).append(" ").append(data.attribute((int) order[i][0]).name()).append(
+                        ": ").append(order[i][1]).append(LF);
+            }
         }
         return out.toString();
+    }
+
+    /**
+     * This finds the indexes of all the ignored attributes. If some attributes are not found, they are not
+     * listed.
+     * @param data
+     */
+    private void findIgnoredAttributes(Instances data) {
+
+        String [] ignoredNames = this.getParameterVal(IGNORE_ATTRIBS).split("\\s+");
+        
+        for (int i = 0; i < ignoredNames.length; ++i){
+            if (data.attribute(ignoredNames[i]) != null){
+                this.ignoredIdxs.add(data.attribute(ignoredNames[i]).index());
+            }
+            else {
+                Logger.getInstance().message(this.id + ": ignored attribute " + ignoredNames[i] + " not found.",
+                        Logger.V_WARNING);
+            }
+        }
     }
 
 }

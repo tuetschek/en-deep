@@ -131,7 +131,7 @@ public class DataException extends GeneralException {
                 errMsg = "Loop task dependency";
                 break;
             case ERR_QUOTES_MISMATCH:
-                errMsg = "Quotes mismatch";
+                errMsg = "Quotes mismatch (or forgotten comma?)";
                 break;
             case ERR_DUPLICATE_TASK_NAME:
                 errMsg = "Duplicate task name";
