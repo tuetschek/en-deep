@@ -69,7 +69,7 @@ public class Plan {
     public static final String STATUS_FILE_SUFFIX = ".status";
 
     /** Number of tasks to retrieve at once @todo make RETRIEVE_TASKS configurable */
-    private static final int RETRIEVE_TASKS = 10;
+    static final int DEFAULT_RETRIEVE_COUNT = 10;
 
     /* DATA */
 
@@ -81,6 +81,10 @@ public class Plan {
 
     /** Current status printout file */
     private File statusFile;
+    /** Number of tasks that should be retrieved at the same time */
+    private int retrieveCount;
+    /** The last position in the plan file */
+    private int lastPlanPos;
 
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
@@ -98,6 +102,7 @@ public class Plan {
         this.planFile = new File(Process.getInstance().getInputFile() + PLAN_FILE_SUFFIX);
         this.resetFile = new File(Process.getInstance().getInputFile() + RESET_FILE_SUFFIX);
         this.statusFile = new File(Process.getInstance().getInputFile() + STATUS_FILE_SUFFIX);
+        this.retrieveCount = Process.getInstance().getRetrieveCount();
 
         // create the needed files if necessary
         try {
@@ -244,6 +249,7 @@ public class Plan {
         // topologically sort the plan
         plan = parser.getTasks();
         this.sortPlan(plan);
+        this.lastPlanPos = -1; // set the plan position to the beginning
 
         // write the plan into the plan file
         this.writePlan(plan, planFileIO);
@@ -267,11 +273,11 @@ public class Plan {
             throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
         Vector<TaskDescription> plan = this.readPlan(planFileIO);
-        Vector<Task> retrieved = new Vector<Task>(RETRIEVE_TASKS);
+        Vector<Task> retrieved = new Vector<Task>(this.retrieveCount);
 
         Logger.getInstance().message("Retrieving tasks ...", Logger.V_DEBUG);
 
-        for (int i = 0; i < RETRIEVE_TASKS; i++) {
+        for (int i = 0; i < this.retrieveCount; i++) {
             try {
                 TaskDescription nextTask = this.retrievePendingTask(plan);
                 if (nextTask == null){
@@ -310,15 +316,19 @@ public class Plan {
         int pos;
 
         // obtaining the task to be done: we are operating in the topological order
-        for (TaskDescription task : plan){
-            if (task.getStatus() == TaskStatus.WAITING){
+        for (pos = this.lastPlanPos < plan.size() - 1 ? this.lastPlanPos + 1 : 0
+                ; pos != this.lastPlanPos
+                ; pos = pos < plan.size() - 1 ? pos + 1 : 0){
+            
+            
+            if (plan.get(pos).getStatus() == TaskStatus.WAITING){
                 waiting = true;
             }
-            else if (task.getStatus() == TaskStatus.IN_PROGRESS){
+            else if (plan.get(pos).getStatus() == TaskStatus.IN_PROGRESS){
                 inProgress = true;
             }
-            else if (task.getStatus() == TaskStatus.PENDING){
-                pendingDesc = task;
+            else if (plan.get(pos).getStatus() == TaskStatus.PENDING){
+                pendingDesc = plan.get(pos);
                 break;
             }
         }
@@ -338,10 +348,11 @@ public class Plan {
         // expand the task (and possibly dependent tasks) accoring to "*"'s in input / output file names
         TaskExpander te = new TaskExpander(pendingDesc);
         te.expand();
-        plan.addAll(pos = plan.indexOf(pendingDesc), te.getTasksToAdd()); // these well may be empty
+        plan.addAll(pos, te.getTasksToAdd()); // these well may be empty
         plan.removeAll(te.getTasksToRemove());
 
         pendingDesc = plan.get(pos); // the first expanded task
+        this.lastPlanPos = pos;
 
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
@@ -849,6 +860,34 @@ public class Plan {
 
         // insert the complex into the plan AFTER the original task
         plan.addAll(plan.indexOf(old) + 1, expansion);
+    }
+
+    public synchronized void checkScenario(){
+
+        try {
+            ScenarioParser parser = new ScenarioParser(Process.getInstance().getInputFile());
+            Vector<TaskDescription> plan;
+
+            Logger.getInstance().message("Parsing the scenario file ...", Logger.V_DEBUG);
+
+            // parse the input file
+            parser.parse();
+
+            // topologically sort the plan
+            plan = parser.getTasks();
+            this.sortPlan(plan);
+        }
+        catch (DataException e){
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
+            Logger.getInstance().message("Data error: " + e.getMessage(), Logger.V_IMPORTANT);
+            return;
+        }
+        catch (IOException e){
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
+            Logger.getInstance().message("I/O error: " + e.getMessage(), Logger.V_IMPORTANT);
+            return;
+        }
+        Logger.getInstance().message("The scenario file seems to be OK.", Logger.V_INFO);
     }
 
 }
