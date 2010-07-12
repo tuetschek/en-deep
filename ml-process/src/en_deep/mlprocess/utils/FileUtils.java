@@ -254,4 +254,33 @@ public class FileUtils{
         return sb.toString();
     }
 
+    /**
+     * This reads a named numeric value from a file. The file must have the <pre>name:value</tt> format.
+     * If the value of the given name is not present in the file, this returns null.
+     * @param fileName the name of the file to read
+     * @param valueName the name of the value to look for
+     * @return the desired value
+     */
+    public static Double readValue(String fileName, String valueName) throws IOException, NumberFormatException {
+
+        RandomAccessFile file = new RandomAccessFile(fileName, "r");
+        String line = file.readLine();
+        Double val = null;
+
+        while (line != null) {
+
+            String[] args = line.split(":");
+            args[0] = args[0].trim();
+            args[1] = args[1].trim();
+
+            if (args[0].equalsIgnoreCase(valueName)) {
+                val = Double.parseDouble(args[1]);
+                break;
+            }
+            line = file.readLine();
+        }
+        file.close();
+        return val;
+    }
+
 }

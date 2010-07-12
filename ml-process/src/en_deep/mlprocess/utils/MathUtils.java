@@ -78,7 +78,8 @@ public class MathUtils {
     }
 
     /**
-     * This sorts an array descending and returns its order. Uses the shakesort algorithm.
+     * This sorts an array descending and returns its order. Uses the shakesort algorithm. The order of same
+     * values is random.
      * @param arr the array to be sorted
      * @return the descending order of the elements in the array
      */

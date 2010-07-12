@@ -31,6 +31,7 @@ import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -126,47 +127,29 @@ public abstract class EvalSelector extends Task {
         for (int i = 0; i < evalFiles.length; ++i) {
 
             int index = testingOrder != null ? testingOrder[i] : i;
-            RandomAccessFile stats = new RandomAccessFile(evalFiles[index], "r");
-            String line = stats.readLine();
-            boolean measureFound = false;
+            Double val;
 
-            while (line != null) {
-
-                String[] args = line.split(":");
-                args[0] = args[0].trim();
-                args[1] = args[1].trim();
-
-                if (args[0].equalsIgnoreCase(this.measure)) {
-
-                    double val = 0.0;
-
-                    try {
-                        val = Double.parseDouble(args[1]);
-                    }
-                    catch (NumberFormatException e){
-                        throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "File : "
-                                + evalFiles[index] + " : measure " + this.measure + " not numeric.");
-                    }
-
-                    measureFound = true;
-                    if (val > bestVal){
-                        bestIdxs.clear();
-                        bestIdxs.add(index);
-                        bestVal = val;
-                    }
-                    else if(val == bestVal) {
-                        bestIdxs.add(index);
-                    }
-                    break;
-                }
-                line = stats.readLine();
+            try {
+                val = FileUtils.readValue(evalFiles[index], this.measure);
+            }
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "File : "
+                            + evalFiles[index] + " : measure " + this.measure + " not numeric.");
             }
 
-            stats.close();
-            if (!measureFound){
+            if (val == null){
                 throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "File : " + evalFiles[index] +
                         " : measure " +  this.measure + " not found.");
             }
+            if (val > bestVal){
+                bestIdxs.clear();
+                bestIdxs.add(index);
+                bestVal = val;
+            }
+            else if(val == bestVal) {
+                bestIdxs.add(index);
+            }
+
         }
         return new Pair<Vector<Integer>, Double>(bestIdxs, bestVal);
     }
