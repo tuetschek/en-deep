@@ -28,10 +28,13 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -57,6 +60,8 @@ public class WekaClassifier extends GeneralClassifier {
 
     /** Name of the select_args parameter */
     static final String SELECT_ARGS = "select_args";
+    /** Name of the args_file parameter */
+    private static final String ARGS_FILE = "args_file";
     /** The name of the 'prob_dist' parameter */
     private static final String PROB_DIST = "prob_dist";
     /** Name of the ignore_attr parameter */
@@ -94,10 +99,15 @@ public class WekaClassifier extends GeneralClassifier {
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
+     * <li><tt>args_file</tt> -- same as previous, except that the value of the parameter is the name of a file
+     * where the selected argument ids are stored.</li>
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
      * </ul>
+     * <p>
+     * Parameters <tt>select_args</tt> a <tt>args_file</tt> are mutually exclusive.
+     * </p>
      * <p>
      * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
      * a parameter with the name "X", it's passed to the weka class as "-X". Parameters with empty value
@@ -118,6 +128,16 @@ public class WekaClassifier extends GeneralClassifier {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
+
+        if (this.hasParameter(SELECT_ARGS) && this.hasParameter(ARGS_FILE)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be"
+                    + " set at the same time!");
+        }
+        if (this.hasParameter(ARGS_FILE)){
+            if (!this.getParameterVal(ARGS_FILE).contains(File.separator)){
+                this.parameters.put(ARGS_FILE, Process.getInstance().getWorkDir() + this.getParameterVal(ARGS_FILE));
+            }
+        }
 
         // initialize the classifier and set its parameters
         this.initClassifier();
@@ -268,16 +288,25 @@ public class WekaClassifier extends GeneralClassifier {
             }
         }
 
-        if (!this.hasParameter(SELECT_ARGS)){
+        if (!this.hasParameter(SELECT_ARGS) && !this.hasParameter(ARGS_FILE)){
             return;
         }
         int [] selectNos;
 
         try {
-            selectNos = StringUtils.readListOfInts(this.parameters.remove(SELECT_ARGS));
+            if (this.hasParameter(SELECT_ARGS)){
+                selectNos = StringUtils.readListOfInts(this.parameters.remove(SELECT_ARGS));
+            }
+            else {
+                selectNos = StringUtils.readListOfInts(FileUtils.readString(this.parameters.remove(ARGS_FILE)));
+            }
+        }
+        catch (IOException e){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Cannot read preselected attributes "
+                    + "file.");
         }
         catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "The preselected attributes"
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "The preselected attributes "
                     + "must all be numbers.");
         }
 

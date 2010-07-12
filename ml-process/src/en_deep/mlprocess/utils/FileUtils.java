@@ -236,4 +236,22 @@ public class FileUtils{
         return data;
     }
 
+    /**
+     * This reads the file contents and saves them to a string.
+     * @param fileName
+     * @return
+     */
+    public static String readString(String fileName) throws IOException {
+    
+        RandomAccessFile in = new RandomAccessFile(fileName, "r");
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = in.readLine()) != null){
+            sb.append(line);
+            sb.append("\n");
+        }
+        in.close();
+        return sb.toString();
+    }
+
 }
