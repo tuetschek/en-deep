@@ -31,6 +31,7 @@ import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
@@ -79,7 +80,7 @@ public abstract class EvalSelector extends Task {
     /**
      * This just sets the inputs and outputs and checks the measure-related parameter. All subclasses
      * of {@link EvalSelector} must have the <tt>measure</tt> parameter which indicates what measure
-     * to use for the evaluation of the tasks.
+     * to use for the evaluation of the tasks and the <tt>tempfile</tt> parameter containing the tempfile name pattern.
      * 
      * @param id
      * @param parameters
@@ -93,10 +94,18 @@ public abstract class EvalSelector extends Task {
         if (this.parameters.get(MEASURE) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "No measure specified.");
         }
+        if (this.parameters.get(TEMPFILE) == null || !this.parameters.get(TEMPFILE).contains("*")){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Tempfile pattern specification "
+                    + "not found or invalid.");
+        }
 
         this.measure = this.parameters.remove(MEASURE);
         this.deleteTempfiles = this.getBooleanParameterVal(DELETE_TEMPFILES);
         this.parameters.remove(DELETE_TEMPFILES);
+        this.tempFilePattern = this.parameters.remove(TEMPFILE);
+        if (!this.tempFilePattern.contains(File.separator)){
+            this.tempFilePattern = Process.getInstance().getWorkDir() + this.tempFilePattern;
+        }
     }
 
     /**
@@ -206,20 +215,15 @@ public abstract class EvalSelector extends Task {
 
         switch (type) {
             case CLASSIF:
-                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
-                        this.expandedId + lbr + order + ")") + CLASS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + order + ")") + CLASS_EXT;
             case STATS:
-                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
-                        this.expandedId + lbr + order + ")") + STATS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + order + ")") + STATS_EXT;
             case ROUND_STATS:
-                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
-                        this.expandedId + lbr + "stats)") + STATS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + "stats)") + STATS_EXT;
             case BEST_STATS:
-                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
-                        this.expandedId + lbr + "best)") + STATS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + "best)") + STATS_EXT;
             case BEST_CLASSIF:
-                return Process.getInstance().getWorkDir() + this.tempFilePattern.replace("*",
-                        this.expandedId + lbr + "best)") + CLASS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + "best)") + CLASS_EXT;
             default:
                 return "";
         }

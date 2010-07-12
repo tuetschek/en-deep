@@ -216,23 +216,17 @@ public class GreedyAttributeSearch extends EvalSelector {
         // final round -- special case: some parameters are not needed.
         if (this.round > this.end) {
 
-            if (this.parameters.get(TEMPFILE) == null) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
-            }
-            this.tempFilePattern = this.parameters.remove(TEMPFILE);
             this.attributeOrderFile = this.getAttributeOrderFile(); // optional parameter
             return;
         }
         
         // normal case: check the compulsory parameters and save them
-        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null 
-                || this.parameters.get(TEMPFILE) == null || this.parameters.get(TEMPFILE).indexOf("*") == -1) {
+        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
 
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
-        this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
         // normal case: check the optional parameters
         if (this.parameters.get(MIN_IMPROVEMENT) != null) {

@@ -88,13 +88,11 @@ public abstract class WekaSettingTrials extends EvalSelector {
         }
 
         // check the compulsory parameters for the normal case and save them
-        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null
-                || this.parameters.get(TEMPFILE) == null || this.parameters.get(TEMPFILE).indexOf("*") == -1){
+        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
         this.classArg = this.parameters.remove(CLASS_ARG);
         this.wekaClass = this.parameters.remove(WEKA_CLASS);
-        this.tempFilePattern = this.parameters.remove(TEMPFILE);
 
         if (this.output.size() != 3){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
@@ -218,6 +216,7 @@ public abstract class WekaSettingTrials extends EvalSelector {
         Hashtable<String, String> evalParams = new Hashtable<String, String>();
         evalParams.put(MEASURE, this.measure);
         evalParams.put(EVAL, "1");
+        evalParams.put(TEMPFILE, this.tempFilePattern);
         evalParams.put(DELETE_TEMPFILES, Boolean.toString(this.deleteTempfiles));
 
         return evalParams;
