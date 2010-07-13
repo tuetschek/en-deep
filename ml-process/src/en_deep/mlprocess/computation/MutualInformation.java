@@ -74,7 +74,7 @@ public class MutualInformation extends ASEvaluation implements AttributeEvaluato
 
                     miSum += (contingency[i][j] / (double)data.numInstances())
                             * MathUtils.log2((contingency[i][j] * (double)data.numInstances())
-                            / (double)(tableX[i] * tableY[j]));
+                            / ((double)tableX[i] * (double)tableY[j]));
                 }
             }
         }
