@@ -45,7 +45,7 @@ import weka.core.Instances;
  *
  * @author Ondrej Dusek
  */
-public class IrrelevantAttributesRemoval extends Task {
+public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
 
     /* CONSTANTS */
 
@@ -131,57 +131,19 @@ public class IrrelevantAttributesRemoval extends Task {
     }
 
 
-    @Override
-    public void perform() throws TaskException {
-        
-        try {
-            if (!this.mergeInputs){
-                for (int i = 0; i < this.input.size(); ++i){
-
-                    Instances [] data = new Instances[1];
-
-                    data[0] = FileUtils.readArff(this.input.get(i));
-
-                    this.removeIrrelevant(data);
-
-                    FileUtils.writeArff(this.output.get(i), data[0]);
-                }
-            }
-            else {
-                Vector<Instances> allData = new Vector<Instances>();
-
-                for (int i = 0; i < this.input.size(); ++i){
-                    allData.add(FileUtils.readArff(this.input.get(i)));
-                }
-                this.removeIrrelevant(allData.toArray(new Instances[0]));
-
-                for (int i = 0; i < this.output.size(); ++i){
-                    FileUtils.writeArff(this.output.get(i), allData.get(i));
-                }
-            }
-        }
-        catch (TaskException e){
-            throw e;
-        }
-        catch (Exception e){
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
-        }
-    }
-
-
     /**
      * This removes all the irrelevant attributes in all the given data sets.
      * @param data the data sets to be filtered
      */
-    private void removeIrrelevant(Instances [] data) throws TaskException {
+    protected void processData(Instances [] data) throws Exception {
 
         // check data compatibility
         if (data.length > 1) {
             for (int i = 1; i < data.length; ++i) {
-                if (!data[i].equalHeaders(data[0])) {
+                String message = data[i].equalHeadersMsg(data[0]);
+                if (message != null) {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                            "Data from different files are not compatible.");
+                            "Data from different files are not compatible: " + message);
                 }
             }
         }

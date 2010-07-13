@@ -43,7 +43,7 @@ import weka.core.Instances;
  *
  * @author Ondrej Dusek
  */
-public class AttributeFilter extends Task {
+public class AttributeFilter extends MergedHeadersOutput {
 
     /* CONSTANTS */
 
@@ -57,8 +57,6 @@ public class AttributeFilter extends Task {
     private static final String DEL_ORIG = "del_orig";
     /** The "attributes" parameter name */
     private static final String ATTRIBUTES = "attributes";
-    /** The "merge_inputs" parameter name */
-    private static final String MERGE_INPUTS = "merge_inputs";
 
     /** The string that is appended to all filtered attribute names */
     private static final String ATTR_NAME_SUFF = "_filt";
@@ -143,9 +141,6 @@ public class AttributeFilter extends Task {
         if (this.parameters.get(DEL_ORIG) != null){
             this.delOrig = true;
         }
-        if (this.parameters.get(MERGE_INPUTS) != null){
-            this.mergeInputs = true;
-        }
 
         if (this.attributePrefixes == null 
                 || (this.mostCommon == -1 && this.minOccurrences == -1 && this.minPercentage == Double.NaN)){
@@ -161,49 +156,6 @@ public class AttributeFilter extends Task {
         }
         this.eliminatePatterns(this.input);
         this.eliminatePatterns(this.output);
-    }
-
-
-    @Override
-    public void perform() throws TaskException {
-
-        try {
-            if (!this.mergeInputs){
-                for (int i = 0; i < this.input.size(); ++i){
-
-                    Instances [] data = new Instances[1];
-
-                    data[0] = FileUtils.readArff(this.input.get(i));
-
-                    for (int j = 0; j < this.attributePrefixes.length; ++j){
-                        this.filterAttributePrefix(data, this.attributePrefixes[j]);
-                    }
-
-                    FileUtils.writeArff(this.output.get(i), data[0]);
-                }
-            }
-            else {
-                Vector<Instances> allData = new Vector<Instances>();
-
-                for (int i = 0; i < this.input.size(); ++i){
-                    allData.add(FileUtils.readArff(this.input.get(i)));
-                }
-                for (int j = 0; j < this.attributePrefixes.length; ++j){
-                    this.filterAttributePrefix(allData.toArray(new Instances[0]), this.attributePrefixes[j]);
-                }
-
-                for (int i = 0; i < this.output.size(); ++i){
-                    FileUtils.writeArff(this.output.get(i), allData.get(i));
-                }
-            }
-        }
-        catch (TaskException e){
-            throw e;
-        }
-        catch (Exception e){
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
-        }
     }
 
     /**
@@ -455,6 +407,19 @@ public class AttributeFilter extends Task {
         }
 
     }
+
+    /**
+     * This is the main data processing method -- it calls {@link #filterAttributePrefix(Instances[], String)} for
+     * all the attribute prefixes.
+     * @param data the data to be processed
+     */
+    @Override
+    protected void processData(Instances[] data) throws Exception {
+        for (int j = 0; j < this.attributePrefixes.length; ++j) {
+            this.filterAttributePrefix(data, this.attributePrefixes[j]);
+        }
+    }
+
 
 
 
