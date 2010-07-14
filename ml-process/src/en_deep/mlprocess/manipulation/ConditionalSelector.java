@@ -53,7 +53,7 @@ public class ConditionalSelector extends GroupInputsTask {
 
     private enum Condition {
 
-        UNARY, DIVIDE_BY_NUM_VAL, ORPHANS;
+        UNARY, DIVIDE_BY_NUM_VAL, ORPHANS, NUM_INSTANCES;
 
         /**
          * This constructs the condition from a string value.
@@ -74,6 +74,9 @@ public class ConditionalSelector extends GroupInputsTask {
             }
             else if (str.equalsIgnoreCase("orphans")){
                 return ORPHANS;
+            }
+            else if (str.equalsIgnoreCase("num_instances")){
+                return NUM_INSTANCES;
             }
             else {
                 return null;
@@ -137,7 +140,7 @@ public class ConditionalSelector extends GroupInputsTask {
         switch (this.condition){
             case UNARY:
 
-                if (this.parameters.get(ATTRIBUTE) == null){
+                if (!this.hasParameter(ATTRIBUTE)){
                     throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Attribute missing.");
                 }
                 this.attrName = this.parameters.get(ATTRIBUTE);
@@ -146,7 +149,7 @@ public class ConditionalSelector extends GroupInputsTask {
 
             case DIVIDE_BY_NUM_VAL:
 
-                if (this.getParameterVal(ATTRIBUTE) == null || this.getParameterVal(BOUNDARIES) == null){
+                if (!this.hasParameter(ATTRIBUTE) || !this.hasParameter(BOUNDARIES)){
                     throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters missing.");
                 }
                 this.attrName = this.getParameterVal(ATTRIBUTE);
@@ -156,7 +159,20 @@ public class ConditionalSelector extends GroupInputsTask {
                 catch (NumberFormatException e){
                     throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Boundaries must be numeric.");
                 }
-                this.extractPatterns(this.boundaries.length  +1);
+                this.extractPatterns(this.boundaries.length+1);
+                break;
+
+            case NUM_INSTANCES:
+                if (!this.hasParameter(BOUNDARIES)){
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Boundaries missing.");
+                }
+                try {
+                    this.boundaries = StringUtils.readListOfInts(this.getParameterVal(BOUNDARIES));
+                }
+                catch (NumberFormatException e){
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Boundaries must be numeric.");
+                }
+                this.extractPatterns(this.boundaries.length+1);
                 break;
 
             case ORPHANS:
@@ -182,7 +198,11 @@ public class ConditionalSelector extends GroupInputsTask {
                         break;
 
                     case DIVIDE_BY_NUM_VAL:
-                        this.copyToTarget(key, this.divideByNumberOfAttributes(key));
+                        this.copyToTarget(key, this.divideByNumberOfAttrValues(key));
+                        break;
+
+                    case NUM_INSTANCES:
+                        this.copyToTarget(key, this.divideByNumberOfInstances(key));
                         break;
 
                     case ORPHANS:
@@ -251,7 +271,7 @@ public class ConditionalSelector extends GroupInputsTask {
      * @return the number of division group, according to the {@link #boundaries}
      * @throws TaskException if the files don't have the same attributes or the desired one is missing
      */
-    private int divideByNumberOfAttributes(String key) throws Exception {
+    private int divideByNumberOfAttrValues(String key) throws Exception {
 
         Instances [] data = this.readAndCheckHeaders(key);
 
@@ -266,6 +286,30 @@ public class ConditionalSelector extends GroupInputsTask {
         }
         return i;
     }
+
+    /**
+     * This divides the data according to the number of instances (the total sum of all the data
+     * is used) and the {@link #boundaries}.
+     * 
+     * @param key the expansion key to look up the file names in the {@link #tables}
+     * @return the number of division group, according to the {@link #boundaries}
+     */
+    private int divideByNumberOfInstances(String key) throws Exception {
+
+        Instances [] data = this.readAndCheckHeaders(key);
+        int sum = 0;
+        for (int i = 0; i < data.length; ++i){
+            sum += data[i].numInstances();
+        }
+
+        int i = 0;
+        while (i < this.boundaries.length && sum > this.boundaries[i]){
+            i++;
+        }
+        return i;
+
+    }
+
 
     /**
      * Reads the headers of all files in the {@link #tables} that correspond to the given key and checks if
