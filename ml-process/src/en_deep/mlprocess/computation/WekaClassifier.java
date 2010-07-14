@@ -34,7 +34,9 @@ import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -68,6 +70,10 @@ public class WekaClassifier extends GeneralClassifier {
     static final String IGNORE_ATTRIBS = "ignore_attr";
     /** Name of the 'binarize' parameter */
     private static final String BINARIZE = "binarize";
+    /** Name of the 'num_selected' parameter */
+    private static final String NUM_SELECTED = "num_selected";
+    /** Name of the `out_attribs' parameter */
+    private static final String OUT_ATTRIBS = "out_attribs";
 
     /* DATA */
 
@@ -77,6 +83,8 @@ public class WekaClassifier extends GeneralClassifier {
     private boolean probabilities;
     /** Should the nominal attributes be binarized before classification ? */
     private boolean binarize;
+    /** The name of the file where the used attribute indexes should be written, or null */
+    private String attribsOutputFile;
 
     /* METHODS */
  
@@ -105,11 +113,13 @@ public class WekaClassifier extends GeneralClassifier {
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
      * <li><tt>args_file</tt> -- same as previous, except that the value of the parameter is the name of a file
      * where the selected argument ids are stored.</li>
+     * <li><tt>num_selected</tt> -- limit the number of selected attributes (either from file or parameter)</tt>
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
      * <li><tt>binarize</tt> -- if set, it converts all the nominal parameters to binary, while using
      * sparse matrix to represent the result.</li>
+     * <li><tt>out_attribs</tt> -- if set, there must be one additional output file
      * </ul>
      * <p>
      * Parameters <tt>select_args</tt> a <tt>args_file</tt> are mutually exclusive.
@@ -144,6 +154,9 @@ public class WekaClassifier extends GeneralClassifier {
             if (!this.getParameterVal(ARGS_FILE).contains(File.separator)){
                 this.parameters.put(ARGS_FILE, Process.getInstance().getWorkDir() + this.getParameterVal(ARGS_FILE));
             }
+        }
+        if (this.hasParameter(OUT_ATTRIBS)){
+            this.attribsOutputFile = this.output.remove(1);
         }
 
         // initialize the classifier and set its parameters
@@ -280,39 +293,89 @@ public class WekaClassifier extends GeneralClassifier {
     }
 
     /**
-     * This selects only the given attributes if there is a {@link #SELECT_ARGS} setting and removes
-     * all the attributes specified in the {@link #IGNORE_ATTRIBS} setting.
+     * This selects only the given attributes if there is a {@link #SELECT_ARGS}/{@link #ARGS_FILE} setting and
+     * removes all the attributes specified in the {@link #IGNORE_ATTRIBS} setting.
      * 
      * @param train the training data
      * @param eval the evaluation data
      */
-    private void attributesPreselection(Instances train, Instances eval) throws TaskException {
+    private void attributesPreselection(Instances train, Instances eval) throws TaskException, IOException {
 
+        BitSet selectionMask = new BitSet(train.numAttributes());
         
-        boolean [] selectionMask = new boolean [train.numAttributes()];
+        if (!this.hasParameter(SELECT_ARGS) && !this.hasParameter(ARGS_FILE)){
+            selectionMask.set(0, train.numAttributes()); // if there are no preselected attributes, set all to true
+        }
+        else { // otherwise, find only the preselected attributes and set their indexes to true
+            int [] selectNos = this.getSelectedAttribs();
 
-        if (this.hasParameter(IGNORE_ATTRIBS)){
-            String [] selection = this.parameters.remove(IGNORE_ATTRIBS).split("\\s+");
-            for (int i = 0; i < selection.length; ++i){
+            for (int i = 0; i < selectNos.length; ++i){
 
-                if (train.attribute(selection[i]) == null || eval.attribute(selection[i]) == null){
-                    Logger.getInstance().message("The ignored attribute " + selection[i] + "not present", 
-                            Logger.V_WARNING);
-                }
-                else if(selection[i].equals(train.classAttribute().name())){
-                    Logger.getInstance().message("Cannot ignore class attribute " + train.classAttribute().name(),
-                            Logger.V_WARNING);
+                if (selectNos[i] >= 0 && selectNos[i] < train.numAttributes()){
+                    selectionMask.set(selectNos[i]);
                 }
                 else {
-                    train.deleteAttributeAt(train.attribute(selection[i]).index());
-                    eval.deleteAttributeAt(eval.attribute(selection[i]).index());
+                    Logger.getInstance().message(this.id + " preselected attribute " + selectNos[i] + " out of range.",
+                            Logger.V_WARNING);
+                }
+            }
+            selectionMask.set(train.classIndex());
+        }
+        if (this.hasParameter(IGNORE_ATTRIBS)){ // set the ignored attributes to false
+            this.removeIgnoredAttributes(train, eval, selectionMask);
+        }
+
+        // remove the not-selected attributes
+        for (int i = selectionMask.length()-1; i >= 0; --i){
+            if (!selectionMask.get(i)){
+
+                String attrName = train.attribute(i).name();
+
+                train.deleteAttributeAt(i);
+                if (eval.attribute(attrName) != null){
+                    eval.deleteAttributeAt(eval.attribute(attrName).index());
                 }
             }
         }
 
-        if (!this.hasParameter(SELECT_ARGS) && !this.hasParameter(ARGS_FILE)){
-            return;
+        // write the settings to a file, if needed
+        if (this.attribsOutputFile != null){
+            this.writeAttribs(selectionMask);
         }
+    }
+
+    /**
+     * This removes all the attributes from the selectionMask that should be ignored according to
+     * the {@link #IGNORE_ATTRIBS} setting.
+     * @param train the training data
+     * @param eval the evaluation data
+     * @param the selection mask
+     */
+    private void removeIgnoredAttributes(Instances train, Instances eval, BitSet selectionMask) {
+
+        String[] selection = this.parameters.remove(IGNORE_ATTRIBS).split("\\s+");
+
+        for (int i = 0; i < selection.length; ++i) {
+            if (train.attribute(selection[i]) == null) {
+                Logger.getInstance().message("The ignored attribute " + selection[i] + "not present", Logger.V_WARNING);
+            }
+            else if (selection[i].equals(train.classAttribute().name())) {
+                Logger.getInstance().message("Cannot ignore class attribute " + train.classAttribute().name(),
+                        Logger.V_WARNING);
+            }
+            else {
+                selectionMask.clear(train.attribute(selection[i]).index());
+            }
+        }
+    }
+
+    /**
+     * This returns the pre-selected attributes if the {@link #SELECT_ARGS} or {@link #ARGS_FILE} attribute
+     * is set. It also limits their number according to {@link #NUM_SELECTED}.
+     * @return the list of preselected attributes
+     */
+    private int [] getSelectedAttribs() throws TaskException{
+
         int [] selectNos;
 
         try {
@@ -332,31 +395,15 @@ public class WekaClassifier extends GeneralClassifier {
                     + "must all be numbers.");
         }
 
-        // find the attributes selected for removal
-        for (int i = 0; i < selectNos.length; ++i){
-
-            if (selectNos[i] >= 0 && selectNos[i] < train.numAttributes()){
-                selectionMask[selectNos[i]] = true;
-            }
-            else {
-                Logger.getInstance().message(this.id + " preselected attribute " + selectNos[i] + " out of range.",
-                        Logger.V_WARNING);
+        if (this.hasParameter(NUM_SELECTED)){
+            int maxSel = this.getIntParameterVal(NUM_SELECTED);
+            if (maxSel < selectNos.length){
+                int [] temp = new int [maxSel];
+                System.arraycopy(selectNos, 0, temp, 0, maxSel);
+                selectNos = temp;
             }
         }
-        selectionMask[train.classIndex()] = true;
-
-        // remove the not-selected attributes
-        for (int i = selectionMask.length - 1; i >= 0; --i){
-            if (!selectionMask[i]){
-
-                String attrName = train.attribute(i).name();
-
-                train.deleteAttributeAt(i);
-                if (eval.attribute(attrName) != null){
-                    eval.deleteAttributeAt(eval.attribute(attrName).index());
-                }
-            }
-        }
+        return selectNos;
     }
 
     /**
@@ -399,5 +446,35 @@ public class WekaClassifier extends GeneralClassifier {
         }
         return out;
     }
+
+    @Override
+    protected void checkNumberOfOutputs() throws TaskException {
+        if ((this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() !=2)
+                || (!this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() != 1)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+        }
+    }
+
+    /**
+     * This writes all the selected attribute indexes that are used for classification to
+     * {@link #attribsOutputFile}.
+     * @param selectionMask the selected attributes
+     */
+    private void writeAttribs(BitSet selectionMask) throws IOException {
+
+        PrintStream out = new PrintStream(this.attribsOutputFile);
+        boolean first = true;
+
+        for (int i = selectionMask.nextSetBit(0); i >= 0; i = selectionMask.nextSetBit(i+1)){
+            if (!first){
+                out.print(" ");
+            }
+            first = false;
+            out.print(i);
+        }
+        out.println();
+        out.close();
+    }
+
 
 }

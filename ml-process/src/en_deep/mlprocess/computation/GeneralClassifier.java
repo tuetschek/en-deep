@@ -63,9 +63,7 @@ public abstract class GeneralClassifier extends Task {
         if (this.input.size() != 2){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
-        if (this.output.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
-        }
+        this.checkNumberOfOutputs();
 
         // check if there are no patterns in inputs and outputs
         this.eliminatePatterns(this.input);
@@ -163,5 +161,15 @@ public abstract class GeneralClassifier extends Task {
      * @throws Exception if an I/O or classification error occurs
      */
     protected abstract void classify(String trainFile, String evalFile, String outputFile) throws Exception;
+
+
+    /**
+     * This issues an exception if the number of outputs is not correct.
+     */
+    protected void checkNumberOfOutputs() throws TaskException {
+        if (this.output.size() != 1){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Must have 1 output.");
+        }
+    }
 
 }
