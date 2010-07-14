@@ -32,7 +32,9 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Instance;
@@ -50,11 +52,17 @@ public class BigDataSplitter extends Task {
 
     /** The 'chunk_length' parameter name */
     private static final String CHUNK_LENGTH = "chunk_length";
+    /** The 'chunks_no' parameter name */
+    private static final String CHUNKS_NO = "chunks_no";
 
     /* DATA */
 
     /** Length of one produced data chunk */
     private int chunkLength;
+    /** Number of chunks that will be one instance longer, if chunks_no parameter is set */
+    private int greaterChunks;
+    /** Number of chunks */
+    private int chunksNo;
     /** The header of the original file */
     private Instances header;
 
@@ -65,20 +73,24 @@ public class BigDataSplitter extends Task {
      * and the necessary parameters:
      * <ul>
      * <li><tt>chunk_length</tt> -- length of one chunk (in number of instances)
+     * <li><tt>chunks_no</tt> -- number of (equally large) parts to be produced
      * </ul>
-     * The input must be one file, the output must be one pattern.
+     * Both parameters are mutually exclusive. The input must be one file, the output must be one pattern.
      */
     public BigDataSplitter(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
 
-        try {
-            this.chunkLength = Integer.parseInt(this.getParameterVal(CHUNK_LENGTH));
+        if (!this.hasParameter(CHUNK_LENGTH) && !this.hasParameter(CHUNKS_NO)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
-        catch (Exception e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter " + CHUNK_LENGTH + " must"
-                    + " be set and numeric.");
+        if (this.hasParameter(CHUNKS_NO)){
+            this.chunksNo = this.getIntParameterVal(CHUNKS_NO);
+            this.chunkLength = -1;
+        }
+        else {
+            this.chunkLength = this.getIntParameterVal(CHUNK_LENGTH);
         }
 
         if (this.input.size() != 1){
@@ -96,6 +108,9 @@ public class BigDataSplitter extends Task {
         
         try {
             this.loadHeader();
+            if (this.chunkLength == -1){
+                this.determineChunkLength();
+            }
             this.processData();
         }
         catch (TaskException e){
@@ -121,14 +136,8 @@ public class BigDataSplitter extends Task {
      * @throws Exception
      */
     private void processData() throws Exception {
-        
-        FileReader in = new FileReader(this.input.get(0));
-        BufferedReader inRead = new BufferedReader(in);
-        String line = inRead.readLine();
 
-        while(line != null && !line.matches("^@[dD][aA][tT][aA]\\s*")){
-            line = inRead.readLine();
-        }
+        BufferedReader inRead = openAndSkipHeader(this.input.get(0));
 
         boolean eof = false;
         int curChunkNo = 0;
@@ -138,7 +147,7 @@ public class BigDataSplitter extends Task {
             ArffLoader.ArffReader instRead = new ArffLoader.ArffReader(inRead, curChunk, 0, chunkLength);
             Instance inst;
 
-            for (int i = 0; i < this.chunkLength; ++i){
+            for (int i = 0; i < (curChunkNo < this.greaterChunks ? this.chunkLength + 1 : this.chunkLength); ++i){
                 if ((inst = instRead.readInstance(curChunk)) == null){
                     eof = true;
                     break;
@@ -146,15 +155,62 @@ public class BigDataSplitter extends Task {
                 curChunk.add(inst);
             }
 
-            // convert string to nominal
-            FileUtils.writeArff(this.output.get(0).replace("**", Integer.toString(curChunkNo)),
-                    FileUtils.allStringToNominal(curChunk));
+            if (curChunk.numInstances() > 0){
+                // convert string to nominal
+                FileUtils.writeArff(this.output.get(0).replace("**", Integer.toString(curChunkNo)),
+                        FileUtils.allStringToNominal(curChunk));
 
-            Logger.getInstance().message(this.id + ": chunk " + curChunkNo + " written ... ", Logger.V_DEBUG);
-            curChunkNo++;
+                Logger.getInstance().message(this.id + ": chunk " + curChunkNo + " written ... ", Logger.V_DEBUG);
+                curChunkNo++;
+            }
         }
 
         inRead.close();
+    }
+
+    /**
+     * This opens an ARFF file and skips its header.
+     * @param fileName the file name
+     * @return the open file input stream, after the initial @data line.
+     */
+    private BufferedReader openAndSkipHeader(String fileName) throws IOException, FileNotFoundException {
+
+        FileReader in = new FileReader(fileName);
+        BufferedReader inRead = new BufferedReader(in);
+        String line = inRead.readLine();
+
+        while (line != null && !line.matches("^@[dD][aA][tT][aA]\\s*")) {
+            line = inRead.readLine();
+        }
+        return inRead;
+    }
+
+    /**
+     * Given the input file and the desired number of chunks, this finds out the length of the file
+     * and therefore the number of instances for one chunk.
+     */
+    private void determineChunkLength() throws IOException {
+
+        BufferedReader inRead = openAndSkipHeader(this.input.get(0));
+        String line = inRead.readLine();
+        int numInst = 0;
+
+        Logger.getInstance().message("Determining file size ...", Logger.V_DEBUG);
+
+        while (line != null){
+            if (!line.isEmpty() && !line.startsWith("%")){
+                numInst++;
+            }
+            line = inRead.readLine();
+        }
+        inRead.close();
+
+        this.chunkLength = numInst / this.chunksNo;
+        this.greaterChunks = numInst % this.chunksNo;
+
+        Logger.getInstance().message("Found " + numInst + " instances, chunk length "
+                + this.chunkLength + ", greater " + this.greaterChunks, Logger.V_DEBUG);
+
     }
 
 }
