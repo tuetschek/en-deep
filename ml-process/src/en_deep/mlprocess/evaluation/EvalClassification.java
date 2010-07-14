@@ -29,19 +29,13 @@ package en_deep.mlprocess.evaluation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
-import en_deep.mlprocess.Task;
-import en_deep.mlprocess.computation.GeneralClassifier;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Hashtable;
 import java.util.Vector;
-import weka.core.Attribute;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.SortLabels;
 
 /**
  * This computes accuracy, precision, recall and F1 (labeled and unlabeled) for the

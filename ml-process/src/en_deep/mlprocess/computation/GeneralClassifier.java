@@ -58,16 +58,23 @@ public abstract class GeneralClassifier extends Task {
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
-
-        // check the number of inputs and outputs
-        if (this.input.size() != 2){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
-        }
+        this.checkNumberOfInputs();
         this.checkNumberOfOutputs();
 
         // check if there are no patterns in inputs and outputs
         this.eliminatePatterns(this.input);
         this.eliminatePatterns(this.output);
+    }
+
+    /**
+     * This issues an exception if the number of inputs is not correct.
+     * @throws TaskException
+     */
+    protected void checkNumberOfInputs() throws TaskException {
+        // check the number of inputs and outputs
+        if (this.input.size() != 2) {
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
     }
 
     /**

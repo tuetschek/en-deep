@@ -85,6 +85,8 @@ public class WekaClassifier extends GeneralClassifier {
     private boolean binarize;
     /** The name of the file where the used attribute indexes should be written, or null */
     private String attribsOutputFile;
+    /** The name of the file where the preselected attribute indexes are */
+    private String preselectedAttribFile;
 
     /* METHODS */
  
@@ -111,8 +113,8 @@ public class WekaClassifier extends GeneralClassifier {
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
-     * <li><tt>args_file</tt> -- same as previous, except that the value of the parameter is the name of a file
-     * where the selected argument ids are stored.</li>
+     * <li><tt>args_file</tt> -- same as previous, except that now, three inputs are required and the 
+     * last of them is the file where the selected argument ids are stored.</li>
      * <li><tt>num_selected</tt> -- limit the number of selected attributes (either from file or parameter)</tt>
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
@@ -151,8 +153,9 @@ public class WekaClassifier extends GeneralClassifier {
                     + " set at the same time!");
         }
         if (this.hasParameter(ARGS_FILE)){
-            if (!this.getParameterVal(ARGS_FILE).contains(File.separator)){
-                this.parameters.put(ARGS_FILE, Process.getInstance().getWorkDir() + this.getParameterVal(ARGS_FILE));
+            this.preselectedAttribFile = this.input.remove(2);
+            if (!this.preselectedAttribFile.contains(File.separator)){
+                this.preselectedAttribFile = Process.getInstance().getWorkDir() + this.preselectedAttribFile;
             }
         }
         if (this.hasParameter(OUT_ATTRIBS)){
@@ -380,7 +383,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         try {
             if (this.hasParameter(SELECT_ARGS)){
-                selectNos = StringUtils.readListOfInts(this.parameters.remove(SELECT_ARGS));
+                selectNos = StringUtils.readListOfInts(this.preselectedAttribFile);
             }
             else {
                 selectNos = StringUtils.readListOfInts(FileUtils.readString(this.parameters.remove(ARGS_FILE)));
@@ -451,7 +454,7 @@ public class WekaClassifier extends GeneralClassifier {
     protected void checkNumberOfOutputs() throws TaskException {
         if ((this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() !=2)
                 || (!this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() != 1)){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id);
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }
 
@@ -475,6 +478,15 @@ public class WekaClassifier extends GeneralClassifier {
         out.println();
         out.close();
     }
+
+    @Override
+    protected void checkNumberOfInputs() throws TaskException {
+        if ((this.getBooleanParameterVal(ARGS_FILE) && this.input.size() !=3)
+                || (!this.getBooleanParameterVal(ARGS_FILE) && this.input.size() != 2)){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+    }
+
 
 
 }
