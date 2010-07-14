@@ -73,10 +73,10 @@ public class ClassificationMerger extends Task {
 
     /**
      * This creates a new {@link ClassificationMerger} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
-     * <li><tt>class_arg</tt> -- the class attribute name
-     * <tt><tt>measure</tt> -- the measure of classifier comparison
+     * <li><tt>class_arg</tt> -- the class attribute name</li>
+     * <li><tt>measure</tt> -- the measure of classifier comparison</li>
      * </ul>
      * The first half of inputs is assumed to be classifications of the same file, the second half the
      * rankings of the classifiers that produced the classifications, in the same order.

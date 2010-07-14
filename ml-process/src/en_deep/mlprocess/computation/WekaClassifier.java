@@ -134,6 +134,7 @@ public class WekaClassifier extends GeneralClassifier {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
+        this.binarize = this.parameters.remove(BINARIZE) != null;
 
         if (this.hasParameter(SELECT_ARGS) && this.hasParameter(ARGS_FILE)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be"
@@ -217,7 +218,7 @@ public class WekaClassifier extends GeneralClassifier {
      */
     protected void classify(String trainFile, String evalFile, String outFile) throws Exception {
 
-        Logger.getInstance().message(this.id + ": training " + trainFile + " for eval on " + evalFile + "...",
+        Logger.getInstance().message(this.id + ": reading " + trainFile + " and " + evalFile + "...",
                 Logger.V_DEBUG);
 
         // read the training data
@@ -230,13 +231,21 @@ public class WekaClassifier extends GeneralClassifier {
         this.findTargetFeature(train, eval);
         outData =  new Instances(eval); // save a copy w/o attribute preselection
 
+        Logger.getInstance().message(this.id + ": preselecting attributes...",
+                Logger.V_DEBUG);
+
         // pre-select the attributes
         this.attributesPreselection(train, eval);
+
         if (this.binarize){ // binarize, if needed
+            Logger.getInstance().message(this.id + ": binarizing...",
+                    Logger.V_DEBUG);
             train = this.sparseNominalToBinary(train);
             eval = this.sparseNominalToBinary(eval);
         }
 
+        Logger.getInstance().message(this.id + ": training " + trainFile + " for eval on " + evalFile + "...",
+                Logger.V_DEBUG);
         // train the classifier
         this.classif.buildClassifier(train);
 

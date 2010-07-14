@@ -54,13 +54,15 @@ public class BigDataSplitter extends Task {
     private static final String CHUNK_LENGTH = "chunk_length";
     /** The 'chunks_no' parameter name */
     private static final String CHUNKS_NO = "chunks_no";
+    /** The 'equal_chunks' parameter name */
+    private static final String EQUAL_CHUNKS = "equal_chunks";
 
     /* DATA */
 
     /** Length of one produced data chunk */
     private int chunkLength;
-    /** Number of chunks that will be one instance longer, if chunks_no parameter is set */
-    private int greaterChunks;
+    /** Number of chunks that will be one instance longer, if chunks_no parameter is set, 0 otherwise */
+    private int greaterChunks = 0;
     /** Number of chunks */
     private int chunksNo;
     /** The header of the original file */
@@ -70,12 +72,19 @@ public class BigDataSplitter extends Task {
 
     /**
      * This creates a new {@link BigDataSplitter} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>chunk_length</tt> -- length of one chunk (in number of instances)
      * <li><tt>chunks_no</tt> -- number of (equally large) parts to be produced
      * </ul>
-     * Both parameters are mutually exclusive. The input must be one file, the output must be one pattern.
+     * Both parameters are mutually exclusive. There is also a voluntary parameter, if <tt>chunk_length</tt>
+     * is set:
+     * <ul>
+     * <li><tt>equal_chunks</tt> -- if set, the data will be split into as many chunks as the preset
+     * length would cause, but in equal amounts (the last chunk won't be shorter than the previous ones).
+     * </ul>
+     * The input must be one file, the output must be one pattern.
+     *
      */
     public BigDataSplitter(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -108,7 +117,7 @@ public class BigDataSplitter extends Task {
         
         try {
             this.loadHeader();
-            if (this.chunkLength == -1){
+            if (this.chunkLength == -1 || this.getBooleanParameterVal(EQUAL_CHUNKS)){
                 this.determineChunkLength();
             }
             this.processData();
@@ -186,8 +195,9 @@ public class BigDataSplitter extends Task {
     }
 
     /**
-     * Given the input file and the desired number of chunks, this finds out the length of the file
-     * and therefore the number of instances for one chunk.
+     * Given the input file and the desired number of chunks or the desired chunk length (with 
+     * equal_chunks setting), this finds out the length of the file and therefore the number of
+     * instances for one chunk.
      */
     private void determineChunkLength() throws IOException {
 
@@ -205,8 +215,15 @@ public class BigDataSplitter extends Task {
         }
         inRead.close();
 
-        this.chunkLength = numInst / this.chunksNo;
-        this.greaterChunks = numInst % this.chunksNo;
+        if (this.chunkLength == -1){
+            this.chunkLength = numInst / this.chunksNo;
+            this.greaterChunks = numInst % this.chunksNo;
+        }
+        else { // equal_chunks set
+            this.chunksNo = (int) Math.ceil(numInst / (double)this.chunkLength);
+            this.chunkLength = numInst / this.chunksNo;
+            this.greaterChunks = numInst % this.chunksNo;
+        }
 
         Logger.getInstance().message("Found " + numInst + " instances, chunk length "
                 + this.chunkLength + ", greater " + this.greaterChunks, Logger.V_DEBUG);
