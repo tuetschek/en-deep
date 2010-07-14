@@ -31,12 +31,10 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -44,6 +42,8 @@ import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.SparseInstance;
+import weka.filters.unsupervised.attribute.NominalToBinary;
 
 /**
  * This task runs a specified weka classifier with given parameters on the given train and adds its result
@@ -66,6 +66,8 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String PROB_DIST = "prob_dist";
     /** Name of the ignore_attr parameter */
     static final String IGNORE_ATTRIBS = "ignore_attr";
+    /** Name of the 'binarize' parameter */
+    private static final String BINARIZE = "binarize";
 
     /* DATA */
 
@@ -73,6 +75,8 @@ public class WekaClassifier extends GeneralClassifier {
     private AbstractClassifier classif;
     /** Output probability distribution instead of classification ? */
     private boolean probabilities;
+    /** Should the nominal attributes be binarized before classification ? */
+    private boolean binarize;
 
     /* METHODS */
  
@@ -104,6 +108,8 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
+     * <li><tt>binarize</tt> -- if set, it converts all the nominal parameters to binary, while using
+     * sparse matrix to represent the result.</li>
      * </ul>
      * <p>
      * Parameters <tt>select_args</tt> a <tt>args_file</tt> are mutually exclusive.
@@ -226,6 +232,10 @@ public class WekaClassifier extends GeneralClassifier {
 
         // pre-select the attributes
         this.attributesPreselection(train, eval);
+        if (this.binarize){ // binarize, if needed
+            train = this.sparseNominalToBinary(train);
+            eval = this.sparseNominalToBinary(eval);
+        }
 
         // train the classifier
         this.classif.buildClassifier(train);
@@ -250,11 +260,14 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.probabilities){
             this.addDistributions(outData, distributions);
         }
-        
+
         // write the output
         FileUtils.writeArff(outFile, outData);
 
         Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
+        
+        // clean up
+        this.classif = null;
     }
 
     /**
@@ -360,6 +373,22 @@ public class WekaClassifier extends GeneralClassifier {
             }
         }
 
+    }
+
+    private Instances sparseNominalToBinary(Instances train) throws Exception {
+
+        NominalToBinary ntb = new NominalToBinary();
+
+        ntb.setInputFormat(train);
+        Instances out = ntb.getOutputFormat();
+        for (Instance inst : train){
+
+            SparseInstance sparse = new SparseInstance(inst);
+            
+            ntb.input(sparse);
+            out.add(ntb.output());
+        }
+        return out;
     }
 
 }

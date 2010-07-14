@@ -33,6 +33,7 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.computation.GeneralClassifier;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Hashtable;
@@ -48,17 +49,13 @@ import weka.filters.unsupervised.attribute.SortLabels;
  *
  * @author Ondrej Dusek
  */
-public class EvalClassification extends Task {
+public class EvalClassification extends AbstractEvaluation {
 
     /* CONSTANTS */
     
-    /** The name of the "class_arg" parameter */
-    private static final String CLASS_ARG = GeneralClassifier.CLASS_ARG;
     /** The name of the 'diffs' parameter */
     private static final String DIFFS = "diffs";
     
-    /** The value that's used as "empty" */
-    private static String EMPTY = "_";
 
     /* DATA */
 
@@ -96,14 +93,8 @@ public class EvalClassification extends Task {
 
         super(id, parameters, input, output);
 
-        if (this.parameters.get(CLASS_ARG) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter class_arg is missing.");
-        }
         this.produceDiffs = this.getBooleanParameterVal(DIFFS);
 
-        if (this.input.size() % 2 != 0){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "There must be pairs of inputs.");
-        }
         if (!this.produceDiffs){
             if (this.output.size() != 1){
                 throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "There must be 1 output.");
@@ -159,41 +150,17 @@ public class EvalClassification extends Task {
      */
     private Pair<Stats,Stats> eval(String goldFile, String testFile) throws Exception {
         
-        // read the gold data
-        Instances gold = FileUtils.readArff(goldFile);
-        // read the test data
-        Instances test = FileUtils.readArff(testFile);
-
-        // find the attribute to evaluate
-        String attr = this.parameters.get(CLASS_ARG);
-        Attribute attrGold = null, attrTest = null;
-        
-        if ((attrGold = gold.attribute(attr)) == null || (attrTest = test.attribute(attr)) == null
-                || !attrGold.isNominal() || !attrTest.isNominal()
-                || gold.numInstances() != test.numInstances()){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                    "Attribute for evaluation not found or not nominal, or the numbers of instances in gold " +
-                    "and evaluation data mismatch (" + goldFile + " / " + testFile + ").");
-        }
-        if (!attrGold.equals(attrTest) && attrGold.numValues() == attrTest.numValues()){
-
-            gold = this.sortLabels(gold, attrGold);
-            test = this.sortLabels(test, attrTest);
-            attrGold = gold.attribute(attr);
-            attrTest = test.attribute(attr);
-        }
-        if (!attrGold.equals(attrTest)){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                    "The class attributes in " + goldFile + " and " + testFile + " are not the same.");
-        }
 
         // test everything
-        double [] goldenValues = gold.attributeToDoubleArray(attrGold.index());
-        double [] testValues = test.attributeToDoubleArray(attrTest.index());
-        String [] labels = this.getLabels(attrGold);
+        Pair<Instances,Instances> data = this.readData(goldFile, testFile);
+        
+        double [] goldenValues = data.first.attributeToDoubleArray(data.first.classIndex());
+        double [] testValues = data.second.attributeToDoubleArray(data.second.classIndex());
+        String [] labels = this.getLabels(data.first.classAttribute());
+        int emptyIdx = StringUtils.find(labels, EMPTY);
 
-        Stats labeled = this.getStats(goldenValues, testValues, attrGold.indexOfValue(EMPTY), true);
-        Stats unlabeled = this.getStats(goldenValues, testValues, attrGold.indexOfValue(EMPTY), false);
+        Stats labeled = this.getStats(goldenValues, testValues, emptyIdx, true);
+        Stats unlabeled = this.getStats(goldenValues, testValues, emptyIdx, false);
 
         if (this.produceDiffs){
             this.printLog(goldFile + " x " + testFile + ":", goldenValues, testValues, labels);
@@ -202,21 +169,6 @@ public class EvalClassification extends Task {
         return new Pair<Stats, Stats>(labeled, unlabeled);
     }
 
-    /**
-     * This sorts the labels of the given attribute alphabetically (changing the data values)
-     * @param data the data to be processed
-     * @param attr the attribute whose labels should be sorted
-     * @return the data with the attribute labels sorted
-     */
-    private Instances sortLabels(Instances data, Attribute attr) throws Exception {
-
-        SortLabels sorting = new SortLabels();
-        sorting.setAttributeIndices(Integer.toString(attr.index() + 1));
-        sorting.setInputFormat(data);
-        
-        data = Filter.useFilter(data, sorting);
-        return data;
-    }
 
 
     /**
@@ -245,44 +197,6 @@ public class EvalClassification extends Task {
 
 
     /**
-     * Collects the {@link Stats} values, given the data as arrays. Works for labeled and unlabeled version
-     * (unlabeled checks against the EMPTY value only, labeled checks for wrong values, too).
-     *
-     * @param gold the gold standard values
-     * @param test the test data values
-     * @param emptyVal the value that is treated as "empty"
-     * @param labeled should we consider labels ?
-     * @return the precision and recall values, respectively
-     */
-    private Stats getStats(double[] gold, double[] test, int emptyVal, boolean labeled) {
-
-        Stats stats = new Stats();
-        
-        stats.n = gold.length;
-
-        for (int i = 0; i < gold.length; ++i){
-            if (gold[i] == emptyVal && test[i] == emptyVal){
-                ++stats.tn;
-            }
-            else if (gold[i] == emptyVal && test[i] != emptyVal){
-                ++stats.fp;
-            }
-            else if (gold[i] != emptyVal && test[i] == emptyVal){
-                ++stats.fn;
-            }
-            else if (!labeled || gold[i] == test[i]){
-                ++stats.tp;
-            }
-            else { // same as CoNLL evaluation: wrong label on a right place is a false positive AND negative
-                ++stats.fp; ++stats.fn;
-            }
-        }
-
-        // first - precision, second - recall
-        return stats;
-    }
-
-    /**
      * This prints the prediction log for the given instances (pairs of golden x predicted class values) + error markings
      * into the open {@link #diffFile}.
      * @param caption log caption
@@ -306,18 +220,4 @@ public class EvalClassification extends Task {
         this.diffFile.println();
     }
 
-    /**
-     * This returns all the labels for the given attribute, in the correct order.
-     * @param attr the attribute to be processed
-     * @return all the labels for the values of the given attribute
-     */
-    private String [] getLabels(Attribute attr) {
-
-        String [] labels = new String [attr.numValues()];
-
-        for (int i = 0; i < attr.numValues(); i++) {
-            labels[i] = attr.value(i);
-        }
-        return labels;
-    }
 }

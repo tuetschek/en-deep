@@ -166,6 +166,53 @@ public abstract class Task implements Serializable {
     }
 
     /**
+     * This returns the numeric value of a parameter. It returns null if the value is null,
+     * it throws an exception if the value is set and is not numeric.
+     * @param paramName the name of the parameter
+     * @return the numeric value of the parameter
+     * @throws TaskException if the value is set, but not numeric
+     */
+    public Double getDoubleParameterVal(String paramName) throws TaskException {
+
+        if (this.parameters.get(paramName) != null){
+            try {
+                return Double.parseDouble(this.parameters.get(paramName));
+            }
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Value of "
+                        + paramName + " must be numeric.");
+            }
+        }
+        else {
+            return null;
+        }
+    }
+
+
+    /**
+     * This returns the integer value of a parameter. It returns null if the value is null,
+     * it throws an exception if the value is set and is not numeric.
+     * @param paramName the name of the parameter
+     * @return the numeric value of the parameter
+     * @throws TaskException if the value is set, but not numeric
+     */
+    public Integer getIntParameterVal(String paramName) throws TaskException {
+
+        if (this.parameters.get(paramName) != null){
+            try {
+                return Integer.parseInt(this.parameters.get(paramName));
+            }
+            catch (NumberFormatException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Value of "
+                        + paramName + " must be numeric.");
+            }
+        }
+        else {
+            return null;
+        }
+    }
+
+    /**
      * Returns a string value of a class {@link #parameters parameter}.
      * 
      * @param paramName the name of the desired parameter

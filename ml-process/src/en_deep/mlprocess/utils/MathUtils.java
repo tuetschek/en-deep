@@ -178,4 +178,24 @@ public class MathUtils {
         }
         return ret;
     }
+
+    /**
+     * This changes all occurrences of the value v1 to v2 and vice versa. Other data in the array
+     * are left unchanged.
+     * @param arr the array to be processed
+     * @param v1 the value to be changed to v2
+     * @param v2 the value to be change to v1
+     */
+    public static void swapValues(double [] arr, double v1, double v2){
+
+        for (int i = 0; i < arr.length; ++i){
+            if (arr[i] == v1){
+                arr[i] = v2;
+            }
+            else if (arr[i] == v2){
+                arr[i] = v1;
+            }
+        }
+
+    }
 }

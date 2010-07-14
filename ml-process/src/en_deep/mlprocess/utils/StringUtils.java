@@ -422,4 +422,20 @@ public class StringUtils {
         return matching.toArray(new String [matching.size()]);
     }
 
+    /**
+     * This returns the position of a given string in the given array, or -1 if not found.
+     * @param arr the array that contains the string
+     * @param val the string to search
+     * @return the position of the string in the array, or -1
+     */
+    public static int find(String [] arr, String val){
+
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i].equals(val)){
+                return i;
+            }
+        }
+        return -1;
+    }
+
 }
