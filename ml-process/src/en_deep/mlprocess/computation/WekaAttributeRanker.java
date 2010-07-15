@@ -177,6 +177,12 @@ public class WekaAttributeRanker extends GeneralClassifier {
         FileUtils.writeString(outputFile, outText);
 
         Logger.getInstance().message(this.id + ": results saved to " + outputFile + ".", Logger.V_DEBUG);
+
+        // clear memory
+        this.ranker = null;
+        this.evaluator = null;
+        this.searcher = null;
+        this.searcherEval = null;
     }
 
 

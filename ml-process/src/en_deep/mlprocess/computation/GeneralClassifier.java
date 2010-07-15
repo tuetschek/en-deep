@@ -110,34 +110,39 @@ public abstract class GeneralClassifier extends Task {
             }
         }
 
+        // select the last attribute by default
+        String classArg = train.attribute(train.numAttributes()-1).name();
+
         // an attribute name was given in parameters -- try to find it
-        if (this.parameters.get(CLASS_ARG) != null) {
+        if (this.hasParameter(CLASS_ARG)) {
+            classArg = this.parameters.remove(CLASS_ARG);
+        }
 
-            String classArg = this.parameters.remove(CLASS_ARG);
-
-            if (missing != null && !missing.name().equals(classArg)) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Other attribute than"
-                        + " class attribute missing from the evaluation data.");
-            }
-            if (train.attribute(classArg) == null) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
-                        + "in training data.");
-            }
-            if (missing == null) { // ensure the class attribute will be overwritten
-                eval.deleteAttributeAt(eval.attribute(classArg).index());
-            }
+        if (missing != null && !missing.name().equals(classArg)) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Other attribute than"
+                    + " class attribute missing from the evaluation data.");
+        }
+        if (train.attribute(classArg) == null) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
+                    + "in training data.");
+        }
+        if (missing == null && !eval.attribute(classArg).equals(train.attribute(classArg))) {
+            Logger.getInstance().message("Target attributes not equal, eval attribute will be"
+                    + " overwritten, all values will be lost.", Logger.V_WARNING);
+            eval.deleteAttributeAt(eval.attribute(classArg).index());
             missing = train.attribute(classArg);
         }
-        // no attribute from train is missing in eval, no attribute preset -> select the last one
-        else if(missing == null) {
-            missing = train.attribute(train.numAttributes() - 1);
-            eval.deleteAttributeAt(eval.attribute(missing.name()).index());
+
+        if (missing != null){
+            Attribute att = missing.copy(missing.name());
+            eval.insertAttributeAt(att, missing.index());
+            eval.setClassIndex(missing.index());
+            train.setClassIndex(missing.index());
         }
-        
-        Attribute att = missing.copy(missing.name());
-        eval.insertAttributeAt(att, missing.index());
-        eval.setClassIndex(missing.index());
-        train.setClassIndex(missing.index());
+        else {
+            train.setClass(train.attribute(classArg));
+            eval.setClass(eval.attribute(classArg));
+        }
     }
 
     /**

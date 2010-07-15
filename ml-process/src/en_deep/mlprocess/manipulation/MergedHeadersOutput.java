@@ -31,7 +31,6 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
-import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -40,8 +39,6 @@ import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.AddValues;
 
 /**
  * This contains a useful function for tasks that need to merge the headers of some files before processing them.
