@@ -383,10 +383,10 @@ public class WekaClassifier extends GeneralClassifier {
 
         try {
             if (this.hasParameter(SELECT_ARGS)){
-                selectNos = StringUtils.readListOfInts(this.preselectedAttribFile);
+                selectNos = StringUtils.readListOfInts(this.parameters.remove(SELECT_ARGS));
             }
             else {
-                selectNos = StringUtils.readListOfInts(FileUtils.readString(this.parameters.remove(ARGS_FILE)));
+                selectNos = StringUtils.readListOfInts(FileUtils.readString(this.preselectedAttribFile, true));
             }
         }
         catch (IOException e){

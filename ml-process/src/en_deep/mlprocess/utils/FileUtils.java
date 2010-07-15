@@ -238,16 +238,20 @@ public class FileUtils{
 
     /**
      * This reads the file contents and saves them to a string.
-     * @param fileName
-     * @return
+     * @param fileName the name of the file to be read
+     * @param firstLineOnly if true, only the first line of the file will be read
+     * @return the contents of the file in a string
      */
-    public static String readString(String fileName) throws IOException {
+    public static String readString(String fileName, boolean firstLineOnly) throws IOException {
     
         RandomAccessFile in = new RandomAccessFile(fileName, "r");
         StringBuilder sb = new StringBuilder();
         String line;
         while ((line = in.readLine()) != null){
             sb.append(line);
+            if (firstLineOnly){
+                break;
+            }
             sb.append("\n");
         }
         in.close();
