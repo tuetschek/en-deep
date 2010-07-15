@@ -55,6 +55,7 @@ import java.io.IOException;
  * a single "#" should be set as an argument. If all tasks should be reset, "!" should be set as argument.</li>
  * <li><tt>--retrieve_count (-c)</tt> the number of tasks that should be retrieved by one worker at one time (default: 10)</li>
  * <li><tt>--parse_only (-p)</tt> if set, the program will just parse the scenario file, report any problems and end.</li>
+ * <li><tt>--workdir (-d)</tt> specifies the working directory (if not the same as that of the plan file).</li>
  * </ul>
  * <p>
  * The verbosity setting looks as follows:

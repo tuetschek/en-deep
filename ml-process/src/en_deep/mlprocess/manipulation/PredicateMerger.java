@@ -55,6 +55,8 @@ public class PredicateMerger extends GroupInputsTask {
     private static final String PRED_INFO = "pred_info";
     /** The min_sent parameter name */
     private static final String MIN_SENT = "min_sent";
+    /** The file_attr parameter name */
+    private static final String FILE_ATTR = DataMerger.FILE_ATTR;
 
     /* DATA */
     /** Information about all predicates */
@@ -67,6 +69,8 @@ public class PredicateMerger extends GroupInputsTask {
     HashMultimap<String, String> grouped;
     /** The single outputs */
     ArrayList<Pair<String, String>> single;
+    /** Name of the file attribute created in merged files */
+    private String fileAttrName;
 
     /* METHODS */
 
@@ -79,8 +83,17 @@ public class PredicateMerger extends GroupInputsTask {
      * <li><tt>min_sent</tt> -- the minimum number of sentences so that the predicate is not merged</li>
      * <li><tt>pattern0</tt> -- the input pattern</li>
      * </ul>
+     * <p>
      * There must be one or more inputs and just one output, which must be a "**" pattern. The output pattern
      * replacements are either the predicate (for frequent predicates that don't get merged) or the frame (+POS).
+     * </p><p>
+     * There is one more voluntary parameter:
+     * </p>
+     * <ul>
+     * <li><tt>file_attr</tt> -- if set, the merged files will contain also a "file-attribute" which will
+     * store the original file/predicate name</li>
+     * </ul>
+     *
      */
     public PredicateMerger(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -101,6 +114,7 @@ public class PredicateMerger extends GroupInputsTask {
         if (!this.predInfoFile.contains(File.separator)){
             this.predInfoFile = Process.getInstance().getWorkDir() + this.predInfoFile;
         }
+        this.fileAttrName = this.getParameterVal(FILE_ATTR);
 
         if (this.input.isEmpty()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Must have some inputs.");
@@ -234,15 +248,18 @@ public class PredicateMerger extends GroupInputsTask {
      */
     private void mergeGroups() throws TaskException {
 
-        Hashtable<String, String> dummyParams = new Hashtable<String, String>();
+        Hashtable<String, String> mergeParams = new Hashtable<String, String>();
 
+        if (this.fileAttrName != null){
+            mergeParams.put(DataMerger.FILE_ATTR, this.fileAttrName);
+        }
         for (String frame : this.grouped.keySet()){
 
             Vector<String> mergeIn = new Vector<String>(this.grouped.get(frame));
             Vector<String> mergeOut = new Vector<String>(1);
             mergeOut.add(this.output.get(0).replace("**", this.outPrefix + frame));
 
-            DataMerger merger = new DataMerger(this.id, dummyParams, mergeIn, mergeOut);
+            DataMerger merger = new DataMerger(this.id, mergeParams, mergeIn, mergeOut);
             merger.perform();
         }
     }

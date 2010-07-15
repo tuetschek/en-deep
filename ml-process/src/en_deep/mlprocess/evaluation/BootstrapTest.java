@@ -74,8 +74,9 @@ public class BootstrapTest extends AbstractEvaluation {
     /* METHODS */
 
     /**
-     * This creates a new {@link BootstrapTest} task, checking the numbers of inputs and outputs
-     * (inputs must be pairs and there must be only 1 output) and the necessary parameters.
+     * This creates a new {@link BootstrapTest} task. It checks the numbers of inputs and outputs
+     * (inputs must be pairs: 1st half is supposed to be gold and the 2nd test data; there must be
+     * only 1 output) and the necessary parameters:
      * <ul>
      * <li><tt>class_arg</tt> -- the class attribute that is used for testing</li>
      * <li><tt>samples</tt> -- number of bootstrap samples to be created</li>
@@ -119,8 +120,11 @@ public class BootstrapTest extends AbstractEvaluation {
         
         try {
             this.readAllData();
+            if (this.sampleSize == -1){
+                this.sampleSize = (int) ((this.samplePerc * this.gold.length) / 100.0);
+            }
             Logger.getInstance().message(this.id + " loaded data. Performing bootstrap with "
-                    + this.samplesNo + " samples...", Logger.V_DEBUG);
+                    + this.samplesNo + " sets of " + this.sampleSize + " samples...", Logger.V_DEBUG);
             this.bootstrap(this.output.get(0));
         }
         catch (TaskException e){
@@ -177,10 +181,6 @@ public class BootstrapTest extends AbstractEvaluation {
         double [] acc = new double [this.samplesNo];
         double [] pre = new double [this.samplesNo];
         double [] rec = new double [this.samplesNo];
-
-        if (this.sampleSize == -1){
-            this.sampleSize = (int) ((this.samplePerc * this.samplesNo) / 100.0);
-        }
 
         double [] sampleGold = new double [this.sampleSize];
         double [] sampleTest = new double [this.sampleSize];

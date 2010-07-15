@@ -47,6 +47,8 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
     private static final String START = "start";
     /** The name of the "end" parameter */
     private static final String END = "end";
+    /** The name of the "step" parameter */
+    private static final String STEP = "step";
     /** The name of the reserved 'attribute_order_file' parameter */
     private static final String ATTRIB_ORDER_FILE = "attribute_order_file";
 
@@ -58,6 +60,8 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
     private int start;
     /** The maximum number of attributes to try */
     private int end;
+    /** The number of attributes added at a time */
+    private int step;
 
     /* METHODS */
 
@@ -81,6 +85,7 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
      * <li><tt>start</tt> -- the starting number of attributes</li>
      * <li><tt>end</tt> -- the maximum number of attributes that are to be tried</li>
      * <li><tt>delete_tempfiles</tt> -- deletes all the tempfiles afterwards</li>
+     * <li><tt>step</tt> -- the number of attributes that are added at a time</li>
      * </ul>
      * There is a special parameter reserved for the program (the process ends with this
      * parameter). If the task is run with this parameter, more inputs are allowed.
@@ -107,19 +112,17 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         }
 
         // check voluntary parameters
-        try {
-            this.start = -1;
-            this.end = -1;
-            if (this.getParameterVal(START) != null){
-                this.start = Integer.parseInt(this.getParameterVal(START));
-            }
-            if (this.getParameterVal(END) != null){
-                this.end = Integer.parseInt(this.getParameterVal(END));
-            }
+        this.start = -1;
+        this.end = -1;
+        this.step = 1;
+        if (this.hasParameter(START)){
+            this.start = this.getIntParameterVal(START);
         }
-        catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters start and "
-                    + "end must be numeric.");
+        if (this.hasParameter(END)){
+            this.end = this.getIntParameterVal(END);
+        }
+        if (this.hasParameter(STEP)){
+            this.step = this.getIntParameterVal(STEP);
         }
 
         // check the number of inputs and outputs
@@ -144,8 +147,8 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         }
 
         // determine the number of trials
-        length = attributeOrder.length - 1;
-        if (this.start > 1 && this.start < attributeOrder.length - 1){
+        length = attributeOrder.length;
+        if (this.start > 1 && this.start < attributeOrder.length){
             length -= this.start;
         }
         if (this.end != -1 && this.end < attributeOrder.length){
@@ -158,9 +161,9 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
             lo = attributeOrder.length - 1;
         }
         // prepare the corresponding parameter sets
-        paramSets = new Hashtable[length];
-        for (int i = lo; i < lo + length; ++i){
-            paramSets[i-lo] = this.prepareParamSet(StringUtils.join(attributeOrder, 0, i+1, " "));
+        paramSets = new Hashtable[(length-1) / this.step  +1];
+        for (int i = lo; i < lo + length; i += this.step){
+            paramSets[(i-lo)/this.step] = this.prepareParamSet(StringUtils.join(attributeOrder, 0, i, " "));
         }
         return paramSets;
     }

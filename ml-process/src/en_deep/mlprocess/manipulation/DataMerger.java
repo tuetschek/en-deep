@@ -59,7 +59,7 @@ public class DataMerger extends Task {
     /** The 'uniq' parameter name */
     private static final String UNIQ = "uniq";
     /** The name of the 'file_attr' parameter */
-    private static final String FILE_ATTR = "file_attr";
+    static final String FILE_ATTR = "file_attr";
     /** The prefix of all 'pattern' parameters */
     private static final String PATTERN_PREFIX = "pattern";
 
