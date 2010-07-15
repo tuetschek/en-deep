@@ -331,6 +331,10 @@ public class StToArff extends StManipulation {
                     out.print(this.reader.getSentenceId());
 
                     for (int k = 0; k < this.reader.COMPULSORY_FIELDS; ++k){
+
+                        if (k > word.length){ // treat missing values as missing values (evaluation file)
+                            out.print(",?");
+                        }
                         if (this.reader.posFeat == false &&
                                 (k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon)){
                             continue; // skip FEAT if we're not using them
@@ -351,6 +355,10 @@ public class StToArff extends StManipulation {
 
                     // print the resulting semantic relation to the given predicate
                     if (!this.omitSemClass){
+                        
+                        if (word.length < this.reader.IDXI_SEMROLE + 1){ // evaluation file -> missing value(s)
+                            out.print(this.divideAMs ? ",?,?" : ",?");
+                        }
                         if (this.divideAMs){
                             if (word[this.reader.IDXI_SEMROLE + i].matches(this.reader.amsPat)){
                                 out.print(",_,\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");

@@ -74,7 +74,7 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
     }
 
     /**
-     * This sorts the inputs according to the given input patterns. There is one hashtable for each input pattern,
+     * This sorts the inputs according to {@link #patterns}. There is one hashtable for each input pattern,
      * the keys of which are the expansions of that pattern and the values are the input file names.
      * @return the inputs, sorted according to the given input patterns.
      * @throws TaskException
@@ -123,7 +123,7 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
     /**
      * This extract the pattern-related parameters from the task parameters. The number of patterns extracted
      * must be the same as that of outputs / divideBy (so that the outputs divide the inputs in several groups).
-     * No pattern may be missing.
+     * No pattern may be missing. If divideBy is 0, no limit is set on the number of patterns.
      *
      * @param divideBy how many groups the inputs shall form, therefore how many times less input patterns is
      *   transferred to the outputs
@@ -131,11 +131,12 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
      */
     protected void extractPatterns(int divideBy) throws TaskException {
 
-        this.patterns = StringUtils.getValuesField(this.parameters, PATTERN_PREFIX, this.output.size() / divideBy);
+        this.patterns = StringUtils.getValuesField(this.parameters, PATTERN_PREFIX, 
+                divideBy != 0 ? this.output.size() / divideBy : 0);
 
         if (this.patterns == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid pattern"
-                    + "specifications in task parameters.");
+                    + " specifications in task parameters.");
         }
     }
 

@@ -332,7 +332,7 @@ public class StringUtils {
     public static String [] getValuesField(Hashtable<String, String> parameters, String prefix, int count){
 
         Enumeration<String> paramNames = parameters.keys();
-        String [] field = new String[count];
+        String [] field = new String [count != 0 ? count : parameters.size()];
 
         while (paramNames.hasMoreElements()) {
 
@@ -348,6 +348,16 @@ public class StringUtils {
                 }
             }
         }
+        if (count == 0){
+            int filled = field.length-1;
+            while (field[filled] == null){
+                filled--;
+            }
+            String [] tmp = new String [filled+1];
+            System.arraycopy(field, 0, tmp, 0, filled+1);
+            field = tmp;
+        }
+
         for (int i = 0; i < field.length; ++i) {
             if (field[i] == null) {
                 return null;
