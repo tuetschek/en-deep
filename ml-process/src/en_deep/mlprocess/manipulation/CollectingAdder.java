@@ -104,7 +104,7 @@ public class CollectingAdder extends Task {
 
     /**
      * This creates a new {@link CollectingAdder} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>file_attr</tt> -- the name of the attribute that contains information about the smaller data sets file names</li>
      * <li><tt>inst_id</tt> -- the attributes that identify the instances</li>

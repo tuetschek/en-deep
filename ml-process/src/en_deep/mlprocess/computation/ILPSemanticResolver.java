@@ -58,7 +58,7 @@ public class ILPSemanticResolver extends AbstractSemanticResolver {
 
     /**
      * This creates a new {@link ILPSemanticResolver} task, checking the numbers of inputs and outputs (must be both 1)
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>sentence</tt> -- the name of the attribute whose identical values indicate the membership of the same
      * sentence</li>

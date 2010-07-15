@@ -42,7 +42,7 @@ import java.util.Vector;
 import weka.core.Instances;
 
 /**
- *
+ * This is a simple implementation of a bootstrap results confidence intervals estimation.
  * @author Ondrej Dusek
  */
 public class BootstrapTest extends AbstractEvaluation {
@@ -75,7 +75,7 @@ public class BootstrapTest extends AbstractEvaluation {
 
     /**
      * This creates a new {@link BootstrapTest} task, checking the numbers of inputs and outputs
-     * (inputs must be pairs and there must be only 1 output) and the necessary parameters:
+     * (inputs must be pairs and there must be only 1 output) and the necessary parameters.
      * <ul>
      * <li><tt>class_arg</tt> -- the class attribute that is used for testing</li>
      * <li><tt>samples</tt> -- number of bootstrap samples to be created</li>

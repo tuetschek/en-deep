@@ -61,7 +61,7 @@ public class AttributeMerger extends AbstractAttributeManipulation {
 
     /**
      * This creates a new {@link AttributeMerger} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>attr</tt> -- the first attribute to be merged</li>
      * <li><tt>added</tt> -- second attribute (to be added to the first one)</li>

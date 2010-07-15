@@ -20,7 +20,7 @@ import java.util.Vector;
 public class ${name} extends Task {
     
     /**
-     * This creates a new {@link ${name}} task, checking the numbers of inputs and outputs
+     * This creates a new {@link ${name}} task. It checks the numbers of inputs and outputs
      * and the necessary parameters:
      * <ul>
      * </ul>

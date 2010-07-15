@@ -72,7 +72,7 @@ public class PredicateMerger extends GroupInputsTask {
 
     /**
      * This creates a new {@link PredicateMerger} task, checking the numbers of inputs and grouped
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>pred_info</tt> -- the predicate information file that contains statistics about all possible
      * predicates</li>

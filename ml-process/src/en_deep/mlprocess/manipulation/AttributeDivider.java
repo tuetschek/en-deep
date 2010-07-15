@@ -68,7 +68,7 @@ public class AttributeDivider extends AbstractAttributeManipulation {
 
     /**
      * This creates a new {@link AttributeDivider} task, checking the numbers of inputs and outputs
-     * and the necessary parameters:
+     * and the necessary parameters.
      * <ul>
      * <li><tt>attr</tt> -- the name of the attribute that should be split in two.</li>
      * <li><tt>other_name</tt> -- the name of the new attribute</li>
