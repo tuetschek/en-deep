@@ -49,7 +49,7 @@ public class Stats {
      * @return recall
      */
     public double getPrec() {
-        return (double) tp / (tp + fp);
+        return tp + fp != 0 ? (double) tp / (tp + fp) : 0;
     }
 
     /**
@@ -57,7 +57,7 @@ public class Stats {
      * @return precision
      */
     public double getRecall() {
-        return (double) tp / (tp + fn);
+        return tp + fn != 0 ? (double) tp / (tp + fn) : 0;
     }
 
     /**
@@ -65,7 +65,9 @@ public class Stats {
      * @return the F-measure
      */
     public double getF1() {
-        return (this.getPrec() + this.getRecall()) / 2.0;
+        double p = this.getPrec(), r = this.getRecall();
+
+        return (p + r) != 0 ? (2*p*r) / (p+r) : 0;
     }
 
     /**

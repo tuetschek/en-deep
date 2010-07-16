@@ -152,7 +152,7 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
             length -= this.start;
         }
         if (this.end != -1 && this.end < attributeOrder.length){
-            length -= attributeOrder.length - this.end;
+            length -= attributeOrder.length - this.end - 1;
         }
         lo = Math.max(this.start, 1);
 
