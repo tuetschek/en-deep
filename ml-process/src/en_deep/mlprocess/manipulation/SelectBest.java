@@ -125,8 +125,8 @@ public class SelectBest extends Task {
         String measure = this.getParameterVal(MEASURE);
         boolean unlabeled = measure.startsWith("unlabeled");
 
-        if (measure.startsWith("labeled") || measure.startsWith("unlabeled")){
-            measure = measure.substring(measure.indexOf(" "));
+        if (measure.startsWith("labeled ") || measure.startsWith("unlabeled ")){
+            measure = measure.substring(measure.indexOf(" ") + 1);
         }
 
         for (int i = 0; i < stats.length; i++) {

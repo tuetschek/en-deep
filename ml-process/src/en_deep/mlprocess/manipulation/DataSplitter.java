@@ -54,6 +54,8 @@ public class DataSplitter extends MultipleOutputsTask {
     private static final String NUM_PARTS = "num_parts";
     /** The one_vs_others parameter name */
     private static final String ONE_VS_OTHERS = "one_vs_others";
+    /** The name of the 'attr_rel' parameter */
+    private static final String ATTR_REL = "attr_rel";
 
     /* DATA */
 
@@ -80,6 +82,8 @@ public class DataSplitter extends MultipleOutputsTask {
      * <ul>
      * <li><tt>one_vs_others</tt> -- specifies the one value that should be selected out, versus all others
      * (the filename will have "others" in it)</li>
+     * <li><tt>attr_rel</tt> -- enables a special mode where the values of the splitting attribute
+     * are used as relation names and expansion patterns for the new files</li>
      * </u>
      *
      * @param id the task id
@@ -144,7 +148,9 @@ public class DataSplitter extends MultipleOutputsTask {
 
     
     /**
-     * This splits just one file by attribute values. The attribute must be string or nominal.
+     * This splits just one file by attribute values. The attribute must be string or nominal. This reflects
+     * the <tt>attr_rel</tt> setting.
+     * 
      * @param inputFile the input file name
      * @param outputPattern the name pattern for creating output files
      */
@@ -168,16 +174,24 @@ public class DataSplitter extends MultipleOutputsTask {
 
             String value = values.nextElement().toString();
             SubsetByExpression filter = new SubsetByExpression();
+            String outputFile = null;
             
             filter.setInputFormat(data);
             filter.setExpression("ATT" + (splitAttrib.index()+1) + " is '" + value + "'");
 
             String oldName = data.relationName();
             Instances subset = Filter.useFilter(data, filter); // filter the output
-            subset.setRelationName(oldName);
 
-            // write the output to the file
-            String outputFile = StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-" + value);
+            if (this.getBooleanParameterVal(ATTR_REL)){ // the attr_rel mode
+                subset.setRelationName(value);
+                outputFile = StringUtils.replace(outputPattern, value);
+            }
+            else {  // normal case
+                subset.setRelationName(oldName);
+                outputFile = StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-" + value);
+            }
+
+            // write the output to the file            
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
             FileUtils.writeArff(outputFile, subset);

@@ -88,7 +88,7 @@ public class ResultsToSt extends StManipulation {
     /* METHODS */
 
     /**
-     * This {@link Task} has the following compulsory parameters:
+     * This creates a new {@link ResultsToSt} task. This {@link Task} has the following compulsory parameters:
      * <ul>
      * <li>mode</li> -- must be <tt>pred</tt> (filling predicates) or <tt>arg</tt> filling arguments
      * <li><tt>lang_conf</tt> -- path to the language reader file, that contains a FEAT usage indication ("1"/isEmpty line), followed
