@@ -63,6 +63,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private static final String RANKER_PARAM_PREFIX = "R_";
     /** The ignore_attr parameter name */
     private static final String IGNORE_ATTRIBS = WekaClassifier.IGNORE_ATTRIBS;
+    /** The num_selected parameter name */
+    private static final String NUM_SELECTED = WekaClassifier.NUM_SELECTED;
 
     private static final String LF = System.getProperty("line.separator");
 
@@ -79,6 +81,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private AttributeEvaluator evaluator;
     /** List of ignored attributes' indexes */
     private HashSet<Integer> ignoredIdxs;
+    /** Number of selected attributes */
+    private int numSelected;
 
     
     /* METHODS */
@@ -93,15 +97,10 @@ public class WekaAttributeRanker extends GeneralClassifier {
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
+     * <li><tt>num_selected</tt> -- number of attributes selected</li>
      * </ul>
      * If ranker and evaluator are selected at once, the evaluator is considered to be a subset evaluator
      * and the ranker to be a search procedure.
-     * 
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
-     * @throws TaskException
      */
     public WekaAttributeRanker(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -113,6 +112,12 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
 
         this.ignoredIdxs = new HashSet<Integer>();
+        if (this.hasParameter(NUM_SELECTED)){
+            this.numSelected = this.getIntParameterVal(NUM_SELECTED);
+        }
+        else {
+            this.numSelected = -1;
+        }
     }
 
     /**
@@ -132,14 +137,18 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         // read the data and find out the target class
         Instances train = FileUtils.readArff(trainFile);
-        Instances eval = FileUtils.readArff(evalFile);
+        if (evalFile != null){
+            Instances eval = FileUtils.readArff(evalFile);
 
-        this.findTargetFeature(train, eval);
-
-        // merge the data
-        Enumeration<Instance> evalInst = eval.enumerateInstances();
-        while (evalInst.hasMoreElements()){
-            train.add(evalInst.nextElement());
+            this.findTargetFeature(train, eval);
+            // merge the data
+            Enumeration<Instance> evalInst = eval.enumerateInstances();
+            while (evalInst.hasMoreElements()){
+                train.add(evalInst.nextElement());
+            }
+        }
+        else {
+            this.findTargetFeature(train, train);
         }
 
         // find the indexes of the ignored attributes so that they are not written to the output
@@ -152,7 +161,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         // rank all the attributes and store the values
         String outText = null;
         if (this.searcher != null){
-            int [] order = this.searcher.search(this.searcherEval, eval);
+            int [] order = this.searcher.search(this.searcherEval, train);
             outText = this.getAttribList(train, order);
         }
         else if (this.ranker != null){
@@ -262,8 +271,10 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         int [] order = MathUtils.getOrder(merits);
         StringBuilder out = new StringBuilder();
+        // assume the class attribute itself is at the end (output of getOrder)
+        int maxSel = this.numSelected != -1 ? Math.min(this.numSelected, order.length - 1) : order.length - 1;
 
-        for (int i = 0; i < order.length - 1; ++i){ // assume the class attribute itself is at the end
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.contains(order[i])){
                 out.append(order[i]);
                 if (i < order.length-2){
@@ -273,7 +284,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
         out.append(LF);
 
-        for (int i = 0; i < order.length -1; ++i){
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.contains(order[i])){ 
                 out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(
                         ": ").append(merits[i]).append(LF);
@@ -292,7 +303,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private String getAttribList(Instances data, int[] order) {
         
         StringBuilder out = new StringBuilder();
-        for (int i = 0; i < order.length; ++i){
+        int maxSel = this.numSelected != -1 ? Math.min(this.numSelected, order.length) : order.length;
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.contains(order[i])){
                 out.append(order[i]);
                 if (i < order.length-1){
@@ -301,7 +313,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
             }
         }
         out.append(LF);
-        for (int i = 0; i < order.length; ++i){
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.add(order[i])){
                 out.append(order[i]).append(" ").append(data.attribute(order[i]).name()).append(LF);
             }
@@ -318,7 +330,9 @@ public class WekaAttributeRanker extends GeneralClassifier {
     private String getAttribList(Instances data, double[][] order) {
 
         StringBuilder out = new StringBuilder();
-        for (int i = 0; i < order.length; ++i){
+        int maxSel = this.numSelected != -1 ? Math.min(this.numSelected, order.length) : order.length;
+
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.contains((int) order[i][0])){
                 out.append((int) order[i][0]);
                 if (i < order.length-1){
@@ -327,7 +341,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
             }
         }
         out.append(LF);
-        for (int i = 0; i < order.length; ++i){
+        for (int i = 0; i < maxSel; ++i){
             if (!this.ignoredIdxs.contains((int) order[i][0])){
                 out.append((int) order[i][0]).append(" ").append(data.attribute((int) order[i][0]).name()).append(
                         ": ").append(order[i][1]).append(LF);
@@ -355,5 +369,14 @@ public class WekaAttributeRanker extends GeneralClassifier {
             }
         }
     }
+
+    @Override
+    protected void checkNumberOfInputs() throws TaskException {
+
+        if (this.input.size() < 1 || this.input.size() > 2){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+    }
+
 
 }

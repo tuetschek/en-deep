@@ -110,14 +110,15 @@ public class ConditionalSelector extends GroupInputsTask {
      * <li>"orphan" -- if there are files which don't match correspondingly in the tables (only some patterns
      * correspond to a given expansion), they go into the first output. The correctly matching files go into the second
      * output</li>
+     * <li>"num_instances" -- divide by number of instances and given boundaries</li>
      * </ul></li>
      * </ul>
      * Other parameters depend on the setting of condition:
      * <ul>
      * <li><tt>attribute</tt> -- if condition is "unary" or "divide_by_num_val", this gives the name of the attribute which
      * should be checked</li>
-     * <li><tt>boundaries</tt> -- if condition is "divide_by_num_val", this gives the boundary values of division,
-     * sorted and divided by spaces (the boundary values will be included in the higher interval)
+     * <li><tt>boundaries</tt> -- if condition is "divide_by_num_val" or "num_instances", this gives the boundary
+     * values of division, sorted and divided by spaces (the boundary values will be included in the higher interval)
      * </ul>
      *
      * @param id

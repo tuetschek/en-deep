@@ -71,7 +71,7 @@ public class WekaClassifier extends GeneralClassifier {
     /** Name of the 'binarize' parameter */
     private static final String BINARIZE = "binarize";
     /** Name of the 'num_selected' parameter */
-    private static final String NUM_SELECTED = "num_selected";
+    static final String NUM_SELECTED = "num_selected";
     /** Name of the `out_attribs' parameter */
     private static final String OUT_ATTRIBS = "out_attribs";
 

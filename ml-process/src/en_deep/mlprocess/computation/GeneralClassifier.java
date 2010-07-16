@@ -94,7 +94,7 @@ public abstract class GeneralClassifier extends Task {
         Enumeration trainAtts = train.enumerateAttributes();
         Attribute missing = null;
 
-        // find out which attribute is missing
+        // find out which attribute is missing in the evaluation data
         while (trainAtts.hasMoreElements()) {
 
             Attribute att = (Attribute) trainAtts.nextElement();
@@ -153,7 +153,7 @@ public abstract class GeneralClassifier extends Task {
     @Override
     public final void perform() throws TaskException {
         try {
-            this.classify(this.input.get(0), this.input.get(1), this.output.get(0));
+            this.classify(this.input.get(0), this.input.size() > 1 ? this.input.get(1) : null, this.output.get(0));
         }
         catch (TaskException e) {
             throw e;
