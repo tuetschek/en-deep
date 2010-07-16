@@ -44,6 +44,7 @@ import java.nio.channels.FileLock;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
@@ -83,8 +84,6 @@ public class Plan {
     private File statusFile;
     /** Number of tasks that should be retrieved at the same time */
     private int retrieveCount;
-    /** The last position in the plan file */
-    private int lastPlanPos;
 
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
@@ -249,7 +248,6 @@ public class Plan {
         // topologically sort the plan
         plan = parser.getTasks();
         this.sortPlan(plan);
-        this.lastPlanPos = -1; // set the plan position to the beginning
 
         // write the plan into the plan file
         this.writePlan(plan, planFileIO);
@@ -309,26 +307,24 @@ public class Plan {
      * @throws SchedulingException if there are only tasks waiting for dependencies
      * @throws TaskException if task expansion fails
      */
-    TaskDescription retrievePendingTask(Vector<TaskDescription> plan) throws SchedulingException, TaskException {
+    private synchronized TaskDescription retrievePendingTask(Vector<TaskDescription> plan)
+            throws SchedulingException, TaskException {
 
         TaskDescription pendingDesc = null;
         boolean inProgress = false, waiting = false; // are there waiting tasks & tasks in progress ?
         int pos;
 
         // obtaining the task to be done: we are operating in the topological order
-        for (pos = this.lastPlanPos < plan.size() - 1 ? this.lastPlanPos + 1 : 0
-                ; pos != this.lastPlanPos
-                ; pos = pos < plan.size() - 1 ? pos + 1 : 0){
-            
-            
-            if (plan.get(pos).getStatus() == TaskStatus.WAITING){
+        for (pos = 0; pos < plan.size(); ++pos){
+                        
+            if (plan.get(pos % plan.size()).getStatus() == TaskStatus.WAITING){
                 waiting = true;
             }
-            else if (plan.get(pos).getStatus() == TaskStatus.IN_PROGRESS){
+            else if (plan.get(pos % plan.size()).getStatus() == TaskStatus.IN_PROGRESS){
                 inProgress = true;
             }
-            else if (plan.get(pos).getStatus() == TaskStatus.PENDING){
-                pendingDesc = plan.get(pos);
+            else if (plan.get(pos % plan.size()).getStatus() == TaskStatus.PENDING){
+                pendingDesc = plan.get(pos % plan.size());
                 break;
             }
         }
@@ -348,11 +344,10 @@ public class Plan {
         // expand the task (and possibly dependent tasks) accoring to "*"'s in input / output file names
         TaskExpander te = new TaskExpander(pendingDesc);
         te.expand();
-        plan.addAll(pos, te.getTasksToAdd()); // these well may be empty
+        this.topologicalAdd(plan, pos, te.getTasksToAdd()); // these well may be empty
         plan.removeAll(te.getTasksToRemove());
 
         pendingDesc = plan.get(pos); // the first expanded task
-        this.lastPlanPos = pos;
 
         // mark the task as "in progress"
         pendingDesc.setStatus(TaskStatus.IN_PROGRESS);
@@ -475,7 +470,7 @@ public class Plan {
      * @param oldPlanByName the old plan, in a hashmap by (unexpanded) task names
      * @throws TaskException if an expansion fails
      */
-    private void updateStatuses(Vector<TaskDescription> newPlan,
+    private void resetUpdateStatuses(Vector<TaskDescription> newPlan,
             Hashtable<String, Vector<TaskDescription>> oldPlanByName) throws TaskException {
         
         int i = 0;
@@ -688,33 +683,30 @@ public class Plan {
     }
 
     /**
-     * This finds the given task and updates its status and the statuses of all depending tasks. Throws an exception
-     * if the Task cannot be found in the plan.
+     * This finds the given task and updates its status and the statuses of all depending tasks; if the
+     * updated status is {@link TaskStatus#DONE}, it removes the task from the plan completely.
      *
      * @param plan the process plan
      * @param id the id of the task to be updated
      * @param taskStatus the new task status
-     * @throws PlanException if the task of the given id cannot be found
+     * @throws PlanException if the task of the given id cannot be found in the plan
      */
-    private void updateTaskStatus(Vector<TaskDescription> plan, String id, TaskStatus taskStatus) throws PlanException {
+    private synchronized void updateTaskStatus(Vector<TaskDescription> plan, String id, TaskStatus taskStatus)
+            throws PlanException {
         
-        TaskDescription updatedTask = null;
+        int pos = this.findLastUsedTask(plan, id);
 
-        // find the task
-        for (TaskDescription td : plan){
-
-            if (td.getId().equals(id)){
-                updatedTask = td;
-                break;
-            }
-        }
-        if (updatedTask == null){
+        if (pos == -1){
             Logger.getInstance().message("Cannot find task " + id + " to update its status!", Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
 
         // update the task
-        updatedTask.setStatus(taskStatus);
+        plan.get(pos).setStatus(taskStatus);
+        if (taskStatus == TaskStatus.DONE){
+            plan.get(pos).looseAllDeps();
+            plan.remove(pos);
+        }
     }
 
     /**
@@ -750,8 +742,7 @@ public class Plan {
         oldPlanByName = this.markTaskNames(oldPlan);
 
         // update unchanged tasks' statuses to the current progress in the old plan
-        this.updateStatuses(newPlan, oldPlanByName);
-        this.lastPlanPos = -1; // reset the current plan position
+        this.resetUpdateStatuses(newPlan, oldPlanByName);
 
         resetFileIO.setLength(0); // clear the reset file
         this.writePlan(newPlan, planFileIO); // write down the new plan
@@ -823,25 +814,19 @@ public class Plan {
      * @param id the old task to be found in the plan
      * @param expansion the new tasks to be added to the plan
      */
-    private void appendToTask(Vector<TaskDescription> plan, String id, Vector<TaskDescription> expansion) 
+    private synchronized void appendToTask(Vector<TaskDescription> plan, String id, Vector<TaskDescription> expansion)
             throws PlanException {
 
         TaskDescription old = null;
         Vector<TaskDescription> deps;
+        int pos = this.findLastUsedTask(plan, id);
 
-        // find the old task
-        for (TaskDescription t : plan){
-            if (t.getId().equals(id)){
-                old = t;
-                break;
-            }
-        }
-
-        if (old == null){
+        if (pos == -1){
             Logger.getInstance().message("Cannot find " + id + "where the new tasks should be added!",
                     Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
+        old = plan.get(pos);
 
         // loosen the dependencies for the original task
         deps = old.getDependent();
@@ -893,4 +878,42 @@ public class Plan {
         Logger.getInstance().message("The scenario file seems to be OK.", Logger.V_INFO);
     }
 
+    /**
+     * This tries the task with given id, starting off the {@link #lastFirstRetrieved} position.
+     * @param plan the plan to search in
+     * @param id the id of the desired task
+     * @return the position of the desired task, or -1
+     */
+    private synchronized int findLastUsedTask(Vector<TaskDescription> plan, String id){
+
+        int pos;
+
+        for (pos = 0; pos < plan.size(); ++pos){
+
+            if (plan.get(pos % plan.size()).getId().equals(id)){
+                return pos % plan.size();
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Add the given tasks to the plan while preserving the topological ordering of the plan.
+     *
+     * @param plan the plan to be changed
+     * @param pos the starting position
+     * @param tasksToAdd the tasks to be added
+     */
+    private synchronized void topologicalAdd(Vector<TaskDescription> plan, int pos, Collection<TaskDescription> tasksToAdd) {
+        
+        Iterator<TaskDescription> it = tasksToAdd.iterator();
+
+        while (it.hasNext()){
+            TaskDescription addCur = it.next();
+            while (pos < plan.size() && plan.get(pos).getOrder() < addCur.getOrder()){
+                pos++;
+            }
+            plan.add(pos, addCur);
+        }
+    }
 }
