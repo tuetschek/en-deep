@@ -494,7 +494,7 @@ public class StToArff extends StManipulation {
             predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
                     : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
                     + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
-            fileName = pattern.replace("**", this.outPrefix + predicate);
+            fileName = StringUtils.replace(pattern, this.outPrefix + predicate);
             this.usedFiles.put(predicate, fileName); // store the used file name
             outputs.add(new Pair<String, String>(predicate, fileName));
         }

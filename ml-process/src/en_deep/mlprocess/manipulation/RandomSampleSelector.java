@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Random;
@@ -114,7 +115,7 @@ public class RandomSampleSelector extends GroupInputsTask {
         for (String key : selectedKeys){
             for (int i = 0; i < tables.length; ++i){
 
-                String dest = this.output.get(i).replace("**", this.outPrefix + key);
+                String dest = StringUtils.replace(this.output.get(i), this.outPrefix + key);
                 String src = tables[i].get(key);
 
                 try {

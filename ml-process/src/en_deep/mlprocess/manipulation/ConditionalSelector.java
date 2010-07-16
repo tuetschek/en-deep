@@ -235,7 +235,7 @@ public class ConditionalSelector extends GroupInputsTask {
 
         for (int i = 0; i < this.tables.length; ++i){
 
-            String dest = this.output.get(destNo * this.tables.length + i).replace("**", this.outPrefix + key);
+            String dest = StringUtils.replace(this.output.get(destNo * this.tables.length + i), this.outPrefix + key);
             String src = this.tables[i].get(key);
 
             FileUtils.copyFile(src, dest);
@@ -345,7 +345,7 @@ public class ConditionalSelector extends GroupInputsTask {
             for (String key : this.tables[i].keySet()){
                 if (!nonOrphans.contains(key)){
                     FileUtils.copyFile(this.tables[i].get(key), 
-                            this.output.get(destNo * this.tables.length + i).replace("**", key));
+                            StringUtils.replace(this.output.get(destNo * this.tables.length + i), key));
                 }
             }
         }

@@ -31,6 +31,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -166,7 +167,7 @@ public class BigDataSplitter extends Task {
 
             if (curChunk.numInstances() > 0){
                 // convert string to nominal
-                FileUtils.writeArff(this.output.get(0).replace("**", Integer.toString(curChunkNo)),
+                FileUtils.writeArff(StringUtils.replace(this.output.get(0), Integer.toString(curChunkNo)),
                         FileUtils.allStringToNominal(curChunk));
 
                 Logger.getInstance().message(this.id + ": chunk " + curChunkNo + " written ... ", Logger.V_DEBUG);

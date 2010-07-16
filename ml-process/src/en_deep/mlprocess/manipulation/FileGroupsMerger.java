@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -111,7 +112,7 @@ public class FileGroupsMerger extends GroupInputsTask {
 
         for (int i = 0; i < files.length; ++i){
             for (String key : files[i].keySet()){
-                FileUtils.copyFile(files[i].get(key), outputPattern.replace("**", key));
+                FileUtils.copyFile(files[i].get(key), StringUtils.replace(outputPattern, key));
             }
         }
     }

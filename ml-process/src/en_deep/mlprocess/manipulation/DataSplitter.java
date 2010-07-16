@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -176,7 +177,7 @@ public class DataSplitter extends MultipleOutputsTask {
             subset.setRelationName(oldName);
 
             // write the output to the file
-            String outputFile = outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-" + value);
+            String outputFile = StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-" + value);
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);
             FileUtils.writeArff(outputFile, subset);
@@ -215,9 +216,9 @@ public class DataSplitter extends MultipleOutputsTask {
 
         Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
 
-        FileUtils.writeArff(outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-"
+        FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-"
                 + this.selectedVal), positive);
-        FileUtils.writeArff(outputPattern.replace("**", this.outPrefix + splitAttrib.name() + "-other"),
+        FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-other"),
                 negative);
 
     }
@@ -260,7 +261,7 @@ public class DataSplitter extends MultipleOutputsTask {
 
             int partLen = data.numInstances() / parts + (i < data.numInstances() % parts ? 1 : 0);
             Instances part = new Instances(data, pos, partLen);
-            String outputFile = outputPattern.replace("**", this.outPrefix + Integer.toString(i));
+            String outputFile = StringUtils.replace(outputPattern, this.outPrefix + Integer.toString(i));
             
             Logger.getInstance().message(this.id + ": splitting " + inputFile
                     + " to " + outputFile + "...", Logger.V_DEBUG);

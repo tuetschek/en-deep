@@ -413,6 +413,20 @@ public class StringUtils {
     }
 
     /**
+     * This replaces the wildcard pattern (of any type) with the given replacement. It also considers
+     * file sub-specifications (they will be a part of the new expansion).
+     * 
+     * @param pattern the pattern to be expanded
+     * @param replacement the expansion
+     * @return the expanded pattern
+     */
+    public static String replace(String pattern, String replacement){
+
+        pattern = normalizeFilePattern(pattern);
+        return pattern.replaceFirst("\\*+", replacement);
+    }
+
+    /**
      * Out of an array of strings, this returns only those that match the given pattern.
      *
      * @param data the data to be filtered

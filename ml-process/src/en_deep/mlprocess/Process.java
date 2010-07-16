@@ -52,7 +52,8 @@ import java.io.IOException;
  * <li><tt>--verbosity (-v)</tt> the desired verbosity level (0-4, default: 0 - i.e. no messages)</li>
  * <li><tt>--reset (-r)</tt> comma-separated list of tasks whose status should be reset to PENDING or WAITING; in any
  * case if this is triggered, all changed tasks are reset. In order to trigger just the reset of changed tasks,
- * a single "#" should be set as an argument. If all tasks should be reset, "!" should be set as argument.</li>
+ * a single "#" should be set as an argument. If all tasks should be reset, "!" should be set as argument.
+ * <strong>BROKEN, DO NOT USE</strong></li>
  * <li><tt>--retrieve_count (-c)</tt> the number of tasks that should be retrieved by one worker at one time (default: 10)</li>
  * <li><tt>--parse_only (-p)</tt> if set, the program will just parse the scenario file, report any problems and end.</li>
  * <li><tt>--workdir (-d)</tt> specifies the working directory (if not the same as that of the plan file).</li>
@@ -68,6 +69,7 @@ import java.io.IOException;
  * <li>0 - nothing</li>
  * </ul>
  *
+ * @todo fix the reset feature
  * @author Ondrej Dusek
  */
 public class Process {
