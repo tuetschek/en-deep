@@ -58,7 +58,7 @@ public class Worker implements Runnable {
     /* DATA */
     
     /** The task currently in progress */
-    private Vector<Task> currentTasks;
+    private Vector<TaskDescription> currentTasks;
     
     /** {@link Worker} thread identification string */
     private String id;
@@ -103,7 +103,7 @@ public class Worker implements Runnable {
 
                         time = System.currentTimeMillis();
 
-                        task = this.currentTasks.get(current);
+                        task = Task.createTask(this.currentTasks.get(current));
                         Logger.getInstance().message("Worker thread " + this.id + " working on task " + task.getId(),
                                 Logger.V_INFO);
                         task.perform();

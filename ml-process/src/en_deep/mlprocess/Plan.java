@@ -144,11 +144,11 @@ public class Plan {
      * @throws PlanException if an exception occurs when working with the scenario or plan file
      * @throws SchedulingException if there are no tasks to process and we have to wait for them
      */
-    public synchronized Vector<Task> getNextPendingTasks() throws PlanException, SchedulingException {
+    public synchronized Vector<TaskDescription> getNextPendingTasks() throws PlanException, SchedulingException {
 
         FileLock planLock = null;
         FileLock resetLock = null;
-        Vector<Task> nextPending = null;
+        Vector<TaskDescription> nextPending = null;
         RandomAccessFile planFileIO = null;
         RandomAccessFile resetFileIO = null;
         
@@ -267,11 +267,11 @@ public class Plan {
      * @throws TaskException if there are problems with the task classes' descriptions
      * @throws SchedulingException if there are tasks waiting or in progress, but no pending ones
      */
-    private synchronized Vector<Task> getNextPendingTasks(RandomAccessFile planFileIO)
+    private synchronized Vector<TaskDescription> getNextPendingTasks(RandomAccessFile planFileIO)
             throws IOException, ClassNotFoundException, TaskException, PlanException, SchedulingException {
 
         Vector<TaskDescription> plan = this.readPlan(planFileIO);
-        Vector<Task> retrieved = new Vector<Task>(this.retrieveCount);
+        Vector<TaskDescription> retrieved = new Vector<TaskDescription>(this.retrieveCount);
 
         Logger.getInstance().message("Retrieving tasks ...", Logger.V_DEBUG);
 
@@ -281,7 +281,7 @@ public class Plan {
                 if (nextTask == null){
                     break;
                 }
-                retrieved.add(Task.createTask(nextTask));
+                retrieved.add(nextTask);
             }
             catch (SchedulingException e) { // if we have to wait, return with less tasks than RETRIEVE_TASKS
                 if (i == 0){
@@ -634,7 +634,7 @@ public class Plan {
      * @param tasks the task whose statuses are to be updated
      * @param status the new status
      */
-    public synchronized void updateStatuses(List<Task> tasks, TaskStatus status) throws PlanException {
+    public synchronized void updateStatuses(List<TaskDescription> tasks, TaskStatus status) throws PlanException {
 
         FileLock lock = null;
         RandomAccessFile planFileIO = null;
@@ -648,7 +648,7 @@ public class Plan {
             Vector<TaskDescription> plan = this.readPlan(planFileIO);
 
             // update the statuses
-            for (Task task : tasks){
+            for (TaskDescription task : tasks){
                 this.updateTaskStatus(plan, task.getId(), status);
             }
             
