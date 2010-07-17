@@ -353,11 +353,11 @@ public class WekaAttributeRanker extends GeneralClassifier {
     /**
      * This finds the indexes of all the ignored attributes. If some attributes are not found, they are not
      * listed.
-     * @param data
+     * @param data the data to be processed
      */
     private void findIgnoredAttributes(Instances data) {
 
-        String [] ignoredNames = this.getParameterVal(IGNORE_ATTRIBS).split("\\s+");
+        String [] ignoredNames = this.parameters.remove(IGNORE_ATTRIBS).split("\\s+");
         
         for (int i = 0; i < ignoredNames.length; ++i){
             if (data.attribute(ignoredNames[i]) != null){

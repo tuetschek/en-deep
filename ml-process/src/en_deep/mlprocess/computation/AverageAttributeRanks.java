@@ -134,16 +134,25 @@ public class AverageAttributeRanks extends Task {
             }
         }
 
+        // find out the highest attribute index
+        int hi = -1;
+        for (int i = 0; i < ranks[0].length; ++i){
+            if (ranks[0][i] > hi){
+                hi = ranks[0][i];
+            }
+        }
+
         // find out the average ranking
-        double [] sums = new double [ranks[0].length + 1];
+        double [] sums = new double [hi + 1];
 
         for (int i = 0; i < ranks.length; i++) {
             for (int j = 0; j < ranks[i].length; j++) {
-                // 1 as minimum ensures that that class attribute (the only missing from rankings) will have the lowest
+                // 1 as minimum ensures that ignored attrs (missing from rankings) will have the lowest ranks
                 sums[ranks[i][j]] += ranks[i].length - j; 
             }
         }
-        int [] avgRank = Arrays.copyOf(MathUtils.getOrder(sums), ranks[0].length); // get rid of the class attribute
+        // get rid of ignored attributes, preserve the original sum order
+        int [] avgRank = Arrays.copyOf(MathUtils.getOrder(Arrays.copyOf(sums, sums.length)), ranks[0].length); 
 
         // ensure the attributes with the same rankings are sorted according to the first ranking
         boolean change = true;
@@ -163,7 +172,7 @@ public class AverageAttributeRanks extends Task {
         }
 
         if (this.numSelected != -1){
-            return Arrays.copyOf(avgRank, this.numSelected);
+            return Arrays.copyOf(avgRank, Math.min(avgRank.length, this.numSelected));
         }
         return avgRank;
     }
