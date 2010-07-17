@@ -284,9 +284,9 @@ public class StReader {
      * @param fileName the file name
      * @return the list of predicate positions in the sentence
      */
-    int[] getPredicates() throws TaskException {
+    int[] getPredicates() {
 
-        int [] ret = new int [this.words.get(0).length - COMPULSORY_FIELDS];
+        int [] ret = new int [this.length()]; // upper bound
         int pos = 0;
 
         for (int i = 0; i < this.length(); ++i){ // collect all predicate positions
@@ -295,12 +295,7 @@ public class StReader {
                 pos++;
             }
         }
-        if (pos != ret.length){ // check their number
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.task.getId(),
-                    "Predicate and fillpred column numbers mismatch in " + this.inputFileName + " at sentence "
-                    + sentenceId + ".");
-        }
-        return ret;
+        return Arrays.copyOf(ret, pos);
     }
 
     /**

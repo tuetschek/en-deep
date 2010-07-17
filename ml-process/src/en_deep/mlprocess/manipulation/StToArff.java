@@ -332,8 +332,9 @@ public class StToArff extends StManipulation {
 
                     for (int k = 0; k < this.reader.COMPULSORY_FIELDS; ++k){
 
-                        if (k > word.length){ // treat missing values as missing values (evaluation file)
+                        if (k >= word.length){ // treat missing values as missing values (evaluation file)
                             out.print(",?");
+                            continue;
                         }
                         if (this.reader.posFeat == false &&
                                 (k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon)){
@@ -359,7 +360,7 @@ public class StToArff extends StManipulation {
                         if (word.length < this.reader.IDXI_SEMROLE + 1){ // evaluation file -> missing value(s)
                             out.print(this.divideAMs ? ",?,?" : ",?");
                         }
-                        if (this.divideAMs){
+                        else if (this.divideAMs){
                             if (word[this.reader.IDXI_SEMROLE + i].matches(this.reader.amsPat)){
                                 out.print(",_,\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");
                             }
