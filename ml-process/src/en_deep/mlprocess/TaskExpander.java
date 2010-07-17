@@ -313,6 +313,11 @@ public class TaskExpander {
                 if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*")){
                     this.expandDependent(expTask, dep);
                 }
+                else if (this.expansions.containsKey(dep)){
+                    for (TaskDescription depExp : this.expansions.get(dep)){
+                        this.cleanPrerequisites(depExp);
+                    }
+                }
             }
         }
     }

@@ -188,6 +188,17 @@ public class Plan {
 
         // always release the lock on the plan and reset file
         finally {
+            // close the to-do file and reset file
+            try {
+                planFileIO.close();
+                if (resetFileIO != null){ // test if we really got that far
+                    resetFileIO.close();
+                }
+            }
+            catch(IOException ex){
+                Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                throw new PlanException(PlanException.ERR_IO_ERROR);
+            }
             if (resetLock != null && resetLock.isValid()){
                 try {
                     resetLock.release();
@@ -205,17 +216,6 @@ public class Plan {
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
-            }
-            // close the to-do file and reset file
-            try {
-                planFileIO.close();
-                if (resetFileIO != null){ // test if we really got that far
-                    resetFileIO.close();
-                }
-            }
-            catch(IOException ex){
-                Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
-                throw new PlanException(PlanException.ERR_IO_ERROR);
             }
         }
 
@@ -367,7 +367,7 @@ public class Plan {
      * @return a string pattern for tasks to be reset (null for none, empty for changed, "*" for all, "-" for stop)
      * @throws IOException in case of an I/O error
      */
-    private String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
+    private synchronized String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
 
         String line = resetFileIO.readLine();
         StringBuilder pattern = new StringBuilder("(");
@@ -418,7 +418,7 @@ public class Plan {
      * @param plan the plan where to collect task names in
      * @return the hashtable with unexpanded task names and the corresponding tasks
      */
-    private Hashtable<String, Vector<TaskDescription>> markTaskNames(Vector<TaskDescription> plan) {
+    private synchronized Hashtable<String, Vector<TaskDescription>> markTaskNames(Vector<TaskDescription> plan) {
 
         Hashtable<String, Vector<TaskDescription>> oldPlanByName = new Hashtable<String, Vector<TaskDescription>>();
 
@@ -441,7 +441,7 @@ public class Plan {
      * @param resetRegex the regexp for tasks to be reset (obtained by{@link Plan.getResetPrefixes(RandomAccessFile)})
      * @param plan the plan to remove the tasks from
      */
-    private void removeTasksToReset(String resetRegex, Vector<TaskDescription> plan) {
+    private synchronized void removeTasksToReset(String resetRegex, Vector<TaskDescription> plan) {
 
         if (resetRegex.equals("*")){ // force reset all tasks
             plan.clear();
@@ -475,7 +475,7 @@ public class Plan {
      * @param oldPlanByName the old plan, in a hashmap by (unexpanded) task names
      * @throws TaskException if an expansion fails
      */
-    private void resetUpdateStatuses(Vector<TaskDescription> newPlan,
+    private synchronized void resetUpdateStatuses(Vector<TaskDescription> newPlan,
             Hashtable<String, Vector<TaskDescription>> oldPlanByName) throws TaskException {
         
         int i = 0;
@@ -534,6 +534,12 @@ public class Plan {
      */
     private synchronized void writePlan(Vector<TaskDescription> plan, RandomAccessFile planFile) throws IOException {
 
+        FileOutputStream debugOs = new FileOutputStream(this.statusFile, false);
+        for (TaskDescription td : plan){
+            debugOs.write(td.toString().getBytes());
+        }
+        debugOs.close();
+
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
         byte [] planData;
@@ -548,11 +554,6 @@ public class Plan {
         planFile.setLength(planData.length);
         planFile.write(planData);
 
-        FileOutputStream debugOs = new FileOutputStream(this.statusFile, false);
-        for (TaskDescription td : plan){
-            debugOs.write(td.toString().getBytes());
-        }
-        debugOs.close();
     }
 
     
@@ -561,7 +562,7 @@ public class Plan {
      * Communications of the ACM 5 (11): 558–562.
      * @param plan the process plan to be sorted
      */
-    private void sortPlan(Vector<TaskDescription> plan) throws DataException {
+    private synchronized void sortPlan(Vector<TaskDescription> plan) throws DataException {
 
         Vector<TaskDescription> sorted = new Vector<TaskDescription>(plan.size());
         ArrayDeque<TaskDescription> independent = new ArrayDeque<TaskDescription>();
@@ -721,7 +722,7 @@ public class Plan {
      * @param planFileIO locked and open plan I/O file
      * @param resetFileIO locked and open reset I/O file
      */
-    private void resetTasks(RandomAccessFile planFileIO, RandomAccessFile resetFileIO) 
+    private synchronized void resetTasks(RandomAccessFile planFileIO, RandomAccessFile resetFileIO)
             throws IOException, ClassNotFoundException, DataException, TaskException, PlanException {
 
         Vector<TaskDescription> oldPlan = this.readPlan(planFileIO);
