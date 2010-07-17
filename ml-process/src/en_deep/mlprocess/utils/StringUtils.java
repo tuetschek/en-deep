@@ -34,6 +34,8 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class comprises several useful string functions, which do not pertain to a specific object type.
@@ -389,8 +391,31 @@ public class StringUtils {
     }
 
     /**
+     * This returns the expansions for all the variables, if the string matches the
+     * given pattern that contains them.
+     *
+     * @param string the string to be matched
+     * @param pattern a pattern with expansion variables
+     * @return the values (expansions) of all variables contained in the pattern, or null
+     */
+    public static String [] matchesEx(String string, String pattern){
+
+        String matchPat = pattern.replaceAll("\\$[0-9]", "(.\\+)").replaceAll("\\*+", "(.\\+)");
+        Pattern p = Pattern.compile(matchPat);
+        Matcher m = p.matcher(string);
+        if (m.matches()){
+            String [] vals = new String [m.groupCount()];
+            for (int i = 0; i < vals.length; ++i){
+                vals[i] = m.group(i+1);
+            }
+            return vals;
+        }
+        return null;
+    }
+
+    /**
      * This simplifies a filename pattern, i.e. removes all the file sub-specifications and puts them into
-     * the constant part of the pattern, so that only a pattern with a single "*"/"***" remains.
+     * the constant part of the pattern, so that only a pattern with a single "*"/"**" remains.
      *
      * @param pattern the pattern to be processed
      * @return a simplified version of the pattern
@@ -399,7 +424,7 @@ public class StringUtils {
 
         if (pattern.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?).*")){
 
-            if (pattern.matches(".*\\*+\\|\\|[^|]+\\|\\|.*")){ // ||file|| pattern - just one file matches
+            if (pattern.matches(".*\\*+\\|\\|[^|]+\\|\\|.*")){ // ||file|| pattern - special variables possible
                 return pattern.replaceFirst("\\*\\|\\|([^|]+)\\|\\|", "$1");
             }
             else if (pattern.matches(".*\\*\\|[^|]+\\|\\|.*")){ // must end with a specified suffix
@@ -460,6 +485,57 @@ public class StringUtils {
             }
         }
         return -1;
+    }
+
+    /**
+     * This returns the string with the given variable replaced with the desired value. If the string
+     * doesn't contain this variable, it returns null.
+     * @param string the string that should contain the variable to be replaced
+     * @param replacement the variable replacement
+     * @param variableNo the variable number (0-9)
+     * @return the string with the variable replaced, or null if the variable is not found
+     */
+    public static String replaceEx(String string, String replacement, int variableNo) {
+
+        string = normalizeFilePattern(string);
+        if (variableNo == 0){
+            string = string.replaceFirst("\\*+", "\\$0");
+        }
+        if (string.contains("$" + variableNo)){
+            return string.replace("$" + variableNo, replacement);
+        }
+        else {
+            return null;
+        }
+    }
+
+    /**
+     * This will find all $X variables and return their numbers (only 0-9 are allowed). The input pattern
+     * is supposed to be already {@link #normalizeFilePattern(String) normalized}.
+     * @param string
+     * @return list of valid variable numbers (0-9) that are present in the string, or null if none such exist
+     */
+    public static int[] findVariables(String string) {
+        
+        string = string.replaceFirst("\\*+", "\\$0");
+        int pos = 0;
+        ArrayList<Integer> vars = new ArrayList<Integer>();
+
+        while ((pos = string.indexOf('$', pos)) != -1 && pos < string.length()-1){
+            if (string.charAt(pos+1) >= '0' && string.charAt(pos+1) <= '9'){
+                vars.add(string.charAt(pos+1)-'0');
+            }
+            pos++;
+        }
+        if (vars.isEmpty()){
+            return null;
+        }
+
+        int [] ret = new int [vars.size()];
+        for (int i = 0; i < ret.length; ++i){
+            ret[i] = vars.get(i);
+        }
+        return ret;
     }
 
 }

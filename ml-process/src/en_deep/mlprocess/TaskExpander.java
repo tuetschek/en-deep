@@ -66,7 +66,7 @@ public class TaskExpander {
     private TaskDescription task;
 
     /** Positions in the task output listings, where are wildcard patterns to be found */
-    private Vector<Integer> inputTrans, inputHere, inputCarth;
+    private Vector<Integer> inputTrans, inputHere;
     /** Positions in the task input listings, where are wildcard patterns to be found */
     private Vector<Integer> outputTrans, outputHere;
 
@@ -89,7 +89,6 @@ public class TaskExpander {
 
         this.inputTrans = null;
         this.inputHere = null;
-        this.inputCarth = null;
 
         this.outputTrans = null;
     }
@@ -106,7 +105,7 @@ public class TaskExpander {
         this.findPatterns();
 
         // there are no patterns or just "**"s
-        if (this.inputTrans == null && this.inputCarth == null){
+        if (this.inputTrans == null){
 
             // can't have "*"-patterns in outputs since there are none in inputs
             if (this.outputTrans != null){
@@ -119,25 +118,14 @@ public class TaskExpander {
             }
             return;
         }
-        // "**" are not compatible with other types
+        // "**" are not compatible with "*"
         else if (this.inputHere != null){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
                     "'**' patterns cannot be combined with other patterns.");
         }
-        // if there are "*"s, expand them all at a time
+        // if there are "*"s, expand them all
         else if (this.inputTrans != null){
-
-            Vector<String> taskInput = this.task.getInput();
-            Vector<String> matches = this.expandPattern(taskInput.get(this.inputTrans.firstElement()), true);
-
-            for (String match : matches){
-                this.expansions.put(this.task, this.task.expand(match));
-            }
-        }
-
-        // expand "***"s -- one by one
-        if (this.inputCarth != null){
-            this.expandCarthesian();
+            this.expandTrans();
         }
 
         // check if all the outputs have "*" or "**"'s (otherwise, there's no point in using "*" or "***"
@@ -146,7 +134,7 @@ public class TaskExpander {
                 || (this.outputHere != null && this.outputHere.size() != task.getOutput().size())
                 || (this.outputHere == null && this.outputTrans == null)){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
-                    "All outputs must have '*' or '**' patterns if inputs have '*' or '***' patterns.");
+                    "All outputs must have '*' or '**' patterns if inputs have '*' patterns.");
         }
 
         // expand outputs and dependent tasks using the expanded task name (if we can--"**"'s are never expanded)
@@ -205,40 +193,12 @@ public class TaskExpander {
         for (int i = this.inputHere.size() - 1; i >= 0; --i) {
 
             int pos = this.inputHere.get(i);
-            Vector<String> files = this.expandPattern(taskInput.get(pos), false);
+            Vector<String> files = this.getFilesForPattern(taskInput.get(pos));
 
             task.replaceInput(pos, files);
         }
     }
 
-    /**
-     * Expands all the "***"s in the task inputs specification.
-     */
-    private void expandCarthesian() throws TaskException {
-
-        Vector<String> taskInput = this.task.getInput();
-
-        // iterate over all possible "***" patterns and expand them one by one
-        for (Integer pos : this.inputCarth) {
-
-            Vector<String> matches = this.expandPattern(taskInput.get(pos), true);
-            Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
-
-            for (String match : matches) {
-
-                if (this.expansions.get(this.task) != null){ // some "*"'s and/or later iterations
-
-                    for (TaskDescription t : this.expansions.removeAll(this.task)) {
-                        nextExp.add(t.expand(match, pos));
-                    }
-                }
-                else { // pure "***" and first iteration
-                    nextExp.add(this.task.expand(match, pos));
-                }
-            }
-            this.expansions.putAll(this.task, nextExp);
-        }
-    }
 
     /**
      * This expands outputs for all tasks to which the original task expanded, according to their
@@ -260,6 +220,10 @@ public class TaskExpander {
 
             // copy the pattern expansion to the input
             for (int i = 0; i < outputs.size(); ++i) {
+                if (outputs.get(i).matches("\\*\\|")){
+                    throw new TaskException(TaskException.ERR_PATTERN_SPECS, t.getId(), "Extended patterns not allowed"
+                            + " on the output.");
+                }
                 outputs.set(i, outputs.get(i).replace("*", expPat));
             }
         }
@@ -273,7 +237,6 @@ public class TaskExpander {
 
         this.inputTrans = this.task.getInputPatternPos("*");
         this.inputHere = this.task.getInputPatternPos("**");
-        this.inputCarth = this.task.getInputPatternPos("***");
         this.outputTrans = this.task.getOutputPatternPos("*");
         this.outputHere = this.task.getOutputPatternPos("**");
     }
@@ -287,45 +250,22 @@ public class TaskExpander {
      * @return expansions or file names corresponding to the pattern
      * @throws TaskException if no files can be found for this pattern
      */
-    private Vector<String> expandPattern(String pattern, boolean justExpansions) throws TaskException {
+    private Vector<String> getFilesForPattern(String pattern) throws TaskException {
 
-        String dirName = null, filePattern = null;
         Vector<String> ret = new Vector<String>();
         String [] files;
-
-        // split directory and file name pattern, since findPattern recognizes only such
-        // patterns that have just one or more subsequent stars in the file name, the dirName
-        // must be always a valid path name, not a pattern, and the filePattern must not be empty
-        if (pattern.indexOf(File.separator) != -1){
-            dirName = pattern.substring(0, pattern.lastIndexOf(File.separator));
-            filePattern = StringUtils.normalizeFilePattern(StringUtils.truncateFileName(pattern));
-        }
-        else {
-            dirName = ".";
-            filePattern = StringUtils.normalizeFilePattern(pattern);
-        }
-
-        files = new File(dirName).list();
-
-        // no files in the directory
-        if (files == null){
-            throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + pattern + ")");
-        }
+        Pair<String,String> path = this.getDirAndFilePattern(pattern);
 
         // sort the list alphabetically
-        Arrays.sort(files);
+        files = this.getFilesInDir(path.first);
+
         // find all matching files and push the expansions or whole file names to the results list
         for (String file : files){
 
-            String expansion = StringUtils.matches(file, filePattern);
+            String expansion = StringUtils.matches(file, path.second);
 
-            if (expansion != null && new File(dirName + File.separator + file).isFile()){
-                if (justExpansions){
-                    ret.add(expansion);
-                }
-                else {
-                    ret.add(dirName + File.separator + file);
-                }
+            if (expansion != null && new File(path.first + File.separator + file).isFile()){
+                ret.add(path.first + File.separator + file);
             }
         }
         // no matching files in the directory
@@ -334,6 +274,22 @@ public class TaskExpander {
         }
         // return the result
         return ret;
+    }
+
+    /**
+     * Returns a list of all files in the given directory. Throws an exception if there are none.
+     * @param path the desired directory
+     * @return a list of all files in the given directory
+     * @throws TaskException if there are no files in the directory
+     */
+    private String[] getFilesInDir(String dir) throws TaskException {
+
+        String [] files = new File(dir).list();
+        // no files in the directory
+        if (files == null) {
+            throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + dir + ")");
+        }
+        return files;
     }
 
 
@@ -348,6 +304,7 @@ public class TaskExpander {
     private void expandOutputsAndDeps(TaskDescription expTask) throws TaskException {
         
         this.expandOutputs(expTask);
+
         Vector<TaskDescription> deps = expTask.getDependent();
 
         // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**' and '***', yet)
@@ -400,9 +357,9 @@ public class TaskExpander {
         // expand the "task", according to the expansions of anc
         for (TaskDescription ancExp : this.expansions.get(anc)){
             
-            TaskDescription expanded = task.expand(ancExp.getPatternReplacement()); // this expands "*"s
+            TaskDescription expanded = task.expand(ancExp.getPatternReplacements()); // this expands "*"s
 
-            this.cleanPrerequisities(expanded);
+            this.cleanPrerequisites(expanded);
             this.expansions.put(task, expanded);
         }
 
@@ -425,11 +382,15 @@ public class TaskExpander {
      * @todo optimize -- this is really expensive (creates a hash-set every time)
      * @param expTas the task to be processed
      */
-    private void cleanPrerequisities(TaskDescription expTask) {
+    private void cleanPrerequisites(TaskDescription expTask) {
 
         HashSet<TaskDescription> values = new HashSet<TaskDescription>(this.expansions.values());
+        Vector<TaskDescription> prerequisites = expTask.getPrerequisites();
 
-        for (TaskDescription pre : expTask.getPrerequisites()){
+        if (prerequisites == null){
+            return;
+        }
+        for (TaskDescription pre : prerequisites){
             if (values.contains(pre)
                     && !expTask.getPatternReplacement().equals(pre.getPatternReplacement())){
                 pre.removeDependency(expTask);
@@ -437,4 +398,96 @@ public class TaskExpander {
         }
     }
 
+    private void expandTrans() throws TaskException {
+
+        Vector<String> taskIn = this.task.getInput();
+        Pair<String, String> [] patterns = new Pair[taskIn.size()];
+        HashSet<String> [] matches = new HashSet[10];
+
+        for (int i = 0; i < patterns.length; ++i){ // find variables and matches
+
+            patterns[i] = this.getDirAndFilePattern(taskIn.get(i));
+            String [] files = this.getFilesInDir(patterns[i].first);
+            int [] vars = StringUtils.findVariables(patterns[i].second);
+
+            if (vars == null){
+                continue;
+            }
+            for (String file : files){
+
+                String [] curMatch = StringUtils.matchesEx(file, patterns[i].second);
+
+                if (curMatch != null){
+                    for (int j = 0; j < vars.length; ++j){
+                        if (matches[vars[j]] == null){
+                            matches[vars[j]] = new HashSet<String>();
+                        }
+                        matches[vars[j]].add(curMatch[j]);
+                    }
+                }
+            }
+            for (int j = 0; j < vars.length; ++j){
+                if (matches[vars[j]] == null){
+                    throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), taskIn.get(i));
+                }
+            }
+        }
+
+        for (int i = 0; i < 10; ++i){ // expand all matched variables
+            
+            if (matches[i] == null){
+                continue;
+            }
+            Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
+            Collection<TaskDescription> curExp;
+
+            if (this.expansions.get(this.task).isEmpty()){ // first iteration
+                curExp = new Vector<TaskDescription>(1);
+                curExp.add(this.task);
+            }
+            else { // later iterations
+                curExp = this.expansions.removeAll(this.task);
+            }
+
+            String [] matchesSort = matches[i].toArray(new String [matches[i].size()]);
+            Arrays.sort(matchesSort);
+            for (String match : matchesSort) {
+
+                for (TaskDescription t : curExp) {
+                    TaskDescription expanded = t.expand(match, i);
+                    nextExp.add(expanded);
+                }
+            }
+            for (TaskDescription t : curExp){
+                if (t != this.task){
+                    t.looseAllDeps();
+                }
+            }
+            this.expansions.putAll(this.task, nextExp);
+        }
+    }
+
+
+    /**
+     * This splits the directory name and filename and normalizes the pattern. Since findPattern recognizes
+     * only such patterns that have just one or more subsequent stars in the file name, the returned directory
+     * name must be always a valid path name, not a pattern, and the filePattern must not be empty.
+     *
+     * @param wholePattern the original, not-normalized file pattern
+     * @return the directory name and the normalized file pattern, respectively
+     */
+    private Pair<String, String> getDirAndFilePattern(String wholePattern){
+
+        String dirName, filePattern;
+
+        if (wholePattern.indexOf(File.separator) != -1){
+            dirName = wholePattern.substring(0, wholePattern.lastIndexOf(File.separator));
+            filePattern = StringUtils.normalizeFilePattern(StringUtils.truncateFileName(wholePattern));
+        }
+        else {
+            dirName = ".";
+            filePattern = StringUtils.normalizeFilePattern(wholePattern);
+        }
+        return new Pair<String, String>(dirName, filePattern);
+    }
 }

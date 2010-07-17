@@ -59,6 +59,8 @@ public class TaskException extends GeneralException {
     public static final int ERR_INVALID_DATA = 10;
     /** Error code: "No files found for the pattern." */
     public static final int ERR_NO_FILES = 11;
+    /** Error code: "Directory doesn't exist or is empty." */
+    public static final int ERR_EMPTY_DIR = 12;
 
     /* DATA */
 
@@ -127,7 +129,9 @@ public class TaskException extends GeneralException {
             case ERR_INVALID_DATA:
                 return this.taskId + ": Invalid input data. " + this.message;
             case ERR_NO_FILES:
-                return this.taskId + ": No files found for the pattern." + this.message;
+                return this.taskId + ": No files found for the pattern. " + this.message;
+            case ERR_EMPTY_DIR:
+                return this.taskId + ": Directory doesn't exist or is empty. " + this.message;
             default:
                 return "Unknown error. " + this.message;
         }

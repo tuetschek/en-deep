@@ -356,52 +356,58 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
 
 
     /**
-     * Creates a copy of this task with input file patterns "*" (incl. "||"sub-specifications) expanded for
+     * Creates a copy of this task with input file patterns "*" (incl. "||"-variables) expanded for
      * the given string. All the other properties of the original task, including dependencies, are preserved.
      *
-     * @param expansion the pattern expansion to be used
+     * @param expansions the pattern expansion to be used for the individual variables
      * @return a copy of this task, expanded, or a total copy, if the expansions are not valid
      */
-    public TaskDescription expand(String expansion) {
+    public TaskDescription expand(String [] expansions) {
 
-        TaskDescription copy = new TaskDescription(this, expansion);
+        TaskDescription copy = new TaskDescription(this, StringUtils.join(expansions, "#"));
 
         for (int i = 0; i < this.input.size(); ++i){
 
             String pattern = StringUtils.normalizeFilePattern(copy.input.get(i));
-            int pos = pattern.indexOf("*");
-            
-            if (pos != -1 && pos == pattern.lastIndexOf("*")){
-                pattern = pattern.substring(0, pos) + expansion
-                        + (pattern.length() > pos + 1 ? pattern.substring(pos + 1) : "");
+            if (pattern.contains("*")){
+                copy.input.set(i, StringUtils.replace(pattern, copy.getPatternReplacement()));
             }
-            copy.input.set(i, pattern);
-        }
+            else {
+                for (int j = 0; j < expansions.length; ++j){
+                    String replacement = StringUtils.replaceEx(pattern, expansions[j], j);
 
+                    if (replacement != null){
+                        copy.input.set(i, replacement);
+                        pattern = replacement;
+                    }
+                }
+            }
+        }
         return copy;
     }
 
 
     /**
-     * Creates a copy of this task the input file pattern "***" at the given position expanded for
-     * the given string. All the other parameters, including dependencies, are preserved.
-     * If there's no "***" at the given position in the inputs or the pattern "||"-sub-specification
-     * doesn't match, this returns null.
+     * Creates a copy of this task with all occurrences of the given variable replaced with the given expansion.
+     * All the other parameters, including dependencies, are preserved.
      *
      * @param expansion the pattern expansion to be used
+     * @param variableNo the number of the variable to be replaced
      * @return a copy of this task, expanded, or null if the expansion is not valid.
      */
-    public TaskDescription expand(String expansion, int inputNo){
+    public TaskDescription expand(String expansion, int variableNo){
 
         TaskDescription copy = new TaskDescription(this, expansion);
-        String pattern = StringUtils.normalizeFilePattern(copy.input.get(inputNo));
-        int pos = pattern.indexOf("***");
+       
+        for (int i = 0; i < this.input.size(); ++i){
 
-        if (pos != -1 && pos == pattern.lastIndexOf("***")){
-            pattern = pattern.substring(0, pos) + expansion
-                    + (pattern.length() < pos - 1 ? pattern.substring(pos + 1) : "");
+            String pattern = StringUtils.normalizeFilePattern(copy.input.get(i));
+            String replacement = StringUtils.replaceEx(pattern, expansion, variableNo);
+
+            if (replacement != null){
+                copy.input.set(i, replacement);
+            }
         }
-        copy.input.set(inputNo, pattern);
 
         return copy;
     }
@@ -517,6 +523,18 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
             return null;
         }
         return this.id.substring(this.id.indexOf('#') + 1).replaceAll("#", "_");
+    }
+
+    /**
+     * Returns the pattern replacement of an expanded task as an array, or null if not applicable.
+     * @return the pattern replacements, or null if there are none.
+     */
+    String [] getPatternReplacements(){
+
+        if (this.id.indexOf('#') == -1){
+            return null;
+        }
+        return this.id.substring(this.id.indexOf('#') + 1).split("#");
     }
 
     /**
@@ -675,7 +693,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Returns all the positions in the input specification, on which the given pattern is found.
      *
-     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @param pattern the pattern to search for, should be "*", "**"
      * @return the list of all positions on which the pattern is found, or null
      */
     public Vector<Integer> getInputPatternPos(String pattern){
@@ -686,7 +704,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Returns all the positions in the output specification, on which the given pattern is found.
      *
-     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @param pattern the pattern to search for, should be "*", "**"
      * @return the list of all positions on which the pattern is found, or null
      */
     public Vector<Integer> getOutputPatternPos(String pattern){
@@ -697,7 +715,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Returns true, if the TaskDescription has the given pattern in its input specifications.
      *
-     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @param pattern the pattern to search for, should be "*", "**"
      * @return true if the pattern occurs in the input specifications, false otherwise
      */
     public boolean hasInputPattern(String pattern){
@@ -708,7 +726,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Returns true, if the TaskDescription has the given pattern in its output specifications.
      *
-     * @param pattern the pattern to search for, should be "*", "**" or "***"
+     * @param pattern the pattern to search for, should be "*", "**"
      * @return true if the pattern occurs in the output specifications, false otherwise
      */
     public boolean hasOutputPattern(String pattern){

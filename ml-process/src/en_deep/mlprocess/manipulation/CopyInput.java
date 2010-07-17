@@ -101,7 +101,7 @@ public class CopyInput extends Task {
     public void perform() throws TaskException {
         
         try {
-            for (int i = 0; i < this.inputNos[i]; ++i){
+            for (int i = 0; i < this.inputNos.length; ++i){
                 FileUtils.copyFile(this.input.get(this.inputNos[i]), this.output.get(i));
             }
         }
