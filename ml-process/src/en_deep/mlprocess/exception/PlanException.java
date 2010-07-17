@@ -28,7 +28,7 @@
 package en_deep.mlprocess.exception;
 
 /**
- * An exception that is thrown if there's something wrong with the Task plan.
+ * An exception that is thrown if there's something unusual or wrong with the Task plan.
  * @author Ondrej Dusek
  */
 public class PlanException extends GeneralException {
@@ -41,6 +41,8 @@ public class PlanException extends GeneralException {
     public static final int ERR_IO_ERROR = 2;
     /** Exception code: Something's wrong with the plan file */
     public static final int ERR_INVALID_PLAN = 3;
+    /** Exception code: the process has been interrupted, end immediately */
+    public static final int INTERRUPT = 4;
 
     /* METHODS */
 
@@ -57,13 +59,15 @@ public class PlanException extends GeneralException {
     public String getMessage() {
         switch(this.code){
             case ERR_IO_ERROR:
-                return "Cannot access the scenario or plan file";
+                return "Cannot access the scenario or plan file.";
             case ERR_INVALID_SCENARIO:
-                return "Something's wrong in the scenario file";
+                return "Something's wrong in the scenario file.";
             case ERR_INVALID_PLAN:
-                return "Something's wrong with the plan file";
+                return "Something's wrong with the plan file.";
+            case INTERRUPT:
+                return "The process has been interrupted by user.";
             default:
-                return "Unknown error";
+                return "Unknown error.";
         }
     }
 

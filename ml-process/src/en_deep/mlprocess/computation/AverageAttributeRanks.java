@@ -46,8 +46,23 @@ import java.util.Vector;
  */
 public class AverageAttributeRanks extends Task {
 
+    /* CONSTANTS */
+
+    /** The num_selected parameter name */
+    private static final String NUM_SELECTED = WekaClassifier.NUM_SELECTED;
+
+    /* DATA */
+
+    /** Maximum number of selected attributes */
+    private int numSelected;
+
+    /* METHODS */
+
     /**
-     * This just checks the inputs and outputs -- this task takes no parameters.
+     * This just checks the inputs and outputs and one voluntary parameter.
+     * <ul>
+     * <li><tt>num_selected</tt> -- number of attributes selected (the rest of the list is truncated)</li>
+     * </ul>
      */
     public AverageAttributeRanks(String id, Hashtable<String, String> parameters, Vector<String> input,
             Vector<String> output) throws TaskException{
@@ -59,6 +74,12 @@ public class AverageAttributeRanks extends Task {
         }
         if (this.output.size() != 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have 1 output.");
+        }
+        if (this.hasParameter(NUM_SELECTED)){
+            this.numSelected = this.getIntParameterVal(NUM_SELECTED);
+        }
+        else {
+            this.numSelected = -1;
         }
     }
 
@@ -100,7 +121,7 @@ public class AverageAttributeRanks extends Task {
     }
 
     /**
-     * Makes an average from various attribute ranks.
+     * Makes an average from various attribute ranks. Heeds the {@link #numSelected} setting.
      * @param ranks the various attribute rankings
      * @return the average attribute ranking
      */
@@ -118,7 +139,8 @@ public class AverageAttributeRanks extends Task {
 
         for (int i = 0; i < ranks.length; i++) {
             for (int j = 0; j < ranks[i].length; j++) {
-                sums[ranks[i][j]] += ranks[i].length - j; // min. 1 ensures that that class attribute will be at the end
+                // 1 as minimum ensures that that class attribute (the only missing from rankings) will have the lowest
+                sums[ranks[i][j]] += ranks[i].length - j; 
             }
         }
         int [] avgRank = Arrays.copyOf(MathUtils.getOrder(sums), ranks[0].length); // get rid of the class attribute
@@ -140,6 +162,9 @@ public class AverageAttributeRanks extends Task {
             }
         }
 
+        if (this.numSelected != -1){
+            return Arrays.copyOf(avgRank, this.numSelected);
+        }
         return avgRank;
     }
 

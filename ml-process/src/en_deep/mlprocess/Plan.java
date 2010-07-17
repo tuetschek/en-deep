@@ -358,11 +358,13 @@ public class Plan {
     /**
      * Reads all the prefixes of the tasks to be reset from a file. If there is nothing to be
      * reset, returns null. If changed tasks should be reset, returns an empty string; if all
-     * tasks should be reset, returns "*". The reset of changed tasks is triggered by a
-     * single "#" in the reset file, the reset of all tasks by a single "!" in the reset file.
+     * tasks should be reset, returns "*"; if the plan should be stopped immediately, returns
+     * "-". The reset of changed tasks is triggered by a single "#" in the reset file, the
+     * reset of all tasks by a single "!" in the reset file and stopping by a single "-" in the
+     * reset file.
      *
      * @param resetFileIO the open reset file
-     * @return a string pattern for tasks to be reset (null for none, empty for changed, "*" for all)
+     * @return a string pattern for tasks to be reset (null for none, empty for changed, "*" for all, "-" for stop)
      * @throws IOException in case of an I/O error
      */
     private String getResetPrefixes(RandomAccessFile resetFileIO) throws IOException {
@@ -402,6 +404,9 @@ public class Plan {
         }
         else if (pattern.toString().equals("(!).*")){ // reset all
             return "*";
+        }
+        else if (pattern.toString().equals("(-).*")){ // scrap the plan
+            return "-";
         }
         return pattern.toString();
     }
@@ -717,7 +722,7 @@ public class Plan {
      * @param resetFileIO locked and open reset I/O file
      */
     private void resetTasks(RandomAccessFile planFileIO, RandomAccessFile resetFileIO) 
-            throws IOException, ClassNotFoundException, DataException, TaskException {
+            throws IOException, ClassNotFoundException, DataException, TaskException, PlanException {
 
         Vector<TaskDescription> oldPlan = this.readPlan(planFileIO);
         ScenarioParser parser = new ScenarioParser(Process.getInstance().getInputFile());
@@ -727,6 +732,9 @@ public class Plan {
 
         if (resetRegex == null){ // nothing to be reset
             return;
+        }
+        if (resetRegex.equals("-")){
+            throw new PlanException(PlanException.INTERRUPT);
         }
 
         // parse the new version of the input file
