@@ -172,6 +172,10 @@ public class StringUtils {
      */
     public static int[] readListOfInts(String str) throws NumberFormatException {
 
+        if (str == null || str.equals("")){
+            return new int [0];
+        }
+
         String[] divided = str.split("\\s+");
         int[] ints = new int[divided.length];
 
@@ -369,7 +373,7 @@ public class StringUtils {
     }
 
     /**
-     * This returns the expansion, if the given string matches the given "*"-pattern (only one "*" allowed).
+     * This returns the expansion, if the given string matches the given "*"/"**"-pattern (only one "*" allowed).
      * If file sub-specifications are needed, call {@link #normalizeFilePattern(java.lang.String)} first.
      * 
      * @param string the string to be tested
@@ -448,7 +452,7 @@ public class StringUtils {
     public static String replace(String pattern, String replacement){
 
         pattern = normalizeFilePattern(pattern);
-        return pattern.replaceFirst("\\*+", replacement);
+        return pattern.replaceFirst("(\\*+|\\$0)", replacement);
     }
 
     /**

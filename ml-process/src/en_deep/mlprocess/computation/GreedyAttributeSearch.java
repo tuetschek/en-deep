@@ -607,7 +607,7 @@ public class GreedyAttributeSearch extends EvalSelector {
                 if (i == this.classAttribNum){
                     continue;
                 }
-                values[i] = i > this.classAttribNum ? i - 1 : i;
+                values[i > this.classAttribNum ? i - 1 : i] = i;
             }
             combinations = MathUtils.combinations(this.start, values);
         }

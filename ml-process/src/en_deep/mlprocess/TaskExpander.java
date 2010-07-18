@@ -120,8 +120,11 @@ public class TaskExpander {
         }
         // "**" are not compatible with "*"
         else if (this.inputHere != null){
-            throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
-                    "'**' patterns cannot be combined with other patterns.");
+            if (this.inputHere.size() > 1){
+                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
+                        "Multiple '**' patterns cannot be combined with other patterns.");
+            }
+            this.expandCombined();
         }
         // if there are "*"s, expand them all
         else if (this.inputTrans != null){
@@ -193,7 +196,7 @@ public class TaskExpander {
         for (int i = this.inputHere.size() - 1; i >= 0; --i) {
 
             int pos = this.inputHere.get(i);
-            Vector<String> files = this.getFilesForPattern(taskInput.get(pos));
+            Vector<String> files = this.getFilesForPattern(taskInput.get(pos), false);
 
             task.replaceInput(pos, files);
         }
@@ -250,14 +253,14 @@ public class TaskExpander {
      * @return expansions or file names corresponding to the pattern
      * @throws TaskException if no files can be found for this pattern
      */
-    private Vector<String> getFilesForPattern(String pattern) throws TaskException {
+    private Vector<String> getFilesForPattern(String pattern, boolean justExpansions) throws TaskException {
 
         Vector<String> ret = new Vector<String>();
         String [] files;
         Pair<String,String> path = this.getDirAndFilePattern(pattern);
 
-        // sort the list alphabetically
         files = this.getFilesInDir(path.first);
+        Arrays.sort(files);
 
         // find all matching files and push the expansions or whole file names to the results list
         for (String file : files){
@@ -265,7 +268,12 @@ public class TaskExpander {
             String expansion = StringUtils.matches(file, path.second);
 
             if (expansion != null && new File(path.first + File.separator + file).isFile()){
-                ret.add(path.first + File.separator + file);
+                if (justExpansions){
+                    ret.add(expansion);
+                }
+                else {
+                    ret.add(path.first + File.separator + file);
+                }
             }
         }
         // no matching files in the directory
@@ -307,10 +315,11 @@ public class TaskExpander {
 
         Vector<TaskDescription> deps = expTask.getDependent();
 
-        // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**' and '***', yet)
+        // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**', yet)
         if (deps != null){
             for (TaskDescription dep : deps){
-                if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*")){
+
+                if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*") && !dep.hasInputPattern("**")){
                     this.expandDependent(expTask, dep);
                 }
                 else if (this.expansions.containsKey(dep)){
@@ -403,6 +412,10 @@ public class TaskExpander {
         }
     }
 
+    /**
+     * This expands all the "*"-patterns in the input specifications, including the sub-specifications
+     * and special variables.
+     */
     private void expandTrans() throws TaskException {
 
         Vector<String> taskIn = this.task.getInput();
@@ -494,5 +507,31 @@ public class TaskExpander {
             filePattern = StringUtils.normalizeFilePattern(wholePattern);
         }
         return new Pair<String, String>(dirName, filePattern);
+    }
+
+    /**
+     * This provides a method of expanding first the "**" patterns and then the "*" patterns with
+     * all the variables.
+     */
+    private void expandCombined() throws TaskException {
+
+        Vector<String> taskInput = this.task.getInput();
+        Vector<String> exps = this.getFilesForPattern(taskInput.get(this.inputHere.get(0)), true);
+
+        for (int i = taskInput.size()-1; i >= 0; --i){
+
+            String pat = StringUtils.normalizeFilePattern(taskInput.get(i));
+
+            if (pat.contains("$0") || pat.contains("**")){
+                
+                Vector<String> repls = new Vector<String>(exps.size());
+
+                for (String exp : exps){
+                    repls.add(StringUtils.replace(pat, exp));
+                }
+                task.replaceInput(i, repls);
+            }
+        }
+        this.expandTrans();
     }
 }
