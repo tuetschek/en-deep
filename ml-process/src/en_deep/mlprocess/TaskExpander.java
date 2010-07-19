@@ -501,13 +501,14 @@ public class TaskExpander {
 
         Vector<String> taskIn = this.task.getInput();
         Pair<String, String> [] patterns = new Pair[taskIn.size()];
-        HashSet<String> [] matches = new HashSet[10];
+        HashSet<String> [] allMatch = new HashSet[10]; // the expansions that fit for each occurrence of the variable
 
         for (int i = 0; i < patterns.length; ++i){ // find variables and matches
 
             patterns[i] = this.getDirAndFilePattern(taskIn.get(i));
             String [] files = this.getFilesInDir(patterns[i].first);
             int [] vars = StringUtils.findVariables(patterns[i].second);
+            HashSet<String> [] matches = new HashSet[10];
 
             if (vars == null){
                 continue;
@@ -530,12 +531,27 @@ public class TaskExpander {
                     throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), taskIn.get(i));
                 }
             }
+            for (int j = 0; j < 10; ++j){ // intersect matches for different file patterns and same variable
+
+                if (matches[j] != null){
+                    if (allMatch[j] == null){
+                        allMatch[j] = matches[j];
+                    }
+                    else {
+                        allMatch[j].retainAll(matches[j]);
+                    }
+                }
+            }
         }
 
         for (int i = 0; i < 10; ++i){ // expand all matched variables
             
-            if (matches[i] == null){
+            if (allMatch[i] == null){
                 continue;
+            }
+            if (allMatch[i].isEmpty()){
+                throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "Intersection of patterns"
+                        + " for variable " + i);
             }
             Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
             Collection<TaskDescription> curExp;
@@ -548,7 +564,7 @@ public class TaskExpander {
                 curExp = this.expansions.removeAll(this.task);
             }
 
-            String [] matchesSort = matches[i].toArray(new String [matches[i].size()]);
+            String [] matchesSort = allMatch[i].toArray(new String [allMatch[i].size()]);
             Arrays.sort(matchesSort);
             for (String match : matchesSort) {
 
