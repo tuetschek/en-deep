@@ -252,6 +252,7 @@ public class PredicateMerger extends GroupInputsTask {
 
         if (this.fileAttrName != null){
             mergeParams.put(DataMerger.FILE_ATTR, this.fileAttrName);
+            mergeParams.put(PATTERN_PREFIX + "0", this.patterns[0]);
         }
         for (String frame : this.grouped.keySet()){
 

@@ -61,7 +61,7 @@ public class DataMerger extends Task {
     /** The name of the 'file_attr' parameter */
     static final String FILE_ATTR = "file_attr";
     /** The prefix of all 'pattern' parameters */
-    private static final String PATTERN_PREFIX = "pattern";
+    private static final String PATTERN_PREFIX = GroupInputsTask.PATTERN_PREFIX;
 
     /* DATA */
 

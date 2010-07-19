@@ -47,7 +47,7 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
     /* CONSTANTS */
 
     /** Prefix for the pattern parameters */
-    private static final String PATTERN_PREFIX = "pattern";
+    static final String PATTERN_PREFIX = "pattern";
 
     /* DATA */
 
