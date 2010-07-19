@@ -49,6 +49,10 @@ public abstract class MergedHeadersOutput extends Task {
      * The "merge_inputs" parameter name
      */
     private static final String MERGE_INPUTS = "merge_inputs";
+    /** The output_info parameter name */
+    private static final String OUTPUT_INFO = "output_info";
+    /** The info_file parameter name */
+    private static final String INFO_FILE = "info_file";
     
     /* CONSTANTS */
 
@@ -58,11 +62,17 @@ public abstract class MergedHeadersOutput extends Task {
     HashMap<String, HashSet<String>> nominalValues;
     /** Should inputs be merged ? */
     private boolean mergeInputs;
+    /** The input files with processing info */
+    private String [] infoFilesIn;
+    /** The output files with processing info */
+    private String [] infoFilesOut;
+
 
     /* METHODS */
 
     /**
-     * This just checks and saves the value of the mergeInputs parameter.
+     * This just checks and saves the value of the <tt>merge_inputs</tt> parameter and the <tt>info_file</tt>
+     * and <tt>output_info</tt> parameters.
      */
     protected MergedHeadersOutput(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -71,6 +81,33 @@ public abstract class MergedHeadersOutput extends Task {
         this.nominalValues = new HashMap<String, HashSet<String>>();
 
         this.mergeInputs = this.getBooleanParameterVal(MERGE_INPUTS);
+        if (this.getBooleanParameterVal(INFO_FILE)){
+            this.infoFilesIn = this.getInfoFiles(this.input);
+        }
+        if (this.getBooleanParameterVal(OUTPUT_INFO)){
+            this.infoFilesOut = this.getInfoFiles(this.output);
+        }
+    }
+
+    /**
+     * This removes the info files specifications from the inputs / outputs of the task
+     * @param files the input or output of the task
+     * @return a list of input or output info files needed for the task
+     */
+    private String [] getInfoFiles(Vector<String> files) {
+        
+        String [] ret;
+
+        if (this.mergeInputs) {
+            ret = new String[1];
+            ret[0] = files.get(files.size() - 1);
+            files.remove(files.size() - 1);
+        }
+        else {
+            ret = files.subList(files.size() / 2, files.size()).toArray(new String[0]);
+            files.setSize(files.size() / 2);
+        }
+        return ret;
     }
 
 
@@ -160,10 +197,15 @@ public abstract class MergedHeadersOutput extends Task {
                 for (int i = 0; i < this.input.size(); ++i) {
 
                     Instances[] data = new Instances[1];
+                    String inInfo = this.infoFilesIn != null ? FileUtils.readString(this.infoFilesIn[i], false) : null;
 
                     data[0] = FileUtils.readArff(this.input.get(i));
-                    this.processData(data);
+                    String outInfo = this.processData(data, inInfo);
                     FileUtils.writeArff(this.output.get(i), data[0]);
+
+                    if (this.infoFilesOut != null){
+                        FileUtils.writeString(this.infoFilesOut[i], outInfo);
+                    }
                 }
             }
             else {
@@ -174,12 +216,16 @@ public abstract class MergedHeadersOutput extends Task {
                 }
 
                 Instances[] data = allData.toArray(new Instances[0]);
+                String inInfo = this.infoFilesIn != null ? FileUtils.readString(this.infoFilesIn[0], false) : null;
 
                 this.mergeHeaders(data);
-                this.processData(data);
+                String outInfo = this.processData(data, inInfo);
 
                 for (int i = 0; i < this.output.size(); ++i) {
                     FileUtils.writeArff(this.output.get(i), data[i]);
+                }
+                if (this.infoFilesOut != null){
+                    FileUtils.writeString(this.infoFilesOut[0], outInfo);
                 }
             }
         }
@@ -197,5 +243,13 @@ public abstract class MergedHeadersOutput extends Task {
      * @param data the data to be processed
      * @param param processing parameters
      */
-    protected abstract void processData(Instances [] data) throws Exception;
+    protected abstract String processData(Instances [] data, String processingInfo) throws Exception;
+
+    /**
+     * Return true if we have input info files.
+     * @return true for present input info files.
+     */
+    protected boolean hasInfoIn(){
+        return this.infoFilesIn != null;
+    }
 }

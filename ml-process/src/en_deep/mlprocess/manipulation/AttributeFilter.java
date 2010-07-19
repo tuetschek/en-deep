@@ -31,6 +31,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -103,7 +104,7 @@ public class AttributeFilter extends MergedHeadersOutput {
      * order to be preserved</li>
      * </ul>
      * <p>
-     * If both parameters are set, both conditions must be fulfilled, so that the value is not discarded.
+     * If more parameters are set, all conditions must be fulfilled, so that the value is not discarded.
      * </p><p>
      * There are additional parameters:
      * <p>
@@ -111,6 +112,12 @@ public class AttributeFilter extends MergedHeadersOutput {
      * <li><tt>del_orig</tt> -- delete the original attributePrefixes and keep only the filtered</li>
      * <li><tt>merge_inputs</tt> -- merge all the inputs before processing (inputs are assumed to have the same format,
      *      including the possible values</li>
+     * <li><tt>info_file</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
+     * and the last input(s) are considered to be saved information about the filtering process. This will
+     * then ignore all other parameters and perform the process exactly as instructed in the file.</li>
+     * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
+     * and the last outputs(s) are considered to be output files where the processing info about this filtering
+     * is saved for later use.</tt>
      * </ul>
      */
     public AttributeFilter(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
@@ -119,31 +126,25 @@ public class AttributeFilter extends MergedHeadersOutput {
         super(id, parameters, input, output);
 
         // check parameters
-        try {
-            if (this.parameters.get(MOST_COMMON) != null){
-                this.mostCommon = Integer.parseInt(this.parameters.get(MOST_COMMON));
-            }
-            if (this.parameters.get(MIN_OCCURRENCES) != null){
-                this.minOccurrences = Integer.parseInt(this.parameters.get(MIN_OCCURRENCES));
-            }
-            if (this.parameters.get(MIN_PERCENTAGE) != null){
-                this.minPercentage = Double.parseDouble(this.parameters.get(MIN_PERCENTAGE)) / 100.0;
-            }
+        if (this.hasParameter(MOST_COMMON)){
+            this.mostCommon = this.getIntParameterVal(MOST_COMMON);
         }
-        catch (NumberFormatException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid number specification.");
+        if (this.hasParameter(MIN_OCCURRENCES)){
+            this.minOccurrences = this.getIntParameterVal(MIN_OCCURRENCES);
         }
-        if (this.parameters.get(ATTRIBUTES) != null){
+        if (this.hasParameter(MIN_PERCENTAGE)){
+            this.minPercentage = this.getDoubleParameterVal(MIN_PERCENTAGE) / 100.0;
+        }
+
+        if (this.hasParameter(ATTRIBUTES)){
             this.attributePrefixes = this.parameters.get(ATTRIBUTES).split("\\s+");
             this.checkPrefixes();
         }
 
-        if (this.parameters.get(DEL_ORIG) != null){
-            this.delOrig = true;
-        }
+        this.delOrig = this.getBooleanParameterVal(DEL_ORIG);
 
-        if (this.attributePrefixes == null 
-                || (this.mostCommon == -1 && this.minOccurrences == -1 && this.minPercentage == Double.NaN)){
+        if (!this.hasInfoIn() && (this.attributePrefixes == null
+                || (this.mostCommon == -1 && this.minOccurrences == -1 && this.minPercentage == Double.NaN))){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
 
@@ -164,10 +165,12 @@ public class AttributeFilter extends MergedHeadersOutput {
      *
      * @param attrPrefix the name of the attribute
      * @param data the data for which the filtering should apply
+     * @return attribute name and a list of allowed values
      * @throws NumberFormatException
      * @throws TaskException
      */
-    private void filterAttribute(String attrName, Instances[] data) throws NumberFormatException, TaskException {
+    private String filterAttribute(String attrName, Instances[] data, boolean [] allowedIndexes) throws
+            NumberFormatException, TaskException {
 
         String newName = attrName + ATTR_NAME_SUFF;
 
@@ -180,10 +183,7 @@ public class AttributeFilter extends MergedHeadersOutput {
                 newName.replaceFirst("[0-9]+$", Integer.toString(num + 1));
             }
         }
-        // collect statistics about the given attribute and create its filtered version
-        int minOccur = this.getMinOccurrences(data);
-        int[] stats = this.collectStatistics(data, attrName);
-        boolean[] allowedIndexes = this.filterValues(stats, minOccur);
+
         Vector<String> allowedValues = new Vector<String>();
 
         for (int i = 0; i < allowedIndexes.length; ++i) {
@@ -201,7 +201,8 @@ public class AttributeFilter extends MergedHeadersOutput {
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
         }
-        return;
+        allowedValues.remove(OTHER_VALUE);
+        return attrName + ":" + StringUtils.join(allowedValues.toArray(),",", true);
     }
 
 
@@ -211,18 +212,9 @@ public class AttributeFilter extends MergedHeadersOutput {
      *
      * @param data the data to be filtered
      * @param attrPrefix the prefix of attributes to be filtered
+     * @param list of filtered attributes with valid values (one attribute per line)
      */
-    private void filterAttributePrefix(Instances [] data, String attrPrefix) throws TaskException {
-
-        // check data compatibility
-        if (data.length > 1) {
-            for (int i = 1; i < data.length; ++i) {
-                if (!data[i].equalHeaders(data[0])) {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                            "Data from different files are not compatible.");
-                }
-            }
-        }
+    private String filterAttributePrefix(Instances [] data, String attrPrefix) throws TaskException {
 
         Vector<String> matches = new Vector<String>();
         Enumeration<Attribute> allAttribs = data[0].enumerateAttributes();
@@ -240,13 +232,20 @@ public class AttributeFilter extends MergedHeadersOutput {
             // attribute must be found and must be nominal
             Logger.getInstance().message(this.id + " : No attribute matching " + attrPrefix + " found in data "
                     + data[0].relationName(), Logger.V_WARNING);
-            return;
+            return "";
         }
 
         // filter all matching attributes
+        StringBuilder sb = new StringBuilder();
         for (String attrName : matches){
-            this.filterAttribute(attrName, data);
+            // collect statistics about the given attribute and create its filtered version
+            int minOccur = this.getMinOccurrences(data);
+            int[] stats = this.collectStatistics(data, attrName);
+            boolean[] allowedIndexes = this.filterValues(stats, minOccur);
+
+            sb.append(this.filterAttribute(attrName, data, allowedIndexes)).append("\n");
         }
+        return sb.toString();
     }
 
 
@@ -414,13 +413,66 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param data the data to be processed
      */
     @Override
-    protected void processData(Instances[] data) throws Exception {
-        for (int j = 0; j < this.attributePrefixes.length; ++j) {
-            this.filterAttributePrefix(data, this.attributePrefixes[j]);
+    protected String processData(Instances[] data, String info) throws Exception {
+
+        // check data compatibility
+        if (data.length > 1) {
+            for (int i = 1; i < data.length; ++i) {
+                if (!data[i].equalHeaders(data[0])) {
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                            "Data from different files are not compatible.");
+                }
+            }
+        }
+
+        if (info == null){
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < this.attributePrefixes.length; ++j) {
+                sb.append(this.filterAttributePrefix(data, this.attributePrefixes[j]));                
+            }
+            return sb.toString();
+        }
+        else {
+            String [] attribInfos = info.split("\\n");
+
+            for (String attribInfo : attribInfos){
+                String [] nameVal = attribInfo.split(":", 2);
+                boolean [] allowedIndexes = this.findAllowedIndexes(data, nameVal[0], nameVal[1]);
+                this.filterAttribute(nameVal[0], data, allowedIndexes);
+            }
+            return info;
         }
     }
 
 
+    /**
+     * Given the input info line, this finds out the valid attribute indexes.
+     * @param data the data to be processed (equal headers assumed)
+     * @param attrName the name of the attribute to be processed
+     * @param values the string list of allowed attribute value labels (quoted)
+     * @return array with true set at allowed indexes
+     * @throws TaskException
+     */
+    private boolean [] findAllowedIndexes(Instances [] data, String attrName, String values) throws TaskException{
 
+        Attribute attr = data[0].attribute(attrName);
+        if (attr == null || !attr.isNominal()){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Missing attribute " + attrName);
+        }
+
+        // parse the values
+        boolean [] valMap = new boolean [attr.numValues()];
+        Vector<String> valList = StringUtils.parseCSV(values);
+
+        for (String val : valList){
+            val = StringUtils.unquote(val.trim());
+            if (attr.indexOfValue(val) == -1){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attrName + " missing"
+                        + " value " + val);
+            }
+            valMap[attr.indexOfValue(val)] = true;
+        }
+        return valMap;
+    }
 
 }

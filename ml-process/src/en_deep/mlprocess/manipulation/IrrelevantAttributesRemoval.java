@@ -32,9 +32,11 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
@@ -93,11 +95,17 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
 
     /**
      * This just creates the new task and checks the inputs and outputs and parameters.
-     * The class has no compulsory paramters. There arer voluntary parameters:
+     * The class has no compulsory paramters. There are voluntary parameters:
      * <ul>
-     * <li><tt>preserve</tt> -- space-separated list of attributes that need to be preserved at any rate.
-     * <li><tt>remove</tt> -- space-separated list of attributes that need to be removed at any rate
-     * <li><tt>merge_inputs</tt> -- the inputs are merged before consideration
+     * <li><tt>preserve</tt> -- space-separated list of attributes that need to be preserved at any rate.</li>
+     * <li><tt>remove</tt> -- space-separated list of attributes that need to be removed at any rate</li>
+     * <li><tt>merge_inputs</tt> -- the inputs are merged before consideration</li>
+     * <li><tt>info_file</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
+     * and the last input(s) are considered to be saved information about the filtering process. This will
+     * then ignore all other parameters and perform the process exactly as instructed in the file.</li>
+     * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
+     * and the last outputs(s) are considered to be output files where the processing info about this filtering
+     * is saved for later use.</tt>
      * </ul>
      * The number of inputs must be the same as the number of outputs.
      *
@@ -134,8 +142,10 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
     /**
      * This removes all the irrelevant attributes in all the given data sets.
      * @param data the data sets to be filtered
+     * @param info the input information about removed attributes
+     * @return list of removed attributes
      */
-    protected void processData(Instances [] data) throws Exception {
+    protected String processData(Instances [] data, String info) throws Exception {
 
         // check data compatibility
         if (data.length > 1) {
@@ -148,11 +158,20 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
             }
         }
 
+        if (info != null){ // just remove the attributes that were given in the info
+            this.removeAttributes(data, Arrays.asList(info.split("\\s+")), Condition.PRESELECTED);
+            return info;
+        }
+
         // remove the attributes, whatever the cause
         Condition [] allConds = Condition.values();
+        Vector<String> removedAttributes = new Vector<String>();
         for (int i = 0; i < allConds.length; ++i){
-            this.removeAttributes(data, allConds[i]);
+            Vector<String> selected = this.selectForRemoval(data, allConds[i]);
+            this.removeAttributes(data, selected, allConds[i]);
+            removedAttributes.addAll(selected);
         }
+        return StringUtils.join(removedAttributes, " ");
     }
 
 
@@ -161,7 +180,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * @param data the data to be filtered 
      * @param condition the {@link Condition} that the attributes must fulfill
      */
-    private void removeAttributes(Instances[] data, Condition condition) {
+    private Vector<String> selectForRemoval(Instances[] data, Condition condition) {
 
         Enumeration<Attribute> attribs = data[0].enumerateAttributes();
         Vector<String> forRemoval = new Vector<String>();
@@ -191,6 +210,17 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                 }
             }
         }
+        return forRemoval;
+    }
+
+    /**
+     * Removes the listed attributes.
+     * @param data the data to be processed
+     * @param forRemoval list of attribute names for removal
+     * @condition reason of removal
+     */
+    private void removeAttributes(Instances [] data, List<String> forRemoval, Condition condition){
+
         if (!forRemoval.isEmpty()){
             Logger.getInstance().message(this.id + " : removing " + condition.toString() + " "
                     + StringUtils.join(forRemoval, ", ") + ".", Logger.V_DEBUG);

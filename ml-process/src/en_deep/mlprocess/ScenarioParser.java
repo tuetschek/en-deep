@@ -212,7 +212,7 @@ class ScenarioParser {
      */
     private Vector<String> getFileList(String clause) throws DataException {
 
-        Vector<String> list = this.parseCSV(clause); // raw parsing
+        Vector<String> list = StringUtils.parseCSV(clause); // raw parsing
         String workDir = Process.getInstance().getWorkDir();
 
         // remove quotes & spaces
@@ -241,38 +241,11 @@ class ScenarioParser {
      */
     private String unquote(String string) throws DataException {
 
-        string = string.substring(1, string.length()-1);
-        if (string.matches("(?s).*[^\"]\"[^\"].*")){
+        string = StringUtils.unquote(string);
+        if (string == null){
             throw new DataException(DataException.ERR_QUOTES_MISMATCH, this.fileName, this.line);
         }
-        return string.replaceAll("\"\"", "\"");
-    }
-
-    /**
-     * Split a comma-separated string that may contain quotes, ignore quoted commas and
-     * heed the unquoted ones.
-     * @param string the string to be split
-     * @return the list of values that were separated by unquoted commas
-     */
-    private Vector<String> parseCSV(String string) {
-
-        Vector<String> list = new Vector<String>();
-        boolean quoted = false;
-        int st = 0;
-
-        for (int cur = 0; cur < string.length(); ++cur){
-            if (string.charAt(cur) == '"'){
-                quoted = !quoted;
-            }
-            else if (string.charAt(cur) == ',' && !quoted){
-                list.add(string.substring(st, cur));
-                st = cur + 1;
-            }
-        }
-        if (st < string.length() - 1){
-            list.add(string.substring(st));
-        }
-        return list;
+        return string;
     }
 
     /**
@@ -288,7 +261,7 @@ class ScenarioParser {
         Hashtable<String, String> parameters = new Hashtable<String, String>();
 
         // remove quotes & spaces, split names and values
-        for(String listMember : this.parseCSV(string)){
+        for(String listMember : StringUtils.parseCSV(string)){
 
             String [] nameVal = listMember.split("=", 2);
 

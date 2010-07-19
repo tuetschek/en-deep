@@ -556,4 +556,49 @@ public class StringUtils {
         return file;
     }
 
+
+    /**
+     * Split a comma-separated string that may contain quotes, ignore quoted commas and
+     * heed the unquoted ones.
+     * @param string the string to be split
+     * @return the list of values that were separated by unquoted commas
+     */
+    public static Vector<String> parseCSV(String string) {
+
+        Vector<String> list = new Vector<String>();
+        boolean quoted = false;
+        boolean backslash = false;
+        int st = 0;
+
+        for (int cur = 0; cur < string.length(); ++cur){
+
+            if (string.charAt(cur) == '\\'){
+                backslash = !backslash;
+            }
+            if (!backslash && string.charAt(cur) == '"'){
+                quoted = !quoted;
+            }
+            else if (string.charAt(cur) == ',' && !quoted){
+                list.add(string.substring(st, cur));
+                st = cur + 1;
+            }
+
+            if (string.charAt(cur) != '\\'){
+                backslash = false;
+            }
+        }
+        if (st < string.length() - 1){
+            list.add(string.substring(st));
+        }
+        return list;
+    }
+
+    public static String unquote(String string){
+        string = string.substring(1, string.length()-1);
+        if (string.matches("(?s).*[^\\\\]\".*")){
+            return null;
+        }
+        return string.replace("\\\"", "\"").replace("\\\\", "\\");
+    }
+
 }
