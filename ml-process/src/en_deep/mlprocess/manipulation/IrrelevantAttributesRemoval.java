@@ -28,9 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -95,14 +93,15 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
 
     /**
      * This just creates the new task and checks the inputs and outputs and parameters.
-     * The class has no compulsory paramters. There are voluntary parameters:
+     * The class has no compulsory parameters. There are voluntary parameters:
      * <ul>
      * <li><tt>preserve</tt> -- space-separated list of attributes that need to be preserved at any rate.</li>
      * <li><tt>remove</tt> -- space-separated list of attributes that need to be removed at any rate</li>
      * <li><tt>merge_inputs</tt> -- the inputs are merged before consideration</li>
      * <li><tt>info_file</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last input(s) are considered to be saved information about the filtering process. This will
-     * then ignore all other parameters and perform the process exactly as instructed in the file.</li>
+     * then ignore all other parameters (except <tt>merge_inputs</tt>) and perform the process exactly as
+     * instructed in the file.</li>
      * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last outputs(s) are considered to be output files where the processing info about this filtering
      * is saved for later use.</tt>

@@ -28,9 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -114,7 +112,8 @@ public class AttributeFilter extends MergedHeadersOutput {
      *      including the possible values</li>
      * <li><tt>info_file</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last input(s) are considered to be saved information about the filtering process. This will
-     * then ignore all other parameters and perform the process exactly as instructed in the file.</li>
+     * then ignore all other parameters (except <tt>del_orig</tt> and <tt>merge_inputs</tt>) and perform the process
+     * exactly as instructed in the file.</li>
      * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last outputs(s) are considered to be output files where the processing info about this filtering
      * is saved for later use.</tt>
