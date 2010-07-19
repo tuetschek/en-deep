@@ -538,6 +538,30 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     }
 
     /**
+     * This returns only the selected pattern replacements of an expanded task, or null if not
+     * applicable
+     * @param idxs the number of the selected pattern replacements to be returned
+     * @return the selected replacements, or null if the indexes are invalid or there are no replacements
+     */
+    String [] getPatternReplacements(int [] idxs){
+
+        String [] all, sel;
+
+        if (this.id.indexOf('#') == -1){
+            return null;
+        }
+        all = this.id.substring(this.id.indexOf('#') + 1).split("#");
+        sel = new String [idxs.length];
+        for (int i = 0; i < sel.length; ++i){
+            if (idxs[i] >= all.length || idxs[i] < 0){
+                return null;
+            }
+            sel[i] = all[idxs[i]];
+        }
+        return sel;
+    }
+
+    /**
      * Replaces the pos-th input with a list of replacements.
      *
      * @param pos the position to be affected

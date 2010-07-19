@@ -481,6 +481,7 @@ public class WekaClassifier extends GeneralClassifier {
 
     @Override
     protected void checkNumberOfInputs() throws TaskException {
+
         if ((this.getBooleanParameterVal(ARGS_FILE) && this.input.size() !=3)
                 || (!this.getBooleanParameterVal(ARGS_FILE) && this.input.size() != 2)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);

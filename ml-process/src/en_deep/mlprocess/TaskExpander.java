@@ -326,6 +326,16 @@ public class TaskExpander {
                     for (TaskDescription depExp : this.expansions.get(dep)){
                         this.cleanPrerequisites(depExp);
                     }
+                }               
+            }
+        }
+
+        Vector<TaskDescription> pres = expTask.getPrerequisites();
+
+        if (pres != null){
+            for (TaskDescription pre: pres){
+                if (!this.expansions.containsKey(pre) && pre.hasOutputPattern("*") && !pre.hasOutputPattern("**")){
+                    this.expandPrerequisite(pre, expTask);
                 }
             }
         }
@@ -386,6 +396,61 @@ public class TaskExpander {
         this.expandOutputsAndDeps(task);
     }
 
+    /**
+     * Given a task which is already expanded, this expands its prerequisite. It is possible that
+     * the prerequisite will be expanded only partially (if it contains both "**" and "*" inputs),
+     * but all "*"-variables must be expanded, or the patterns haven't been set up correctly.
+     * @param pre the prerequisite task
+     * @param task the task depending on pre, which is already expanded
+     * @throws TaskException if the expansion is not possible
+     */
+    private void expandPrerequisite(TaskDescription pre, TaskDescription task) throws TaskException {
+
+        int [] commonVars = this.findCommonVariables(pre, task);
+
+        for (TaskDescription taskExp : this.expansions.get(task)){
+
+            TaskDescription expanded = pre.expand(taskExp.getPatternReplacements(commonVars));
+
+            if (expanded.hasInputPattern("*")){
+                throw new TaskException(TaskException.ERR_PATTERN_SPECS, pre.getId(), "Could not expand"
+                        + " a prerequisite task completely.");
+            }
+            this.cleanDependent(expanded);
+            this.expansions.put(pre, expanded);
+        }
+
+        this.expandOutputsAndDeps(pre);
+    }
+
+    /**
+     * This finds the variables in the inputs of the depending task which should originate in the outputs
+     * of a prerequisite task.
+     * @param pre the prerequisite task
+     * @param dep the dependent task
+     * @return a list of shared variables
+     * @throws TaskException if the tasks don't depend on each other
+     */
+    private int [] findCommonVariables(TaskDescription pre, TaskDescription dep) throws TaskException {
+
+        Vector<String> preOut = new Vector<String>(pre.getOutput().size());
+        Vector<String> depIn = dep.getInput();
+        String common = null;
+
+        for (String out : pre.getOutput()){
+            preOut.add(StringUtils.getOccurencePattern(out));
+        }
+        for (String in : depIn){
+            if (preOut.contains(StringUtils.getOccurencePattern(in))){
+                common = in;
+            }
+        }
+        if (common == null){
+            throw new TaskException(TaskException.ERR_PATTERN_SPECS, pre.getId(), "Non-existent dependency"
+                    + " to " + dep.getId());
+        }
+        return StringUtils.findVariables(common);
+    }
 
     /**
      * This removes all the unnecessary expansions of prerequisites of the given task. E.g. if
@@ -394,7 +459,7 @@ public class TaskExpander {
      * the dependency list.
      *
      * @todo optimize -- this is really expensive (creates a hash-set every time)
-     * @param expTas the task to be processed
+     * @param expTask the task to be processed
      */
     private void cleanPrerequisites(TaskDescription expTask) {
 
@@ -405,6 +470,22 @@ public class TaskExpander {
             return;
         }
         for (TaskDescription pre : prerequisites){
+            if (values.contains(pre)
+                    && !expTask.getPatternReplacement().equals(pre.getPatternReplacement())){
+                pre.removeDependency(expTask);
+            }
+        }
+    }
+
+    private void cleanDependent(TaskDescription expTask){
+
+        HashSet<TaskDescription> values = new HashSet<TaskDescription>(this.expansions.values());
+        Vector<TaskDescription> dependent = expTask.getDependent();
+
+        if (dependent == null){
+            return;
+        }
+        for (TaskDescription pre : dependent){
             if (values.contains(pre)
                     && !expTask.getPatternReplacement().equals(pre.getPatternReplacement())){
                 pre.removeDependency(expTask);

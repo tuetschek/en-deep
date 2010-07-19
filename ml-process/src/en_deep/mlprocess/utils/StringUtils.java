@@ -542,4 +542,18 @@ public class StringUtils {
         return ret;
     }
 
+    /**
+     * This returns a pattern for creating dependencies among tasks. Here, "*" and "**" are treated
+     * the same, as are all sub-specifications. If the file name doesn't contain any wildcards, it is left unchanged.
+     * @param file the file whose pattern for creating dependencies is to be made
+     * @return a pattern for creating dependencies
+     */
+    public static String getOccurencePattern(String file) {
+        // treat "**" as "*" in patterns, also sub-specifications
+        if (file.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?.*") && !file.matches(".*\\*[^*]+\\*.*")) {
+            file = file.replaceFirst("\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?", "*");
+        }
+        return file;
+    }
+
 }

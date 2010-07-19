@@ -1,6 +1,7 @@
 package en_deep.mlprocess;
 
 import en_deep.mlprocess.exception.DataException;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Enumeration;
@@ -190,11 +191,7 @@ class ScenarioParser {
     private void markFileUsage(String file, TaskDescription task, Occurrences.Purpose purpose) throws DataException {
 
         Occurrences oc;
-
-        // treat "**" and "***" as "*" in patterns
-        if (file.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?.*") && !file.matches(".*\\*[^*]+\\*.*")){
-            file = file.replaceFirst("\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?", "*");
-        }
+        file = StringUtils.getOccurencePattern(file);
 
         oc = this.fileOccurrences.get(file);
 
