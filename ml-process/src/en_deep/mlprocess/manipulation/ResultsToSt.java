@@ -168,7 +168,7 @@ public class ResultsToSt extends StManipulation {
         }
         catch (Exception e) {
             Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            Logger.getInstance().message(e.getMessage(), Logger.V_IMPORTANT);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
         
     }

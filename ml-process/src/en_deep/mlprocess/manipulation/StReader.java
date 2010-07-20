@@ -492,9 +492,12 @@ public class StReader {
 
         if (field >= origColumns){
             for (int i = 0; i < this.words.size(); ++i){
+
                 String [] tmp = new String [field + 1];
+
                 System.arraycopy(this.words.get(i), 0, tmp, 0, origColumns);
                 Arrays.fill(tmp, origColumns+1, field+1, EMPTY_VALUE);
+                this.words.set(i, tmp);
             }
         }
         this.words.get(word)[field] = value;
