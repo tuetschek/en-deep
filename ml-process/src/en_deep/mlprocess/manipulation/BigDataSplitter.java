@@ -106,7 +106,7 @@ public class BigDataSplitter extends Task {
         if (this.input.size() != 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Must have 1 input.");
         }
-        if (this.output.size() != 1 || !this.output.get(0).contains("**")){
+        if (this.output.size() != 1 || (this.chunksNo != 1 && !this.output.get(0).contains("**"))){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have 1 output pattern.");
         }
     }
