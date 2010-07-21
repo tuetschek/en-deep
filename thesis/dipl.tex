@@ -12,6 +12,7 @@
 \usepackage{thesis}
 \usepackage{hyperref}
 \usepackage[round]{natbib}
+\usepackage{multirow}
 
 %\newindex{default}{idx}{ind}{Rejstřík} % zavádí rejstřík v případě použití balíku index
 \usepackage{nomencl}
@@ -125,7 +126,7 @@ Chapter \ref{conclusions} then concludes the thesis with discussion of our resul
 \chapter{Related Work}\label{related}
 
 % zacalo uz 2002 -- dodat clanek
-Automatic deep analysis using supervised machine learning, i.e. estimating the unknown parameters of a classification model statistically from hand-annotated training data set, has been made possible with the emerging of semantically annotated treebanks, such as the PDT or PropBank. The research in this field has been rather active since that time, and therefore plenty of information and original concepts is now available. 
+Automatic deep analysis using supervised machine learning, i.e. estimating the unknown parameters of a classification model statistically from hand-annotated (\emph{gold standard}) training data set, has been made possible with the emerging of semantically annotated treebanks, such as the PDT or PropBank. The research in this field has been rather active since that time, and therefore plenty of information and original concepts is now available. 
 
 \section{The CoNLL 2009 Shared Task}\label{conll2009}
 
@@ -157,9 +158,9 @@ The corpus which we use to train and tune the classifiers of our SRL system and 
 The Penn Treebank was one of the first large syntactically parsed corpora and is still widely used as a standard English data set for various NLP tasks that require syntactic information. The morphological annotation of this corpus features a tagset \citep{santorini90} with about forty mnemonic tag names that mark the individual English parts of speech and their inflectional subtypes. This data has been used for the CoNLL 2009 corpus without changes. However, the syntactic part of PTB has been adapted to reflect the dependency paradigm in syntactic and semantic description.
 
 % obrázek složkového, závislostního stromu, neprojektivní vety
-The original PTB employed a constituent parse tree schema based on the theory of Government and Binding \citep{chomsky81}. Each inner node of the tree corresponds to one or more immediately adjacent words in the sentence --- a phrase. Edges in the tree correspond to the relation of immediate constituents. The nodes in dependency trees by contrast do not represent constituents, but only the individual words of the sentence. Its edges then show the syntactic dependency relation. Since there is no limitation on the position of dependent nodes in the sentence like with constituent trees, one can easily represent also non-projective sentences, where one or more dependent nodes are separated from their head nodes by other nodes. Such sentences are not very common in English, but occur very often in some other languages.
+The original PTB employed a constituent parse tree schema based on the theory of Government and Binding \citep{chomsky81}. Each inner node of the tree corresponds to one or more immediately adjacent words in the sentence --- a phrase. Edges in the tree correspond to the relation of immediate constituents. The nodes in dependency trees by contrast do not represent constituents, but only the individual words. Its edges then show the syntactic dependency relation. Since there is no limitation on the position of dependent nodes in the sentence like with constituent trees, one can easily represent also non-projective sentences, where one or more dependent nodes are separated from their head nodes by other nodes. Such sentences are not very common in English, but occur very often in some other languages.
 
-Since dependency parsing algorithms have become more effective and can handle non-projectivity \citep[cf.][]{mcdonald05}, it is more convenient to use dependency structures to describe syntactic relationships.For the purposes of CoNLL 2008/9, the PTB corpus has therefore been automatically converted to a dependency schema \citep{johansson07,surdeanu08}, while the edge labels have been adapted to meet the new paradigm and further enriched, so that they can serve to a better automatic semantic analysis\footnote{For details on the dependency labels and syntax in this corpus, see the file format and the description of the DEPREL field at \url{http://barcelona.research.yahoo.net/conll2008}.}. The modified dependency labels also include named entity indication, which originates from the \emph{BBN Pronoun Coreference and Entity Type Corpus} \citep{weischedel05}.
+Since dependency parsing algorithms have become more effective and can handle non-projectivity \citep[cf.][]{mcdonald05}, it is more convenient to use dependency structures to describe syntactic relationships.For the purposes of CoNLL 2008/9, the PTB corpus has therefore been automatically converted to a dependency schema \citep{johansson07,surdeanu08}, while the edge labels have been adapted to meet the new paradigm and further enriched, so that they can serve to a better automatic semantic analysis\footnote{For details on the dependency labels and syntax in this corpus, see the file format and the description of the DEPREL field at \url{http://yr-bcn.es/conll2008}.}. The modified dependency labels also include named entity indication, which originates from the \emph{BBN Pronoun Coreference and Entity Type Corpus} \citep{weischedel05}.
 % pridat seznam tagu obou veci do priloh ???
 
 \section{PropBank and NomBank Semantic Annotation}
@@ -173,11 +174,11 @@ The semantic information in the CoNLL English corpus incorporates annotations fr
 \end{itemize}
 There are indeed minor differences between the observed labels in NomBank and PropBank, but their basic concepts remain the same.
 
-As already mentioned, each predicate, i.e. each noun or verb in a given sense, has its own argument number assignment or \emph{frame}. The frames describe the individual arguments and their semantic properties, e.g. in most verbs, \texttt{A0} refers to the semantic actor of the event. The frames are provided for all the predicates that occur in the corpus, thus completing its semantic description.
+As already mentioned, each predicate, i.e. each noun or verb in a given sense, has its own argument number assignment or \emph{frame} --- even nouns and verbs with the same base form may use different numberings. The frames describe the individual arguments and their semantic properties, e.g. in most verbs, \texttt{A0} refers to the semantic actor of the event. The frames are provided for all the predicates that occur in the corpus, thus completing its semantic description.
 
 \section{Comparison to Prague English Dependency Treebank Annotation}
 
-As we mentioned in Section \ref{problem}, the predicate-argument description is not the only way of representing semantic information. The PEDT \cite{cinkova09}, a semantic resource which is currently being developed at the Institute of Formal and Applied Linguistics, works with the same Wall Street Journal articles as the CoNLL corpus and features a syntactic layer (called \emph{analytical} in the FGD-nomenclature) with dependency trees, which were also converted from the constituent PTB trees. However, it also employs a dependency tree semantic (\emph{tectogrammatical}) schema: rather than predicates and arguments which pertain exclusively to nouns and verbs, it organizes all the words that carry some semantic information into a hierarchy of dependencies. The words whose function is mainly grammatical, such as articles, prepositions or function verbs, do not occur in the semantic tree as separate nodes, but are represented as features of other nodes.
+As we mentioned in Section \ref{problem}, the predicate-argument description is not the only way of representing semantic information. The PEDT \cite{cinkova09}, a semantic resource which is currently being developed at the Institute of Formal and Applied Linguistics, works with the same Wall Street Journal articles as the CoNLL corpus and features a syntactic layer (called \emph{analytical} in the FGD-nomenclature) with dependency trees, which were also converted from the constituent PTB trees. However, it also employs a dependency tree semantic (\emph{tectogrammatical}) schema: rather than predicates and arguments which pertain exclusively to nouns and verbs, it organizes all the words that carry some semantic information into a hierarchy of dependencies. The words whose function is mainly grammatical, such as articles, prepositions or function verbs\footnote{This also pertains to punctuation tokens, which are usually included in syntax parse trees.}, do not occur in the semantic tree as separate nodes, but are represented as features of other nodes. In addition, there are also some nodes for words that do not occur in the utterance, but their presence follows from its semantic content. 
 
 \begin{figure}[htpb]
 \caption{A comparison of PEDT and CoNLL semantic annotation.}\label{fig:tree-comp}
@@ -190,14 +191,95 @@ $\begin{array}{cc}
 \end{center}
 \end{figure}
 
-A comparison of both annotations is shown in Figure \ref{fig:tree-comp}. It is apparent that the PEDT annotation contains more semantic information, because it also contains semantic dependencies of adjectives and adverbs, as well as more detailed structure when compared to the two-level structure of PropBank and NomBank. The semantic role labels, which adhere to the FGD, are also different from the numbered arguments of PropBank and NomBank, even though the PEDT valency lexicon EngVALLEX \citep{semecky06} is originally based on PropBank and NomBank frames. While most of the labels remain semantically constant across different predicates, the most widely ones are subject to \emph{shifting} with verbs, i.e. the first argument of any verb is always called \texttt{ACT} and the second one \texttt{PAT}, even if they do not denote the semantic roles of an actor and an affected object\footnote{Cf. a detailed description in the annotation guidelines at \url{http://ufal.mff.cuni.cz/\~{}cinkova/TR\_En.pdf}, pg. 36ff. and 107ff.}.
+A comparison of both annotations is shown in Figure \ref{fig:tree-comp}\footnote{The tree images were created by the TrEd tree editor\\(\url{http://ufal.mff.cuni.cz/\~pajas/tred/}).}. It is apparent that the PEDT annotation contains more semantic information, because it also contains semantic dependencies of adjectives and adverbs, as well as more detailed structure when compared to the two-level structure of PropBank and NomBank. The semantic role labels, which adhere to the FGD, are also different from the numbered arguments of PropBank and NomBank, even though the PEDT valency lexicon EngVALLEX \citep{semecky06} is originally based on PropBank and NomBank frames. While most of the labels remain semantically constant across different predicates, the most widely ones are subject to \emph{shifting} with verbs, i.e. the first argument of any verb is always called \texttt{ACT} and the second one \texttt{PAT}, even if they do not denote the semantic roles of an actor and an affected object\footnote{Cf. a detailed description in the annotation guidelines at: \\ \url{http://ufal.mff.cuni.cz/\~cinkova/TR\_En.pdf}, pg. 36ff. and 107ff.}. Also the references are treated in a different way: Additional links are inserted into the otherwise tree structure to represent them.
 
-It is however still possible to find some common grounds between the two sources --- both of them have labeled dependencies between noun and verbal predicates and their required or voluntary arguments. Therefore, it would be probably feasible to tweak a SRL system designed for the CoNLL annotation for use with the PEDT data, as long as it remains within the limits of finding arguments of noun and verb predicates. Full semantic dependency parsing would require more radical modifications.
+It is however still possible to find some common grounds between the two sources --- both of them include labeled dependencies between noun and verbal predicates and their required or voluntary arguments. Therefore, it would be probably feasible to tweak a SRL system designed for the CoNLL annotation for use with the PEDT data, as long as it remains within the limits of finding arguments of noun and verb predicates. Full semantic dependency parsing would require more radical modifications.
 
-\section{The Input Data Format}
-% popis ST formatu, trenovacich, development a testovacich dat
+\section{The CoNLL Corpus: Data Format and Statistics}
+
+Since we have described the annotation schema and sources of the CoNLL 2009\footnote{Since the concrete data format differs slightly from the 2008 version, we will now refer solely to the data sets used in this thesis.} corpus, we may now turn our attention to its technical implementation. The data is divided into three sets: \emph{training}, \emph{development} (tuning) and (final) \emph{evaluation} sentences. Each of them is included in a single text file, which contains all the plain text, morphological, syntactic and semantic information. Each line in every text file comprises all the knowledge about one token (i.e. word or punctuation sign), the individual inputs divided by tabs, forming columns. The purpose of each column is described in Table \ref{tab:st-columns}\footnote{Please see \url{http://ufal.mff.cuni.cz/conll2009-st/task-description.html} for further explanation.}. Different sentences are separated by empty lines.
+
+\begin{table}[htbp]\footnotesize
+\caption{The data columns of the CoNLL Shared Task corpus format}\label{tab:st-columns}
+\begin{center}
+\begin{tabular}{|r|l|l|}\hline
+\bf No. & \bf Name & \bf Contents \\\hline
+1 & ID & Number of the token in the sentence \\
+2 & FORM & The word form as it appears in the original text \\
+3 & LEMMA & Gold standard dictionary lemma of the word form \\
+4 & PLEMMA & Automatically predicted lemma \\
+5 & POS & Gold standard part-of-speech \\
+6 & PPOS & Automatically predicted part-of-speech \\
+7 & FEAT & \multirow{2}{*}{(Not used for English)} \\
+8 & PFEAT & \\
+9 & HEAD & ID of the syntactic head of this word (0 for root node; gold standard) \\
+10 & PHEAD & Automatically predicted syntactic head ID \\
+11 & DEPREL & Dependency relation label (gold standard) \\
+12 & PDEPREL & Automatically predicted dependency relation label \\
+13 & FILLPRED & Contains \texttt{Y}, if the word is a predicate \\
+14 & PRED & The predicate name (lemma and sense number) \\
+15+$i$ & APRED$i$ & Arguments of $i$-th predicate in the sentence \\\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+\caption{An example sentence from the CoNLL Shared Task Corpus}\label{fig:st-sample}
+\begin{center}
+\resizebox{\textwidth}{5cm}{
+\begin{tabular}{llllllllllllllllllll}
+1 & The & the & the & DT & DT & \_ & \_ & 2 & 2 & NMOD & NMOD & \_ & \_ & \_ & \_ & \_ & \_\\
+2 & economy & economy & economy & NN & NN & \_ & \_ & 4 & 4 & NMOD & NMOD & \_ & \_ & A1 & \_ & \_ & \_\\
+3 & 's & 's & 's & POS & POS & \_ & \_ & 2 & 2 & SUFFIX & SUFFIX & \_ & \_ & \_ & \_ & \_ & \_\\
+4 & temperature & temperature & temperature & NN & NN & \_ & \_ & 5 & 5 & SBJ & SBJ & Y & temperature.01 & A2 & A1 & \_ & \_\\
+5 & will & will & will & MD & MD & \_ & \_ & 0 & 0 & ROOT & ROOT & \_ & \_ & \_ & AM-MOD & \_ & \_\\
+6 & be & be & be & VB & VB & \_ & \_ & 5 & 5 & VC & VC & \_ & \_ & \_ & \_ & \_ & \_\\
+7 & taken & take & take & VBN & VBN & \_ & \_ & 6 & 6 & VC & VC & Y & take.01 & \_ & \_ & \_ & \_\\
+8 & from & from & from & IN & IN & \_ & \_ & 7 & 7 & ADV & ADV & \_ & \_ & \_ & A2 & \_ & \_\\
+9 & several & several & several & DT & DT & \_ & \_ & 11 & 11 & NMOD & NMOD & \_ & \_ & \_ & \_ & \_ & \_\\
+10 & vantage & vantage & vantage & NN & NN & \_ & \_ & 11 & 11 & NMOD & NMOD & \_ & \_ & \_ & \_ & A1 & \_\\
+11 & points & point & point & NNS & NNS & \_ & \_ & 8 & 8 & PMOD & PMOD & Y & point.02 & \_ & \_ & \_ & \_\\
+12 & this & this & this & DT & DT & \_ & \_ & 13 & 13 & NMOD & NMOD & \_ & \_ & \_ & \_ & \_ & \_\\
+13 & week & week & week & NN & NN & \_ & \_ & 7 & 7 & TMP & TMP & \_ & \_ & \_ & AM-TMP & \_ & \_\\
+14 & , & , & , & , & , & \_ & \_ & 7 & 7 & P & P & \_ & \_ & \_ & \_ & \_ & \_\\
+15 & with & with & with & IN & IN & \_ & \_ & 7 & 7 & ADV & ADV & \_ & \_ & \_ & AM-ADV & \_ & \_\\
+16 & readings & reading & reading & NNS & NNS & \_ & \_ & 15 & 15 & PMOD & PMOD & Y & reading.01 & \_ & \_ & \_ & \_\\
+17 & on & on & on & IN & IN & \_ & \_ & 16 & 16 & NMOD & NMOD & \_ & \_ & \_ & \_ & \_ & A1\\
+18 & trade & trade & trade & NN & NN & \_ & \_ & 17 & 17 & PMOD & PMOD & \_ & \_ & \_ & \_ & \_ & \_\\
+19 & , & , & , & , & , & \_ & \_ & 18 & 18 & P & P & \_ & \_ & \_ & \_ & \_ & \_\\
+20 & output & output & output & NN & NN & \_ & \_ & 18 & 18 & COORD & COORD & \_ & \_ & \_ & \_ & \_ & \_\\
+21 & , & , & , & , & , & \_ & \_ & 20 & 20 & P & P & \_ & \_ & \_ & \_ & \_ & \_\\
+22 & housing & housing & housing & NN & NN & \_ & \_ & 20 & 20 & COORD & COORD & \_ & \_ & \_ & \_ & \_ & \_\\
+23 & and & and & and & CC & CC & \_ & \_ & 22 & 22 & COORD & COORD & \_ & \_ & \_ & \_ & \_ & \_\\
+24 & inflation & inflation & inflation & NN & NN & \_ & \_ & 23 & 23 & CONJ & CONJ & \_ & \_ & \_ & \_ & \_ & \_\\
+25 & . & . & . & . & . & \_ & \_ & 5 & 5 & P & P & \_ & \_ & \_ & \_ & \_ & \_\\
+\\
+\end{tabular}
+}
+\end{center}
+\end{figure}
+
+It is apparent from Figure \ref{fig:st-sample} that the corpus data format is economic -- no data is repeated -- and easily human-readable. Manual analysis of corpus sentences is further simplified by the CoNLL 2009 Shared Task Extension for the TrEd tool\footnote{\url{http://ufal.mff.cuni.cz/\~pajas/tred/extensions/}}. On the other hand, the \texttt{APRED} columns and their different number for different sentences, as well as the fact that their order is only determined by the order of predicates in the sentence, clearly means that such a data format is not well suitable for usual machine learning classifiers, since they require a constant data structure for the whole set. We will discuss the data conversion further in Section \ref{conversion}.
+
+\begin{table}[htbp]
+\caption{Corpus size and coverage statistics for the CoNLL 2009 corpus used in this thesis}\label{tab:corpus-stats}
+\begin{center}
+\begin{tabular}{|c|rrrrrr|}\hline
+  & \multirow{2}{*}{\bf Tokens} & \multirow{2}{*}{\bf Sentences} & \multicolumn{2}{c}{\bf Predicates} & \multicolumn{2}{c|}{\bf Coverage} \\
+ & & & Unique & All & Unique & All \\\hline
+Training & 958167 & 39279 & 9228 & 179014 & - & - \\
+Development & 33368 & 1334 & 2151 & 6390 & 94.9 \% & 98.2 \% \\
+Evaluation & 57676 & 2399 & 2610 & 10498 & 95.6 \% & 98.8 \% \\\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+The CoNLL corpus covers virtually all of the original PTB texts, while the vast majority of the data is selected for training purposes. Table \ref{tab:corpus-stats} shows that most of the predicates and virtually all predicates with more than one occurrence in the development or evaluation set are covered by the training set, but a small group of unseen data will need to be treated separately. The average number of predicates per sentence is $4.55$ in the training data set. Therefore, if the system is set-up to classify the arguments of one predicate at a time (which is the only option with classic machine learning classifiers), the amount of data will multiply by that number. This means more training data instances and therefore possibly a higher classification precision; on the other hand, more computing resources will be needed to process such quantity.
 
 \chapter{The Used Machine Learning Environment}\label{mlprocess}
+
+In order to achieve an easy configurability of experiments needed for the SRL system setup and their fast parallel processing on multiple computers in a cluster, we have developed a special software framework.We have chosen to implement it in Java environment because of its portability, performance and simple debugging and maintenance with the help of integrated development tools. We will now describe the basic concepts used by our system.
+
 % spise technicky popis meho prostredi pro spousteni ukolu
 \section{Splitting the Machine Learning Process into Tasks}
 % rozdeleni celeho procesu na jednotky, organizace behoveho prostredi, popis ukolu
@@ -213,8 +295,9 @@ It is however still possible to find some common grounds between the two sources
 \section{Classifiers}\label{classifiers}
 % odkaz na CoNLL2009, knihovny LibLINEAR, LibSVM -- kratky obecny popis L2-reg Log. Regression, SVM
 % vztah Log. Regr. a MaxEnt
-\section{Data Conversion}
+\section{Data Conversion}\label{conversion}
 % prevod z puv. formatu do formatu pro klasifikatory
+% sent-id word-id
 \section{Features}
 % popis vsech featur, vc. word clusteru
 \section{Feature Selection Algorithms}
