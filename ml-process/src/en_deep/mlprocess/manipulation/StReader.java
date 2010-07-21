@@ -496,7 +496,7 @@ public class StReader {
                 String [] tmp = new String [field + 1];
 
                 System.arraycopy(this.words.get(i), 0, tmp, 0, origColumns);
-                Arrays.fill(tmp, origColumns+1, field+1, EMPTY_VALUE);
+                Arrays.fill(tmp, origColumns, field+1, EMPTY_VALUE);
                 this.words.set(i, tmp);
             }
         }

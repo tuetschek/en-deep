@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
@@ -104,8 +105,11 @@ public class WekaFilter extends Task {
             }
         }
         catch (TaskException e){
+            throw e;
         }
-        catch (Exception e){
+        catch (Exception e) {
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
