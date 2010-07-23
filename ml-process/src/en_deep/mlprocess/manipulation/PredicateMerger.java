@@ -110,10 +110,7 @@ public class PredicateMerger extends GroupInputsTask {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter min_sent must be numeric.");
         }
 
-        this.predInfoFile = this.getParameterVal(PRED_INFO);
-        if (!this.predInfoFile.contains(File.separator)){
-            this.predInfoFile = Process.getInstance().getWorkDir() + this.predInfoFile;
-        }
+        this.predInfoFile = StringUtils.getPath(this.getParameterVal(PRED_INFO));
         this.fileAttrName = this.getParameterVal(FILE_ATTR);
 
         if (this.input.isEmpty()){

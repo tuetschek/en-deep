@@ -45,7 +45,7 @@ import weka.core.Instances;
  * This is a dummy classifier for the files where no training data are present. It just constructs
  * the value of the target class as a concatenation of some other attributes.
  *
- * @todo add some voluntary "separator" parameter
+ * @todo add some voluntary "separator" parameter, merge with GeneralClassifier since it belongs there
  * @author Ondrej Dusek
  */
 public class ConcatClassifier extends Task {

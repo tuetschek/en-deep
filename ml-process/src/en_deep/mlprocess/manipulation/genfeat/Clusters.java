@@ -32,6 +32,7 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.StReader.Direction;
 import en_deep.mlprocess.manipulation.StToArff;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Hashtable;
@@ -97,7 +98,7 @@ public class Clusters extends Feature {
 
         // select the clusterType file names
         for (int i = 0; i < this.clusterFileNames.length; ++i){
-            this.clusterFileNames[i] = Process.getInstance().getWorkDir() + this.clusterFileNames[i];
+            this.clusterFileNames[i] = StringUtils.getPath(this.clusterFileNames[i]);
         }
 
         // create the clusters -- load the contents of the clusterType files and create the names of new features

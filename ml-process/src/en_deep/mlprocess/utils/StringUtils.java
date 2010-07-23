@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.utils;
 
+import en_deep.mlprocess.Process;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -599,6 +600,18 @@ public class StringUtils {
             return null;
         }
         return string.replace("\\\"", "\"").replace("\\\\", "\\");
+    }
+
+    /**
+     * Prepend the given string with the working directory path, if it doesn't contain any directory separator
+     * @param path the original file / path name (with or without directory specifications)
+     * @return the path, with working directory prepended, if needed
+     */
+    public static String getPath(String path) {
+        if (!path.contains(File.separator)){
+            return Process.getInstance().getWorkDir() + path;
+        }
+        return path;
     }
 
 }

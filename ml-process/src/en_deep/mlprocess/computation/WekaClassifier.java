@@ -39,6 +39,7 @@ import java.lang.reflect.Constructor;
 import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
@@ -95,7 +96,7 @@ public class WekaClassifier extends GeneralClassifier {
      * check. 
      * <p>
      * There must be no patterns in the input and output specifications, the number of inputs
-     * must 2, the number of outputs must be 1 and there are no patterns allowed in inputs and outputs.
+     * must min. 2, the number of outputs must be one less and there are no patterns allowed in inputs and outputs.
      * The first input is used as training data and the second as evaluation data.
      * </p>
      * <p>
@@ -113,15 +114,16 @@ public class WekaClassifier extends GeneralClassifier {
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * <li><tt>select_args</tt> -- preselection of attributes to be used (space-separated zero-based NUMBERS
      * -- attributes order in training data, the attributes in evaluation data with the same NAMES are removed)</li>
-     * <li><tt>args_file</tt> -- same as previous, except that now, three inputs are required and the 
-     * last of them is the file where the selected argument ids are stored.</li>
+     * <li><tt>args_file</tt> -- same as previous, except that now, one more input file is required
+     * where the selected argument ids are stored (must be the last input specification).</li>
      * <li><tt>num_selected</tt> -- limit the number of selected attributes (either from file or parameter)</tt>
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
      * <li><tt>binarize</tt> -- if set, it converts all the nominal parameters to binary, while using
      * sparse matrix to represent the result.</li>
-     * <li><tt>out_attribs</tt> -- if set, there must be one additional output file
+     * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
+     * used attributes will be output
      * </ul>
      * <p>
      * Parameters <tt>select_args</tt> a <tt>args_file</tt> are mutually exclusive.
@@ -153,13 +155,10 @@ public class WekaClassifier extends GeneralClassifier {
                     + " set at the same time!");
         }
         if (this.hasParameter(ARGS_FILE)){
-            this.preselectedAttribFile = this.input.remove(2);
-            if (!this.preselectedAttribFile.contains(File.separator)){
-                this.preselectedAttribFile = Process.getInstance().getWorkDir() + this.preselectedAttribFile;
-            }
+            this.preselectedAttribFile = StringUtils.getPath(this.input.remove(this.input.size()-1));
         }
         if (this.hasParameter(OUT_ATTRIBS)){
-            this.attribsOutputFile = this.output.remove(1);
+            this.attribsOutputFile = StringUtils.getPath(this.output.remove(this.output.size()-1));
         }
 
         // initialize the classifier and set its parameters
@@ -228,68 +227,87 @@ public class WekaClassifier extends GeneralClassifier {
     /**
      * This processes on file using the given WEKA classifier.
      *
-     * @param trainFile the training train file name
-     * @param evalFile the evaluation train file name
-     * @param outFile the output file name
+     * @param trainFile the training data file name
+     * @param evalFiles the evaluation data file names
+     * @param outFiles the output file names
      */
-    protected void classify(String trainFile, String evalFile, String outFile) throws Exception {
-
-        Logger.getInstance().message(this.id + ": reading " + trainFile + " and " + evalFile + "...",
-                Logger.V_DEBUG);
-
+    protected void classify(String trainFile, List<String> evalFiles, List<String> outFiles) throws Exception {
+      
         // read the training data
+        Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
         Instances train = FileUtils.readArff(trainFile);
+        Instances trainFormat = null; // keep just the data format of the original training file
+        String [] toRemove = null; // list of attributes to be removed
 
-        // read the evaluation train and find out the target class
-        Instances eval = FileUtils.readArff(evalFile);
-        Instances outData;
+        for (int fileNo = 0; fileNo < evalFiles.size(); ++fileNo){
 
-        this.findTargetFeature(train, eval);
-        outData =  new Instances(eval); // save a copy w/o attribute preselection
+            // read the evaluation data and find out the target class
+            Logger.getInstance().message(this.id + ": reading " + evalFiles.get(fileNo) + "...", Logger.V_DEBUG);
+            Instances eval = FileUtils.readArff(evalFiles.get(fileNo));
+            Instances outData; // a copy w/o attribute preselection for output
 
-        Logger.getInstance().message(this.id + ": preselecting attributes...",
-                Logger.V_DEBUG);
+            // first time: with training
+            if (fileNo == 0){                
+                this.findClassFeature(train, eval);
+                trainFormat = new Instances(train, 0);
+                outData = new Instances(eval);
 
-        // pre-select the attributes
-        this.attributesPreselection(train, eval);
+                // pre-select the attributes
+                Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
+                toRemove = this.attributesPreselection(train);
 
-        if (this.binarize){ // binarize, if needed
-            Logger.getInstance().message(this.id + ": binarizing...",
-                    Logger.V_DEBUG);
-            train = this.sparseNominalToBinary(train);
-            eval = this.sparseNominalToBinary(eval);
-        }
+                // remove selected attributes in eval
+                this.removeSelected(eval, toRemove);
+                if (this.binarize){ // binarize, if needed
+                    Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName()
+                            + " and " + eval.relationName() + ")", Logger.V_DEBUG);
+                    train = this.sparseNominalToBinary(train);
+                    eval = this.sparseNominalToBinary(eval);
+                }
 
-        Logger.getInstance().message(this.id + ": training " + trainFile + " for eval on " + evalFile + "...",
-                Logger.V_DEBUG);
-        // train the classifier
-        this.classif.buildClassifier(train);
-
-        Logger.getInstance().message(this.id + ": evaluation on " + evalFile + "...", Logger.V_DEBUG);
-
-        // use the classifier and store the results       
-        double [][] distributions = this.probabilities ? new double [eval.numInstances()][] : null;
+                Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
+                // train the classifier
+                this.classif.buildClassifier(train);
+            }
+            // next files: no training needed
+            else {
+                // set the class feature in eval
+                this.setClassFeature(trainFormat, eval);
+                outData = new Instances(eval);
                 
-        for (int i = 0; i < eval.numInstances(); ++i){
-            
-            if (!this.probabilities){ // just set the most likely class
-                double val = this.classif.classifyInstance(eval.get(i));
-                outData.get(i).setClassValue(val);
+                // remove selected attributes in eval
+                this.removeSelected(eval, toRemove);
+                if (this.binarize){
+                    Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")",
+                            Logger.V_DEBUG);
+                    eval = this.sparseNominalToBinary(eval);
+                }
             }
-             else { // save the probability distribution aside
-                distributions[i] = this.classif.distributionForInstance(eval.get(i));
+
+            Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
+            // use the classifier and store the results
+            double [][] distributions = this.probabilities ? new double [eval.numInstances()][] : null;
+
+            for (int i = 0; i < eval.numInstances(); ++i){
+
+                if (!this.probabilities){ // just set the most likely class
+                    double val = this.classif.classifyInstance(eval.get(i));
+                    outData.get(i).setClassValue(val);
+                }
+                 else { // save the probability distribution aside
+                    distributions[i] = this.classif.distributionForInstance(eval.get(i));
+                }
             }
+
+            // store the probability distributions, if supposed to
+            if (this.probabilities){
+                this.addDistributions(outData, distributions);
+            }
+
+            // write the output
+            Logger.getInstance().message(this.id + ": saving results to " + outFiles.get(fileNo) + ".", Logger.V_DEBUG);
+            FileUtils.writeArff(outFiles.get(fileNo), outData);
         }
-
-        // store the probability distributions, if supposed to
-        if (this.probabilities){
-            this.addDistributions(outData, distributions);
-        }
-
-        // write the output
-        FileUtils.writeArff(outFile, outData);
-
-        Logger.getInstance().message(this.id + ": results saved to " + outFile + ".", Logger.V_DEBUG);
         
         // clean up
         this.classif = null;
@@ -300,12 +318,12 @@ public class WekaClassifier extends GeneralClassifier {
      * removes all the attributes specified in the {@link #IGNORE_ATTRIBS} setting.
      * 
      * @param train the training data
-     * @param eval the evaluation data
+     * @return list of removed attributes' names
      */
-    private void attributesPreselection(Instances train, Instances eval) throws TaskException, IOException {
+    private String [] attributesPreselection(Instances train) throws TaskException, IOException {
 
         BitSet selectionMask = new BitSet(train.numAttributes());
-        
+
         if (!this.hasParameter(SELECT_ARGS) && !this.hasParameter(ARGS_FILE)){
             selectionMask.set(0, train.numAttributes()); // if there are no preselected attributes, set all to true
         }
@@ -325,19 +343,17 @@ public class WekaClassifier extends GeneralClassifier {
             selectionMask.set(train.classIndex());
         }
         if (this.hasParameter(IGNORE_ATTRIBS)){ // set the ignored attributes to false
-            this.removeIgnoredAttributes(train, eval, selectionMask);
+            this.removeIgnoredAttributes(train, selectionMask);
         }
 
+        String [] removedAttrNames = new String [selectionMask.length()-selectionMask.cardinality()];
+        int pos = 0;
         // remove the not-selected attributes
         for (int i = selectionMask.length()-1; i >= 0; --i){
             if (!selectionMask.get(i)){
 
-                String attrName = train.attribute(i).name();
-
+                removedAttrNames[pos++] = train.attribute(i).name();
                 train.deleteAttributeAt(i);
-                if (eval.attribute(attrName) != null){
-                    eval.deleteAttributeAt(eval.attribute(attrName).index());
-                }
             }
         }
 
@@ -345,6 +361,7 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.attribsOutputFile != null){
             this.writeAttribs(selectionMask);
         }
+        return removedAttrNames;
     }
 
     /**
@@ -354,7 +371,7 @@ public class WekaClassifier extends GeneralClassifier {
      * @param eval the evaluation data
      * @param the selection mask
      */
-    private void removeIgnoredAttributes(Instances train, Instances eval, BitSet selectionMask) {
+    private void removeIgnoredAttributes(Instances train, BitSet selectionMask) {
 
         String[] selection = this.parameters.remove(IGNORE_ATTRIBS).split("\\s+");
 
@@ -452,8 +469,14 @@ public class WekaClassifier extends GeneralClassifier {
 
     @Override
     protected void checkNumberOfOutputs() throws TaskException {
-        if ((this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() !=2)
-                || (!this.getBooleanParameterVal(OUT_ATTRIBS) && this.output.size() != 1)){
+        
+        int numIn = this.input.size();
+        if (this.getBooleanParameterVal(ARGS_FILE)){
+            numIn--;
+        }
+
+        if ((this.getBooleanParameterVal(OUT_ATTRIBS) && numIn != this.output.size())
+                || (!this.getBooleanParameterVal(OUT_ATTRIBS) && numIn != this.output.size()+1)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }
@@ -482,9 +505,29 @@ public class WekaClassifier extends GeneralClassifier {
     @Override
     protected void checkNumberOfInputs() throws TaskException {
 
-        if ((this.getBooleanParameterVal(ARGS_FILE) && this.input.size() !=3)
-                || (!this.getBooleanParameterVal(ARGS_FILE) && this.input.size() != 2)){
+        if ((this.getBooleanParameterVal(ARGS_FILE) && this.input.size() < 3)
+                || (!this.getBooleanParameterVal(ARGS_FILE) && this.input.size() < 2)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
+        }
+    }
+
+    /**
+     * This removes the attributes with the given names from the given data set.
+     * @param data the data set to be processed
+     * @param toRemove names of attributes to be removed
+     */
+    private void removeSelected(Instances data, String[] toRemove) {
+
+        for (int i = 0; i < toRemove.length; ++i){
+            int idx = data.attribute(toRemove[i]).index();
+
+            if (idx == -1){
+                Logger.getInstance().message(this.id + ": data set " + data.relationName() + " didn't contain"
+                        + " the removed attribute " + toRemove[i], Logger.V_WARNING);
+            }
+            else {
+                data.deleteAttributeAt(idx);
+            }
         }
     }
 

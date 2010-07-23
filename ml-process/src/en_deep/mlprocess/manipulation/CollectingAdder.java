@@ -127,10 +127,7 @@ public class CollectingAdder extends Task {
         this.fileAttrName = this.getParameterVal(FILE_ATTR);
         this.instIdNames = this.getParameterVal(INST_ID).split("\\s+");
         this.attribNames = this.getParameterVal(ATTRIBS).split("\\s+");
-        this.filePattern = this.getParameterVal(PATTERN);
-        if (!this.filePattern.contains(File.separator)){
-            this.filePattern = Process.getInstance().getWorkDir() + this.filePattern;
-        }
+        this.filePattern = StringUtils.getPath(this.getParameterVal(PATTERN));
 
         if (this.output.size() != 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Just one output needed.");

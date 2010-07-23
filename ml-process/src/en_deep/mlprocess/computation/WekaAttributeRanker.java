@@ -35,6 +35,7 @@ import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import weka.attributeSelection.ASEvaluation;
 import weka.attributeSelection.ASSearch;
@@ -89,7 +90,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
     /**
      * This just checks the compulsory parameters and the inputs and outputs.
-     * There must be two inputs and one output. There are the following compulsory parameters:
+     * There must be one or more inputs and one output (all inputs are merged for ranking). There are
+     * the following compulsory parameters:
      * <ul>
      * <li><tt>ranker</tt> -- the desired WEKA attribute ranker to be used</li>
      * <li><tt>evaluator</tt> -- the desired WEKA attribute evaluator to be used</li>
@@ -125,30 +127,39 @@ public class WekaAttributeRanker extends GeneralClassifier {
      * used for attribute ranking).
      *
      * @param trainFile the training data
-     * @param evalFile the evaluation data (used for training as well)
+     * @param evalFiles the evaluation data (used for training as well)
      * @param outputFile the output of the ranking
      * @throws Exception
      */
     @Override
-    protected void classify(String trainFile, String evalFile, String outputFile) throws Exception {
+    protected void classify(String trainFile, List<String> evalFiles, List<String> outputFiles) throws Exception {
         
-        Logger.getInstance().message(this.id + ": attribute ranking on " + trainFile + " and " + evalFile + "...",
+        Logger.getInstance().message(this.id + ": attribute ranking on " + trainFile + 
+                (evalFiles != null ? ", " + StringUtils.join(evalFiles, ", ") : "") + "...",
                 Logger.V_DEBUG);
 
         // read the data and find out the target class
         Instances train = FileUtils.readArff(trainFile);
-        if (evalFile != null){
-            Instances eval = FileUtils.readArff(evalFile);
+        if (evalFiles != null){
+            for (String evalFile : evalFiles){
 
-            this.findTargetFeature(train, eval);
-            // merge the data
-            Enumeration<Instance> evalInst = eval.enumerateInstances();
-            while (evalInst.hasMoreElements()){
-                train.add(evalInst.nextElement());
+                Instances eval = FileUtils.readArff(evalFile);
+                if (!eval.equalHeaders(train)){
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, evalFile + " and "
+                            + trainFile + " don't have equal headers.");
+                }
+                if (train.classIndex() == -1){ // find class attribute (only first time)
+                    this.findClassFeature(train, eval);
+                }
+                // merge the data
+                Enumeration<Instance> evalInst = eval.enumerateInstances();
+                while (evalInst.hasMoreElements()){
+                    train.add(evalInst.nextElement());
+                }
             }
         }
         else {
-            this.findTargetFeature(train, train);
+            this.findClassFeature(train, train);
         }
 
         // find the indexes of the ignored attributes so that they are not written to the output
@@ -183,9 +194,9 @@ public class WekaAttributeRanker extends GeneralClassifier {
         }
 
         // sort the output and write it down
-        FileUtils.writeString(outputFile, outText);
+        FileUtils.writeString(outputFiles.get(0), outText);
 
-        Logger.getInstance().message(this.id + ": results saved to " + outputFile + ".", Logger.V_DEBUG);
+        Logger.getInstance().message(this.id + ": results saved to " + outputFiles.get(0) + ".", Logger.V_DEBUG);
 
         // clear memory
         this.ranker = null;
@@ -373,7 +384,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
     @Override
     protected void checkNumberOfInputs() throws TaskException {
 
-        if (this.input.size() < 1 || this.input.size() > 2){
+        if (this.input.size() < 1){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
     }

@@ -32,6 +32,7 @@ import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -103,10 +104,7 @@ public abstract class EvalSelector extends Task {
         this.measure = this.parameters.remove(MEASURE);
         this.deleteTempfiles = this.getBooleanParameterVal(DELETE_TEMPFILES);
         this.parameters.remove(DELETE_TEMPFILES);
-        this.tempFilePattern = this.parameters.remove(TEMPFILE);
-        if (!this.tempFilePattern.contains(File.separator)){
-            this.tempFilePattern = Process.getInstance().getWorkDir() + this.tempFilePattern;
-        }
+        this.tempFilePattern = StringUtils.getPath(this.parameters.remove(TEMPFILE));
     }
 
     /**

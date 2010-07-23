@@ -31,6 +31,7 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -64,27 +65,34 @@ public class DummyClassifier extends GeneralClassifier {
     }
 
     @Override
-    protected void classify(String trainFile, String evalFile, String outputFile) throws Exception {
+    protected void classify(String trainFile, List<String> evalFiles, List<String> outputFiles) throws Exception {
 
         // read the training data
-        Instances train = FileUtils.readArff(trainFile);
-        Instances eval = FileUtils.readArff(evalFile);
+        Instances train = FileUtils.readArff(trainFile);        
+        double bestVal = Double.NaN;
         
+        for (int i = 0; i < evalFiles.size(); ++i){
 
-        this.findTargetFeature(train, eval);
-        // find the best value
-        double bestVal = this.getBestValue(train);
-        
-        // apply it to the evaluation data
-        Enumeration instances = eval.enumerateInstances();
-        while(instances.hasMoreElements()){
+            Instances eval = FileUtils.readArff(evalFiles.get(i));
 
-            Instance inst = (Instance) instances.nextElement();
-            inst.setClassValue(bestVal);
-        }
+            if (i == 0){ // find the best value (only the first time)
+                this.findClassFeature(train, eval);
+                bestVal = this.getBestValue(train);
+            }
+            else {
+                this.setClassFeature(train, eval);
+            }
+            // apply it to the evaluation data
+            Enumeration instances = eval.enumerateInstances();
+            while(instances.hasMoreElements()){
 
-        // write the result
-        FileUtils.writeArff(outputFile, eval);
+                Instance inst = (Instance) instances.nextElement();
+                inst.setClassValue(bestVal);
+            }
+
+            // write the result
+            FileUtils.writeArff(outputFiles.get(i), eval);
+        }        
     }
 
     /**

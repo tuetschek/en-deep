@@ -30,6 +30,7 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.Hashtable;
@@ -77,7 +78,7 @@ public abstract class StManipulation extends Task {
         }
 
         // find the configuration file
-        String configFile = Process.getInstance().getWorkDir() + this.parameters.get(LANG_CONF);
+        String configFile = StringUtils.getPath(this.parameters.get(LANG_CONF));
         if (!new File(configFile).exists()){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
         }

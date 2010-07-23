@@ -32,6 +32,7 @@ import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
@@ -51,7 +52,10 @@ public abstract class GeneralClassifier extends Task {
     /* METHODS */
 
     /**
-     * This just checks if there are only two inputs and one output and no patterns in them.
+     * This just checks if there are only two inputs and one output and no patterns in them. Checking for
+     * number of inputs and outputs may be overriden in {@link #checkNumberOfInputs()} and
+     * {@link #checkNumberOfOutputs()}.
+     * 
      * @todo rename class_arg to class_attr
      */
     protected GeneralClassifier(String id, Hashtable<String, String> parameters,
@@ -78,18 +82,20 @@ public abstract class GeneralClassifier extends Task {
     }
 
     /**
-     * Finds out which of the features is the target one and sets it as "class" in the evaluation data.
+     * Finds out which of the features is the target one and sets it as "class" in the (first) evaluation data.
+     * <p>
      * It is THE one feature that is present in the train dataset and missing in evaluation dataset, or the
      * one set-up in the class_arg parameter, if the train and evaluation datasets have equal features.
+     * </p><p>
      * If both data sets have equal features and no parameter is given, the last feature in train is selected.
      * If two or more features from train are missing in evaluation, an error is raised. If the attribute is
      * missing in the evaluation dataset, it is created with empty values. If the class attribute is present
      * in both data sets, it is overwritten in the evaluation data (so that new possible values are added).
-     *
+     * </p>
      * @param train the training data
-     * @param eval the evaluation data
+     * @param firstEval the first evaluation data set
      */
-    protected void findTargetFeature(Instances train, Instances eval) throws TaskException {
+    protected void findClassFeature(Instances train, Instances firstEval) throws TaskException {
 
         Enumeration trainAtts = train.enumerateAttributes();
         Attribute missing = null;
@@ -99,13 +105,13 @@ public abstract class GeneralClassifier extends Task {
 
             Attribute att = (Attribute) trainAtts.nextElement();
 
-            if (eval.attribute(att.name()) == null) {
+            if (firstEval.attribute(att.name()) == null) {
                 if (missing == null) {
                     missing = att;
                 }
                 else {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Other attribute "
-                            + "than class is missing from the evaluation data.");
+                            + "than class is missing from the evaluation data (" + firstEval.relationName() +").");
                 }
             }
         }
@@ -126,22 +132,53 @@ public abstract class GeneralClassifier extends Task {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
                     + "in training data.");
         }
-        if (missing == null && !eval.attribute(classArg).equals(train.attribute(classArg))) {
+        if (missing == null && !firstEval.attribute(classArg).equals(train.attribute(classArg))) {
             Logger.getInstance().message("Target attributes not equal, eval attribute will be"
                     + " overwritten, all values will be lost.", Logger.V_WARNING);
-            eval.deleteAttributeAt(eval.attribute(classArg).index());
+            firstEval.deleteAttributeAt(firstEval.attribute(classArg).index());
             missing = train.attribute(classArg);
         }
 
         if (missing != null){
             Attribute att = missing.copy(missing.name());
-            eval.insertAttributeAt(att, missing.index());
-            eval.setClassIndex(missing.index());
+            firstEval.insertAttributeAt(att, missing.index());
+            firstEval.setClassIndex(missing.index());
             train.setClassIndex(missing.index());
         }
         else {
             train.setClass(train.attribute(classArg));
-            eval.setClass(eval.attribute(classArg));
+            firstEval.setClass(firstEval.attribute(classArg));
+        }
+    }
+
+    /**
+     * Given training set whose class attribute is already found, this finds and sets the class
+     * attribute in the given evaluation data set. Throws an exception if the evaluation set
+     * doesn't conform to training data set format.
+     * @param train the training data set, with its class attribute set-up properly
+     * @param eval the evaluation data set, whose class attribute needs to be set-up
+     */
+    protected void setClassFeature(Instances train, Instances eval) throws TaskException {
+
+        if (eval.attribute(train.classAttribute().name()) == null){
+            if (eval.numAttributes() != train.numAttributes() - 1){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Incorrect"
+                        + " number of attributes in " + eval.relationName() + ".");
+            }
+            eval.insertAttributeAt(train.classAttribute(), train.classIndex());
+        }
+        else {
+            if (eval.numAttributes() != train.numAttributes()){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Incorrect"
+                        + " number of attributes in " + eval.relationName() + ".");
+            }
+            if (!eval.attribute(train.classAttribute().name()).equals(train.classAttribute())){
+                eval.insertAttributeAt(train.classAttribute(), train.classIndex());
+                eval.setClassIndex(train.classIndex());
+            }
+            else {
+                eval.setClass(eval.attribute(train.classAttribute().name()));
+            }
         }
     }
 
@@ -153,7 +190,8 @@ public abstract class GeneralClassifier extends Task {
     @Override
     public final void perform() throws TaskException {
         try {
-            this.classify(this.input.get(0), this.input.size() > 1 ? this.input.get(1) : null, this.output.get(0));
+            List<String> evalFiles = this.input.size() > 1 ? this.input.subList(1, this.input.size()) : null;
+            this.classify(this.input.get(0), evalFiles, this.output);
         }
         catch (TaskException e) {
             throw e;
@@ -168,11 +206,11 @@ public abstract class GeneralClassifier extends Task {
     /**
      * This is where the actual classification takes place
      * @param trainFile the training data file name
-     * @param evalFile the evaluation data file name
-     * @param outputFile the output file name
+     * @param evalFiles the evaluation data file names
+     * @param outputFile the output file names
      * @throws Exception if an I/O or classification error occurs
      */
-    protected abstract void classify(String trainFile, String evalFile, String outputFile) throws Exception;
+    protected abstract void classify(String trainFile, List<String> evalFiles, List<String> outputFile) throws Exception;
 
 
     /**
