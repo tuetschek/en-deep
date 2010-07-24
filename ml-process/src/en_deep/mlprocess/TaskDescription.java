@@ -365,7 +365,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     public TaskDescription expand(String [] expansions) {
 
         TaskDescription copy = new TaskDescription(this, StringUtils.join(expansions, "#"));
-
+        
         for (int i = 0; i < this.input.size(); ++i){
 
             String pattern = StringUtils.normalizeFilePattern(copy.input.get(i));
@@ -635,9 +635,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         if (obj.getClass() == this.getClass()){
             TaskDescription other = (TaskDescription) obj;
 
-            return (this.id.equals(other.id) && this.algorithm.equals(other.algorithm)
-                    && this.parameters.equals(other.parameters)
-                    && this.input.equals(other.input) && this.output.equals(other.output));
+            return this.id.equals(other.id);
         }
         else {
             return false;
@@ -646,8 +644,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
 
 
     /**
-     * Provides a hash code for the TaskDescription, using id, algorithm, parameters,
-     * inputs and outputs.
+     * Provides a hash code for the TaskDescription, using its id.
      *
      * @return the hash code for this TaskDescription
      */
@@ -655,10 +652,6 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     public int hashCode() {
         int hash = 3;
         hash = 97 * hash + (this.id != null ? this.id.hashCode() : 0);
-        hash = 97 * hash + (this.algorithm != null ? this.algorithm.hashCode() : 0);
-        hash = 97 * hash + (this.parameters != null ? this.parameters.hashCode() : 0);
-        hash = 97 * hash + (this.input != null ? this.input.hashCode() : 0);
-        hash = 97 * hash + (this.output != null ? this.output.hashCode() : 0);
         return hash;
     }
 

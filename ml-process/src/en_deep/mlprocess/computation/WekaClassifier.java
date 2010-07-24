@@ -137,7 +137,8 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
      * used attributes will be output</li>
      * <li><tt>load_model</tt> -- if set, the first input is considered to be ready-trained model file. Preselection
-     * and binarization settings are then taken from this file as well.</li>
+     * and binarization settings are then taken from this file as well (i.e. all attributes except <tt>prob_dist</tt>
+     * are ignored).</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
      * additional output) for later use<tt>
      * </ul>

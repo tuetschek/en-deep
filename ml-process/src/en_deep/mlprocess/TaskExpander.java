@@ -148,8 +148,7 @@ public class TaskExpander {
         // remove dependencies of all original unexpanded tasks (which are selected for removal)
         for (TaskDescription t : this.expansions.keySet()){
             t.looseAllDeps();
-        }
-
+        }        
     }
 
 
@@ -310,7 +309,7 @@ public class TaskExpander {
      * @param expTask the task whose outputs and dependencies should be expanded
      */
     private void expandOutputsAndDeps(TaskDescription expTask) throws TaskException {
-        
+
         this.expandOutputs(expTask);
 
         Vector<TaskDescription> deps = expTask.getDependent();
@@ -377,7 +376,7 @@ public class TaskExpander {
         }
 
         // now we know the expansion line continues, we need to expand this task
-        
+
         // expand the "task", according to the expansions of anc
         for (TaskDescription ancExp : this.expansions.get(anc)){
             
@@ -463,7 +462,7 @@ public class TaskExpander {
      */
     private void cleanPrerequisites(TaskDescription expTask) {
 
-        HashSet<TaskDescription> values = new HashSet<TaskDescription>(this.expansions.values());
+        Collection<TaskDescription> values = this.expansions.values();
         Vector<TaskDescription> prerequisites = expTask.getPrerequisites();
 
         if (prerequisites == null){
@@ -477,9 +476,15 @@ public class TaskExpander {
         }
     }
 
+
+    /**
+     * This is symmetric to {@link #cleanPrerequisites(TaskDescription)}, it clears all the
+     * unnecessary dependencies of the task when expanding prerequisites.
+     * @param expTask the task to be processed
+     */
     private void cleanDependent(TaskDescription expTask){
 
-        HashSet<TaskDescription> values = new HashSet<TaskDescription>(this.expansions.values());
+        Collection<TaskDescription> values = this.expansions.values();
         Vector<TaskDescription> dependent = expTask.getDependent();
 
         if (dependent == null){
@@ -493,6 +498,7 @@ public class TaskExpander {
         }
     }
 
+    
     /**
      * This expands all the "*"-patterns in the input specifications, including the sub-specifications
      * and special variables.
