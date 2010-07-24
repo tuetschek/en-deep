@@ -140,6 +140,8 @@ public class WekaAttributeRanker extends GeneralClassifier {
 
         // read the data and find out the target class
         Instances train = FileUtils.readArff(trainFile);
+        this.findClassFeature(train);
+
         if (evalFiles != null){
             for (String evalFile : evalFiles){
 
@@ -148,18 +150,12 @@ public class WekaAttributeRanker extends GeneralClassifier {
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, evalFile + " and "
                             + trainFile + " don't have equal headers.");
                 }
-                if (train.classIndex() == -1){ // find class attribute (only first time)
-                    this.findClassFeature(train, eval);
-                }
                 // merge the data
                 Enumeration<Instance> evalInst = eval.enumerateInstances();
                 while (evalInst.hasMoreElements()){
                     train.add(evalInst.nextElement());
                 }
             }
-        }
-        else {
-            this.findClassFeature(train, train);
         }
 
         // find the indexes of the ignored attributes so that they are not written to the output

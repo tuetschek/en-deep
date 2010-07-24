@@ -51,12 +51,6 @@ public class DummyClassifier extends GeneralClassifier {
      * is not specified, the one argument that is missing from the evaluation data will be selected. If
      * the training and evaluation data have the same arguments, the last one is used.</li>
      * </ul>
-     * 
-     * @param id
-     * @param parameters
-     * @param input
-     * @param output
-     * @throws TaskException
      */
     public DummyClassifier(String id, Hashtable<String, String> parameters, Vector<String> input,
             Vector<String> output) throws TaskException {
@@ -70,19 +64,16 @@ public class DummyClassifier extends GeneralClassifier {
         // read the training data
         Instances train = FileUtils.readArff(trainFile);        
         double bestVal = Double.NaN;
-        
+
+        this.findClassFeature(train);
+        bestVal = this.getBestValue(train); // find the best value
+
+        // apply the best value to the evaluation data (all files)
         for (int i = 0; i < evalFiles.size(); ++i){
 
             Instances eval = FileUtils.readArff(evalFiles.get(i));
-
-            if (i == 0){ // find the best value (only the first time)
-                this.findClassFeature(train, eval);
-                bestVal = this.getBestValue(train);
-            }
-            else {
-                this.setClassFeature(train, eval);
-            }
-            // apply it to the evaluation data
+            this.setClassFeature(train, eval);
+                        
             Enumeration instances = eval.enumerateInstances();
             while(instances.hasMoreElements()){
 

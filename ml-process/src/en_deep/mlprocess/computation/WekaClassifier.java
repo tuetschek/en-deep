@@ -28,12 +28,14 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
-import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.util.BitSet;
@@ -75,6 +77,10 @@ public class WekaClassifier extends GeneralClassifier {
     static final String NUM_SELECTED = "num_selected";
     /** Name of the `out_attribs' parameter */
     private static final String OUT_ATTRIBS = "out_attribs";
+    /** Name of the `save_model' parameter */
+    private static final String SAVE_MODEL = "save_model";
+    /** Name of the `load_model' parameter */
+    private static final String LOAD_MODEL = "load_model";
 
     /* DATA */
 
@@ -88,6 +94,12 @@ public class WekaClassifier extends GeneralClassifier {
     private String attribsOutputFile;
     /** The name of the file where the preselected attribute indexes are */
     private String preselectedAttribFile;
+    /** List of attributes for removal */
+    private String [] attribsToRemove;
+    /** Name of the file where the model should be written, or null */
+    private String modelOutputFile;
+    /** The data format of the training file */
+    private Instances trainDataFormat;
 
     /* METHODS */
  
@@ -123,10 +135,15 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>binarize</tt> -- if set, it converts all the nominal parameters to binary, while using
      * sparse matrix to represent the result.</li>
      * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
-     * used attributes will be output
+     * used attributes will be output</li>
+     * <li><tt>load_model</tt> -- if set, the first input is considered to be ready-trained model file. Preselection
+     * and binarization settings are then taken from this file as well.</li>
+     * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
+     * additional output) for later use<tt>
      * </ul>
      * <p>
-     * Parameters <tt>select_args</tt> a <tt>args_file</tt> are mutually exclusive.
+     * Parameters <tt>select_args</tt> a <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
+     * are mutually exclusive.
      * </p>
      * <p>
      * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
@@ -144,26 +161,32 @@ public class WekaClassifier extends GeneralClassifier {
         super(id, parameters, input, output);
 
         // check for parameters
-        if (this.parameters.get(WEKA_CLASS) == null){
+        if (!this.hasParameter(WEKA_CLASS) && !this.getBooleanParameterVal(LOAD_MODEL)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
         this.binarize = this.parameters.remove(BINARIZE) != null;
 
-        if (this.hasParameter(SELECT_ARGS) && this.hasParameter(ARGS_FILE)){
+        if (this.hasParameter(SELECT_ARGS) && this.getBooleanParameterVal(ARGS_FILE)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be"
                     + " set at the same time!");
         }
-        if (this.hasParameter(ARGS_FILE)){
-            this.preselectedAttribFile = StringUtils.getPath(this.input.remove(this.input.size()-1));
+        if (this.getBooleanParameterVal(ARGS_FILE)){
+            this.preselectedAttribFile = this.input.remove(this.input.size()-1);
+            this.parameters.remove(ARGS_FILE);
         }
-        if (this.hasParameter(OUT_ATTRIBS)){
-            this.attribsOutputFile = StringUtils.getPath(this.output.remove(this.output.size()-1));
+        if (this.getBooleanParameterVal(OUT_ATTRIBS) && this.getBooleanParameterVal(SAVE_MODEL)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Out_attribs and save_model "
+                    + "cannot be set at the same time!");
         }
-
-        // initialize the classifier and set its parameters
-        this.initClassifier();
-
+        if (this.getBooleanParameterVal(OUT_ATTRIBS)){
+            this.attribsOutputFile = this.output.remove(this.output.size()-1);
+            this.parameters.remove(OUT_ATTRIBS);
+        }
+        if (this.getBooleanParameterVal(SAVE_MODEL)){
+            this.modelOutputFile = this.output.remove(this.output.size()-1);
+            this.parameters.remove(SAVE_MODEL);
+        }
     }
 
     /**
@@ -232,12 +255,14 @@ public class WekaClassifier extends GeneralClassifier {
      * @param outFiles the output file names
      */
     protected void classify(String trainFile, List<String> evalFiles, List<String> outFiles) throws Exception {
-      
-        // read the training data
-        Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
-        Instances train = FileUtils.readArff(trainFile);
-        Instances trainFormat = null; // keep just the data format of the original training file
-        String [] toRemove = null; // list of attributes to be removed
+
+        // get the classifier model, somehow
+        if (this.getBooleanParameterVal(LOAD_MODEL)){
+            this.loadModel(trainFile);
+        }
+        else {
+            this.trainModel(trainFile);
+        }
 
         for (int fileNo = 0; fileNo < evalFiles.size(); ++fileNo){
 
@@ -246,42 +271,16 @@ public class WekaClassifier extends GeneralClassifier {
             Instances eval = FileUtils.readArff(evalFiles.get(fileNo));
             Instances outData; // a copy w/o attribute preselection for output
 
-            // first time: with training
-            if (fileNo == 0){                
-                this.findClassFeature(train, eval);
-                trainFormat = new Instances(train, 0);
-                outData = new Instances(eval);
+            // set the class feature in eval
+            this.setClassFeature(this.trainDataFormat, eval);
+            outData = new Instances(eval);
 
-                // pre-select the attributes
-                Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
-                toRemove = this.attributesPreselection(train);
-
-                // remove selected attributes in eval
-                this.removeSelected(eval, toRemove);
-                if (this.binarize){ // binarize, if needed
-                    Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName()
-                            + " and " + eval.relationName() + ")", Logger.V_DEBUG);
-                    train = this.sparseNominalToBinary(train);
-                    eval = this.sparseNominalToBinary(eval);
-                }
-
-                Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
-                // train the classifier
-                this.classif.buildClassifier(train);
-            }
-            // next files: no training needed
-            else {
-                // set the class feature in eval
-                this.setClassFeature(trainFormat, eval);
-                outData = new Instances(eval);
-                
-                // remove selected attributes in eval
-                this.removeSelected(eval, toRemove);
-                if (this.binarize){
-                    Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")",
-                            Logger.V_DEBUG);
-                    eval = this.sparseNominalToBinary(eval);
-                }
+            // remove selected attributes in eval
+            this.removeSelected(eval, this.attribsToRemove);
+            if (this.binarize){
+                Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")",
+                        Logger.V_DEBUG);
+                eval = this.sparseNominalToBinary(eval);
             }
 
             Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
@@ -308,7 +307,10 @@ public class WekaClassifier extends GeneralClassifier {
             Logger.getInstance().message(this.id + ": saving results to " + outFiles.get(fileNo) + ".", Logger.V_DEBUG);
             FileUtils.writeArff(outFiles.get(fileNo), outData);
         }
-        
+
+        if (this.modelOutputFile != null){
+            this.saveModel();
+        }
         // clean up
         this.classif = null;
     }
@@ -324,7 +326,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         BitSet selectionMask = new BitSet(train.numAttributes());
 
-        if (!this.hasParameter(SELECT_ARGS) && !this.hasParameter(ARGS_FILE)){
+        if (!this.hasParameter(SELECT_ARGS) && this.preselectedAttribFile == null){
             selectionMask.set(0, train.numAttributes()); // if there are no preselected attributes, set all to true
         }
         else { // otherwise, find only the preselected attributes and set their indexes to true
@@ -470,13 +472,16 @@ public class WekaClassifier extends GeneralClassifier {
     @Override
     protected void checkNumberOfOutputs() throws TaskException {
         
-        int numIn = this.input.size();
+        int numIn = this.input.size()-1;
         if (this.getBooleanParameterVal(ARGS_FILE)){
             numIn--;
         }
+        int numOut = this.output.size();
+        if (this.getBooleanParameterVal(OUT_ATTRIBS) || this.getBooleanParameterVal(SAVE_MODEL)){
+            numOut--;
+        }
 
-        if ((this.getBooleanParameterVal(OUT_ATTRIBS) && numIn != this.output.size())
-                || (!this.getBooleanParameterVal(OUT_ATTRIBS) && numIn != this.output.size()+1)){
+        if (numIn != numOut){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
     }
@@ -505,8 +510,15 @@ public class WekaClassifier extends GeneralClassifier {
     @Override
     protected void checkNumberOfInputs() throws TaskException {
 
-        if ((this.getBooleanParameterVal(ARGS_FILE) && this.input.size() < 3)
-                || (!this.getBooleanParameterVal(ARGS_FILE) && this.input.size() < 2)){
+        int minimum = 2;
+        if (this.getBooleanParameterVal(ARGS_FILE)){
+            minimum++;
+        }
+        if (this.getBooleanParameterVal(SAVE_MODEL)){
+            minimum--;
+        }
+
+        if ((this.input.size() < minimum)){
             throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id);
         }
     }
@@ -529,6 +541,73 @@ public class WekaClassifier extends GeneralClassifier {
                 data.deleteAttributeAt(idx);
             }
         }
+    }
+
+    /**
+     * This trains the classifier model on the given training file. It also handles the attribute preselection
+     * and saves its settings to {@link #attribsToRemove}. The original training data file format (not subject
+     * to attribute removal or binarization, but with the class attribute set up) is then saved
+     * to {@link #trainDataFormat}.
+     * @param trainFile the name of the training data file
+     */
+    private void trainModel(String trainFile) throws Exception {
+
+        // initialize the classifier and set its parameters
+        this.initClassifier();
+
+        // read the training data
+        Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
+        Instances train = FileUtils.readArff(trainFile);
+        this.findClassFeature(train);
+        this.trainDataFormat = new Instances(train, 0);
+
+        // pre-select the attributes
+        Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
+        this.attribsToRemove = this.attributesPreselection(train);
+
+        if (this.binarize){ // binarize the training file, if needed
+            Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
+            train = this.sparseNominalToBinary(train);
+        }
+
+        Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
+        // train the classifier
+        this.classif.buildClassifier(train);
+    }
+
+    /**
+     * This loads the trained model from the given file. It also loads the attribute preselection settings
+     * and the original data format of the train file (with the class attribute set up).
+     * @param modelFile the name of the file that contains the model and other settings.
+     */
+    private void loadModel(String modelFile) throws IOException, ClassNotFoundException {
+
+        Logger.getInstance().message(this.id + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
+        ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
+
+        this.classif = (AbstractClassifier) oin.readObject();
+        this.attribsToRemove = (String []) oin.readObject();
+        this.trainDataFormat = (Instances) oin.readObject();
+        this.binarize = oin.readBoolean();
+
+        oin.close();
+    }
+
+    /**
+     * This saves the trained classifier model to the {@link #modelOutputFile}, including the attribute preselection
+     * and binarization settings and the original training data format.
+     */
+    private void saveModel() throws IOException {
+
+        Logger.getInstance().message(this.id + ": saving the model to " + this.modelOutputFile + " ...", Logger.V_DEBUG);
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(this.modelOutputFile));
+
+        out.writeObject(this.classif);
+        out.writeObject(this.attribsToRemove);
+        out.writeObject(this.trainDataFormat);
+        out.writeBoolean(this.binarize);
+
+        out.close();
     }
 
 

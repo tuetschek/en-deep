@@ -82,39 +82,14 @@ public abstract class GeneralClassifier extends Task {
     }
 
     /**
-     * Finds out which of the features is the target one and sets it as "class" in the (first) evaluation data.
+     * Finds out which one of the features is the target one in training data and sets it as "class".
      * <p>
-     * It is THE one feature that is present in the train dataset and missing in evaluation dataset, or the
-     * one set-up in the class_arg parameter, if the train and evaluation datasets have equal features.
-     * </p><p>
-     * If both data sets have equal features and no parameter is given, the last feature in train is selected.
-     * If two or more features from train are missing in evaluation, an error is raised. If the attribute is
-     * missing in the evaluation dataset, it is created with empty values. If the class attribute is present
-     * in both data sets, it is overwritten in the evaluation data (so that new possible values are added).
+     * By default, it is the last attribute in the training set. If the {@link #CLASS_ARG} parameter
+     * is set, it is the attribute of the name given in that parameter.
      * </p>
      * @param train the training data
-     * @param firstEval the first evaluation data set
      */
-    protected void findClassFeature(Instances train, Instances firstEval) throws TaskException {
-
-        Enumeration trainAtts = train.enumerateAttributes();
-        Attribute missing = null;
-
-        // find out which attribute is missing in the evaluation data
-        while (trainAtts.hasMoreElements()) {
-
-            Attribute att = (Attribute) trainAtts.nextElement();
-
-            if (firstEval.attribute(att.name()) == null) {
-                if (missing == null) {
-                    missing = att;
-                }
-                else {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Other attribute "
-                            + "than class is missing from the evaluation data (" + firstEval.relationName() +").");
-                }
-            }
-        }
+    protected void findClassFeature(Instances train) throws TaskException {
 
         // select the last attribute by default
         String classArg = train.attribute(train.numAttributes()-1).name();
@@ -124,31 +99,11 @@ public abstract class GeneralClassifier extends Task {
             classArg = this.parameters.remove(CLASS_ARG);
         }
 
-        if (missing != null && !missing.name().equals(classArg)) {
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Other attribute than"
-                    + " class attribute missing from the evaluation data.");
-        }
         if (train.attribute(classArg) == null) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Target attribute not found "
                     + "in training data.");
         }
-        if (missing == null && !firstEval.attribute(classArg).equals(train.attribute(classArg))) {
-            Logger.getInstance().message("Target attributes not equal, eval attribute will be"
-                    + " overwritten, all values will be lost.", Logger.V_WARNING);
-            firstEval.deleteAttributeAt(firstEval.attribute(classArg).index());
-            missing = train.attribute(classArg);
-        }
-
-        if (missing != null){
-            Attribute att = missing.copy(missing.name());
-            firstEval.insertAttributeAt(att, missing.index());
-            firstEval.setClassIndex(missing.index());
-            train.setClassIndex(missing.index());
-        }
-        else {
-            train.setClass(train.attribute(classArg));
-            firstEval.setClass(firstEval.attribute(classArg));
-        }
+        train.setClass(train.attribute(classArg));
     }
 
     /**
@@ -166,6 +121,7 @@ public abstract class GeneralClassifier extends Task {
                         + " number of attributes in " + eval.relationName() + ".");
             }
             eval.insertAttributeAt(train.classAttribute(), train.classIndex());
+            eval.setClassIndex(train.classIndex());
         }
         else {
             if (eval.numAttributes() != train.numAttributes()){
@@ -173,6 +129,7 @@ public abstract class GeneralClassifier extends Task {
                         + " number of attributes in " + eval.relationName() + ".");
             }
             if (!eval.attribute(train.classAttribute().name()).equals(train.classAttribute())){
+                eval.deleteAttributeAt(eval.attribute(train.classAttribute().name()).index());
                 eval.insertAttributeAt(train.classAttribute(), train.classIndex());
                 eval.setClassIndex(train.classIndex());
             }
