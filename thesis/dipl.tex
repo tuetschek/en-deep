@@ -13,6 +13,24 @@
 \usepackage{hyperref}
 \usepackage[round]{natbib}
 \usepackage{multirow}
+\usepackage{array}
+\usepackage{listings}
+
+% pro scenario soubory
+\lstdefinelanguage{scenario}{
+    morekeywords={task,algorithm,in,out,params,end},
+    sensitive=true,
+    morecomment=[l]{\#},
+    morestring=[b]",
+}
+\lstset{
+    language=scenario,
+    basicstyle=\footnotesize,
+    keywordstyle=\bf,
+    showstringspaces=false,
+    stringstyle=\color{red},
+    commentstyle=\color{blue},
+}
 
 %\newindex{default}{idx}{ind}{Rejstřík} % zavádí rejstřík v případě použití balíku index
 \usepackage{nomencl}
@@ -83,7 +101,11 @@ e-mail vedoucího: \texttt{hajic@ufal.mff.cuni.cz}\\
 
 \cleardoublepage
 
+%
+%
 \chapter{Introduction}\label{intro}
+%
+%
 
 \section{The Problem of Deep Language Analysis}\label{problem}
 
@@ -123,7 +145,11 @@ The description of our SRL system then follows in Chapter \ref{pd}, which concen
 
 Chapter \ref{conclusions} then concludes the thesis with discussion of our results and improvement proposals.
 
+%
+%
 \chapter{Related Work}\label{related}
+%
+%
 
 % zacalo uz 2002 -- dodat clanek
 Automatic deep analysis using supervised machine learning, i.e. estimating the unknown parameters of a classification model statistically from hand-annotated (\emph{gold standard}) training data set, has been made possible with the emerging of semantically annotated treebanks, such as the PDT or PropBank. The research in this field has been rather active since that time, and therefore plenty of information and original concepts is now available. 
@@ -134,9 +160,9 @@ As we already described in Section \ref{aims}, the CoNLL 2009 Shared Task repres
 
 Most of the systems included a classifier algorithm and various feature selection and data pruning techniques. However, the individual machine learning methods vary dramatically, as do the overall organizations of the systems. Most of the participants divided the whole task into subtasks (similar to our listing in Section \ref{problem}) and arranged the setup as a pipeline, each step of which solves one of the subtasks. The individual steps could then make use of different classification and feature selection techniques. The organization of the pipeline varies among the systems: While most of them solve the PD task as the first of the semantic analysis process, several \citep{bohnet09,zhao09} prefer to solve the AI and AC tasks first. Some of the systems also combine the AI and AC tasks into one \citep{che09,nugues09}; \citet{meza-ruiz09} even created a system which joins all the subtasks into one. 
 
-Now let us take a look at the machine learning cores of the participating setups: The approaches of \citet{zhao09}, \citet{che09} and \citet{chen09}, as well as of several others, feature a MaxEnt classifier, which is a very common and successful practice in various NLP tasks. \citet{nugues09} apply Logistic Regression on the data, which is in a way similar to the MaxEnt method\footnote{We will discuss this similarity in Section \ref{classifiers}.}. \citet{che09} also use SVM classifers in the PD part of their system, as do \citet{tackstrom09}. Other systems \citep{bohnet09,asahara09} employ various maximum-margin algorithms, such as the Margin-Infused Relaxed Algorithm (MIRA)\nomenclature{MIRA}{Margin-Infused Relaxed Algorithm} \citep{crammer03}. There is also a group of systems based on various logic devices: \citet{meza-ruiz09} use Markov Logic Networks in combination with the MIRA algorithm, while \citet{moreau09} work with Conditional Random Fields and \citet{merlo09} with Incremental Sigmoid Belief Networks. Many of systems included not one, but multiple classifiers, one for each predicate lemma or sense \citep{che09}; \citep{nugues09}. The results of the competition show that most of the used machine learning approaches are capable of reaching a comparable quality level of results if trained properly. This becomes apparent also from our own classifier selection and tuning tests (see Sections \ref{classifiers} and \ref{classifier-setting}).
+Now let us take a look at the machine learning cores of the participating setups: The approaches of \citet{zhao09}, \citet{che09} and \citet{chen09}, as well as of several others, feature a MaxEnt classifier, which is a very common and successful practice in various NLP tasks. \citet{nugues09} apply Logistic Regression on the data, which is in a way similar to the MaxEnt method\footnote{We will discuss this similarity in Section \ref{classifiers}.}. \citet{che09} also use SVM classifers in the PD part of their system, as do \citet{tackstrom09}. Other systems \citep{bohnet09,asahara09} employ various maximum-margin algorithms, such as the Margin-Infused Relaxed Algorithm (MIRA)\nomenclature{MIRA}{Margin-Infused Relaxed Algorithm} \citep{crammer03}. There is also a group of systems based on diverse logic devices: \citet{meza-ruiz09} use Markov Logic Networks in combination with the MIRA algorithm, while \citet{moreau09} work with Conditional Random Fields and \citet{merlo09} with Incremental Sigmoid Belief Networks. Many of systems included not one, but multiple classifiers, one for each predicate lemma or sense \citep{che09}; \citep{nugues09}. The results of the competition show that most of the used machine learning approaches are capable of reaching a comparable quality level of results if trained properly. This becomes apparent also from our own classifier selection and tuning tests (see Sections \ref{classifiers} and \ref{classifier-setting}).
 
-Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to minimize the amount of data that is needed be passed to the classifier --- \citet{zhao09} and \citet{asahara09} describe a very similar approach to this.
+Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to reduce the amount of data that is needed be passed to the classifier --- \citet{zhao09} and \citet{asahara09} describe a very similar approach to this.
 
 Most of the authors introduced also some further enhancements into their systems. The iterative approach, where the results of the semantic analysis are taken as an input for a repeated classification, taken by \citet{chen09} is one of them. Other researchers included global re-ranking of semantic argument candidates \citep{nugues09} or other forms of post-inference, such as Integer Linear Programming\nomenclature{ILP}{Integer Linear Programming} \citep{che09}.
 
@@ -149,7 +175,11 @@ There are also many other works in semantic analysis and particularly in automat
 % dopsat cluster-based approach
 Further research concentrates on similar tasks: \citet{jiang06} provide an analysis of NomBank \citep{meyers04} semantic annotation and a description of a MaxEnt deep analysis system. \citet{giuglea06} presented a system that retrieves its semantic annotation training data from three different resources --- PropBank, NomBank and FrameNet. \citet{loper07} are developing a project to link several annotated resources permanently, which has been a valuable tool for our preliminary analyses of predicate behavior. 
 
+%
+%
 \chapter{Used Data}\label{data}
+%
+%
 
 The corpus which we use to train and tune the classifiers of our SRL system and evaluate their performance \citep{surdeanu08,hajic09} unites data from different sources to provide the deep level of annotation. It consists of English articles from the Wall Street Journal with morphological and (thoroughly modified) syntactical annotation of the Penn Treebank (PTB)\nomenclature{PTB}{Penn Treebank}, \citep{marcus93} combined with the semantic annotation of verbal and nominal predicates from PropBank \citep{palmer05} and NomBank \citep{meyers04}, respectively.
 
@@ -193,7 +223,7 @@ $\begin{array}{cc}
 
 A comparison of both annotations is shown in Figure \ref{fig:tree-comp}\footnote{The tree images were created by the TrEd tree editor\\(\url{http://ufal.mff.cuni.cz/\~pajas/tred/}).}. It is apparent that the PEDT annotation contains more semantic information, because it also contains semantic dependencies of adjectives and adverbs, as well as more detailed structure when compared to the two-level structure of PropBank and NomBank. The semantic role labels, which adhere to the FGD, are also different from the numbered arguments of PropBank and NomBank, even though the PEDT valency lexicon EngVALLEX \citep{semecky06} is originally based on PropBank and NomBank frames. While most of the labels remain semantically constant across different predicates, the most widely ones are subject to \emph{shifting} with verbs, i.e. the first argument of any verb is always called \texttt{ACT} and the second one \texttt{PAT}, even if they do not denote the semantic roles of an actor and an affected object\footnote{Cf. a detailed description in the annotation guidelines at: \\ \url{http://ufal.mff.cuni.cz/\~cinkova/TR\_En.pdf}, pg. 36ff. and 107ff.}. Also the references are treated in a different way: Additional links are inserted into the otherwise tree structure to represent them.
 
-It is however still possible to find some common grounds between the two sources --- both of them include labeled dependencies between noun and verbal predicates and their required or voluntary arguments. Therefore, it would be probably feasible to tweak a SRL system designed for the CoNLL annotation for use with the PEDT data, as long as it remains within the limits of finding arguments of noun and verb predicates. Full semantic dependency parsing would require more radical modifications.
+It is however still possible to find some common grounds between the two sources --- both of them include labeled dependencies between noun and verbal predicates and their required or voluntary arguments. The Czech part of the CoNLL 2009 contest included the PDT data whose annotation schema is also based on the FGD and uses the same dependency concept; therefore, it is probably feasible to tweak a SRL system designed for the CoNLL annotation for use with the PEDT data, as long as it remains within the limits of finding arguments of noun and verb predicates. Full semantic dependency parsing would require more radical modifications.
 
 \section{The CoNLL Corpus: Data Format and Statistics}
 
@@ -276,17 +306,82 @@ Evaluation & 57676 & 2399 & 2610 & 10498 & 95.6 \% & 98.8 \% \\\hline
 
 The CoNLL corpus covers virtually all of the original PTB texts, while the vast majority of the data is selected for training purposes. Table \ref{tab:corpus-stats} shows that most of the predicates and virtually all predicates with more than one occurrence in the development or evaluation set are covered by the training set, but a small group of unseen data will need to be treated separately. The average number of predicates per sentence is $4.55$ in the training data set. Therefore, if the system is set-up to classify the arguments of one predicate at a time (which is the only option with classic machine learning classifiers), the amount of data will multiply by that number. This means more training data instances and therefore possibly a higher classification precision; on the other hand, more computing resources will be needed to process such quantity.
 
+%
+%
 \chapter{The Used Machine Learning Environment}\label{mlprocess}
+%
+%
 
-In order to achieve an easy configurability of experiments needed for the SRL system setup and their fast parallel processing on multiple computers in a cluster, we have developed a special software framework.We have chosen to implement it in Java environment because of its portability, performance and simple debugging and maintenance with the help of integrated development tools. We will now describe the basic concepts used by our system.
+In order to achieve an easy configurability of experiments needed for the SRL system setup and their fast parallel processing on multiple interconnected computers in a computing grid or cluster, we have developed a special software framework\footnote{\url{http://code.google.com/p/en-deep/}}. We have chosen to implement it in Java environment because of its portability, performance and simple debugging and maintenance with the help of integrated development tools. We will now describe the basic concepts used by our system.
 
-% spise technicky popis meho prostredi pro spousteni ukolu
-\section{Splitting the Machine Learning Process into Tasks}
-% rozdeleni celeho procesu na jednotky, organizace behoveho prostredi, popis ukolu
-\section{Wildcards and ``Task Expansion"}
-% moznost popsat davkovy ukol jednoduse -- paralelni provedeni na vsech
-%      souborech s nazvy odp. wildcardu
-% moznost rozdelovat ukol za behu (greedy forward apod.)
+\section{Splitting the Experiments into Subtasks}
+
+As we described already in Section \ref{problem}, the whole SRL process that is the subject of this thesis consists of several multiple subtasks. Having considered the pipeline approach to the system architecture and the implementation of multiple classifiers for different lemmas or senses (see Section \ref{related} for details), we realized that it will be profitable to divide the whole analysis into very simple and compact subtask and process some of them in parallel. It is apparent that for multiple classifiers or other operations on independent parts of the data, parallelization is feasible and speeds up the whole process, thus allowing more time-consuming computation. 
+
+We have considered employing the GNU Make utility\footnote{\url{http://www.gnu.org/software/make/}}, but decided to create our own, more specific application, which would allow us to define our custom description of the task with simpler subtask specifications\footnote{This also includes the \emph{task expansions} described in Section \ref{expansions}.}, as well as running not only in multiple threads, but also in multiple processes running on different computers in a cluster. We also decided to implement all the possible tasks as functions within a single executable application in order to reduce the OS overhead for process creation. The intended implementation in Java offered a simple concept which makes this possible while still maintaining modularity and extensibility: Every subtask is defined as a Java class derived from the base class called \texttt{Task}. In order to enable configurability, the individual settings or parameters of all the subtasks are then represented as name-value pairs handled by their concrete implementations\footnote{It is of course possible that some tasks do not need any parameters, which is regarded as an empty list of parameters. Similarly, binary parameters are viewed as parameters with an empty value.}.
+
+Although it is possible to process many tasks in parallel, there will necessarily be dependencies among some of them --- one subtask requiring the output of another subtask as it input. The dependencies should further be handled in such a way that it is still possible to use multiple machines for the computation. We have chosen the only straightforward way to implement this, even if it poses a load on the interconnecting network: The inputs and outputs of all tasks are always saved to files. This further simplifies the description of the subtask dependencies -- it is possible to determine the necessary flow of the SRL process only by examining the names of input and output files of the individual tasks.
+
+\begin{figure}
+\caption{Subtask definition example}\label{fig:scenario}
+\begin{center}
+\begin{lstlisting}
+# this is a commentary
+task sttoarff; # id of the subtask
+    algorithm: # used Java class
+        en_deep.mlprocess.manipulation.StToArff; 
+    params: lang_conf="st-en.conf", # its settings
+        divide_senses, one_file,  # parameters with no value (binary)
+        generate="Children, DepPath, HeadPos", # parameters
+        cluster_file="clusters-plain.txt";     # with values set
+    in: "train.txt"; # inputs listing
+    out: "train.arff"; # outputs listing
+end;
+\end{lstlisting}
+\end{center}
+\end{figure}
+
+This all yields a task description which consists of a Java class name, its parameters and a list of inputs and outputs, which also define its dependencies and prerequisites. The whole experiment is then a list of such (sub)tasks. We represent the descriptions in a simple configuration file called the \emph{scenario} (see Figure \ref{fig:scenario}), which is parsed and topologically sorted \ref{kahn62} to create a to-do list or \emph{plan}, used by the individual running processes to retrieve the next subtasks that need to be computed.
+
+\section{Wildcards and Task Expansion}\label{expansions}
+
+Since we planned on using multiple machine learning classifiers or other operations which run multiple times on different data sets, we needed to have some means of describing that the same subtask should run several times with different data. Therefore, we introduced simple wildcards into the description of the inputs and outputs of subtasks. An asterisk character (``*'') in a file name within the input or output specifications may stand for any string, thus forming a pattern. All the files from the current directory that match it are then transfered to the subtask definitions in the following two modes determined by the number of asterisks in the file name:
+\begin{itemize}
+    \item \emph{Expanding mode (``*'')}, which cause the subtask to \emph{expand} to multiple tasks, each taking one of the matching files. If there are multiple expanding mode patterns in the input specifications, only the corresponding ones, i.e. those where the ``*'' stands for the same string, are put together to create an expanded task (see Figure \ref{fig:expansion} for an example).
+    \item \emph{Listing mode (``**'')}, which let the subtask take all the matching files as its input, or create multiple matching files on the output.
+\end{itemize}
+
+\begin{figure}
+\caption{Task expansion example}\label{fig:expansion}\footnotesize
+\begin{center}
+Note that \texttt{data-a.dat} is not combined with \texttt{setting-b.dat}.
+
+\begin{tabular}{m{3cm} c m{4.1cm} c m{4.1cm}}
+\textbf{Work directory:}\par data-a.dat \par data-b.dat \par setting-a.conf \par setting-b.conf &
++ & 
+\textbf{Original Task:} \par \begin{lstlisting}
+task sample;
+# (...)
+in: "data-*.dat", 
+    "setting-*.dat";\end{lstlisting} &
+$\rightarrow$ &
+\textbf{Expanded tasks:} \par \begin{lstlisting}
+task sample#a;
+# (...)
+in: "data-a.dat", 
+    "setting-a.dat";\end{lstlisting} \par \begin{lstlisting}
+task sample#b;
+# (...)
+in: "data-b.dat", 
+    "setting-b.dat";\end{lstlisting}
+\end{tabular}
+\end{center}
+\end{figure}
+
+% postupne byly vylepseny o subspecifikace a vice promennych, takze umoznuji kombinovat ruzne nazvy
+% behem expanzi jsou zachovavany topolog. poradi
+% task muze zadavat dalsi tasky
+
 \section{Running the Tasks in Parallel}
 % spousteni vlaken, ktera si odebiraji zadany pocet ukolu
 \section{Integration of WEKA and LP\_Solve}
