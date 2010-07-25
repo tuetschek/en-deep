@@ -34,6 +34,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 
 
@@ -312,7 +313,7 @@ public class TaskExpander {
 
         this.expandOutputs(expTask);
 
-        Vector<TaskDescription> deps = expTask.getDependent();
+        Set<TaskDescription> deps = expTask.getDependent();
 
         // expand dependent tasks, only if they have '*'-patterns (cannot expand for '**', yet)
         if (deps != null){
@@ -329,7 +330,7 @@ public class TaskExpander {
             }
         }
 
-        Vector<TaskDescription> pres = expTask.getPrerequisites();
+        Set<TaskDescription> pres = expTask.getPrerequisites();
 
         if (pres != null){
             for (TaskDescription pre: pres){
@@ -378,10 +379,12 @@ public class TaskExpander {
         // now we know the expansion line continues, we need to expand this task
 
         // expand the "task", according to the expansions of anc
+        task.removeDependencies(this.expansions.get(anc));
         for (TaskDescription ancExp : this.expansions.get(anc)){
             
             TaskDescription expanded = task.expand(ancExp.getPatternReplacements()); // this expands "*"s
 
+            expanded.setDependency(ancExp);
             this.cleanPrerequisites(expanded);
             this.expansions.put(task, expanded);
         }
@@ -463,7 +466,7 @@ public class TaskExpander {
     private void cleanPrerequisites(TaskDescription expTask) {
 
         Collection<TaskDescription> values = this.expansions.values();
-        Vector<TaskDescription> prerequisites = expTask.getPrerequisites();
+        Set<TaskDescription> prerequisites = expTask.getPrerequisites();
 
         if (prerequisites == null){
             return;
@@ -485,7 +488,7 @@ public class TaskExpander {
     private void cleanDependent(TaskDescription expTask){
 
         Collection<TaskDescription> values = this.expansions.values();
-        Vector<TaskDescription> dependent = expTask.getDependent();
+        Set<TaskDescription> dependent = expTask.getDependent();
 
         if (dependent == null){
             return;

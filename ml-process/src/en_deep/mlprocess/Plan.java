@@ -47,6 +47,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -578,12 +579,11 @@ public class Plan {
         while (!independent.isEmpty()){
 
             TaskDescription task = independent.poll();
-            Vector<TaskDescription> dependent;
 
             task.setOrder(sorted.size());
             sorted.add(task);
 
-            dependent = task.getDependent();
+            Set<TaskDescription> dependent = task.getDependent();
             if (dependent != null){
                 for (TaskDescription depTask : dependent){
 
@@ -826,8 +826,6 @@ public class Plan {
     private synchronized void appendToTask(Vector<TaskDescription> plan, String id, Vector<TaskDescription> expansion)
             throws PlanException {
 
-        TaskDescription old = null;
-        Vector<TaskDescription> deps;
         int pos = this.findLastUsedTask(plan, id);
 
         if (pos == -1){
@@ -835,10 +833,10 @@ public class Plan {
                     Logger.V_IMPORTANT);
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
-        old = plan.get(pos);
+        TaskDescription old = plan.get(pos);
 
         // loosen the dependencies for the original task
-        deps = old.getDependent();
+        Set<TaskDescription> deps = old.getDependent();
         old.looseDeps(null, false);
 
         // connect it to all the new tasks

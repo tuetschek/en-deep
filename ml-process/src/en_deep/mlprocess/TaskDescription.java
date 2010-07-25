@@ -30,7 +30,11 @@ package en_deep.mlprocess;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.Serializable;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -43,7 +47,7 @@ import java.util.Stack;
  * @author Ondrej Dusek
  */
 public class TaskDescription implements Serializable/*, Comparable<TaskDescription>*/ {
-  
+
     /* CONSTANTS */
 
     /**
@@ -83,9 +87,9 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     private int topolOrder;
 
     /** All the Tasks that this Task depends on */
-    private Vector<TaskDescription> iDependOn;
+    private HashSet<TaskDescription> iDependOn;
     /** All the Task that are depending on this one */
-    private Vector<TaskDescription> dependOnMe;
+    private HashSet<TaskDescription> dependOnMe;
 
 
     /* METHODS */
@@ -161,18 +165,14 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         }
 
         if (this.iDependOn == null){
-            this.iDependOn = new Vector<TaskDescription>();
+            this.iDependOn = new HashSet<TaskDescription>();
         }
-        if (!this.iDependOn.contains(source)){
-            this.iDependOn.add(source);
-        }
+        this.iDependOn.add(source);
 
         if (source.dependOnMe == null){
-            source.dependOnMe = new Vector<TaskDescription>();
+            source.dependOnMe = new HashSet<TaskDescription>();
         }
-        if (!source.dependOnMe.contains(this)){
-            source.dependOnMe.add(this);
-        }
+        source.dependOnMe.add(this);
     }
 
     /**
@@ -207,12 +207,12 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      * 
      * @return a list of all tasks depending on this one
      */
-    Vector<TaskDescription> getDependent(){
+    Set<TaskDescription> getDependent(){
 
         if (this.dependOnMe == null){
             return null;
         }
-        return (Vector<TaskDescription>) this.dependOnMe.clone();
+        return (Set<TaskDescription>) this.dependOnMe.clone();
     }
 
 
@@ -222,11 +222,11 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      *
      * @return a list of all tasks this task depends on
      */
-    Vector<TaskDescription> getPrerequisites(){
+    Set<TaskDescription> getPrerequisites(){
         if (this.iDependOn == null){
             return null;
         }
-        return (Vector<TaskDescription>) this.iDependOn.clone();
+        return (Set<TaskDescription>) this.iDependOn.clone();
     }
 
 
@@ -432,27 +432,37 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      */
     public void looseDeps(String idPrefix, boolean backwards){
 
-        Vector<TaskDescription> dependList = backwards ? this.iDependOn : this.dependOnMe;
+        HashSet<TaskDescription> dependSet = backwards ? this.iDependOn : this.dependOnMe;
 
         if (idPrefix == null){ // null id prefix -- remove all dependencies
             idPrefix = "";
         }
-        if (dependList != null){
+        if (dependSet != null){
 
             // remove all wanted dependencies from the list
-            for (int i = dependList.size() - 1; i >= 0; --i){
-                if (dependList.get(i).getId().startsWith(idPrefix)){
+            ArrayList<TaskDescription> toRemove = new ArrayList<TaskDescription>();
+            for (TaskDescription dep : dependSet){
+                if (dep.getId().startsWith(idPrefix)){
 
-                    TaskDescription dep = dependList.remove(i);
-                    if (backwards){
-                        dep.dependOnMe.remove(this);
-                    }
-                    else {
-                        dep.iDependOn.remove(this);
+                    toRemove.add(dep);
+
+                    Set<TaskDescription> backDeps = backwards ? dep.dependOnMe : dep.iDependOn;
+
+                    if (backDeps != null){
+                        backDeps.remove(this);
+                        if (backDeps.isEmpty()){
+                            if (backwards){
+                                dep.dependOnMe = null;
+                            }
+                            else {
+                                dep.iDependOn = null;
+                            }
+                        }
                     }
                 }
             }
-            if (dependList.isEmpty()){ // make the list null if it's empty
+            dependSet.removeAll(toRemove);
+            if (dependSet.isEmpty()){ // make the list null if it's empty
                 if (backwards){
                     this.iDependOn = null;
                 }
@@ -485,6 +495,23 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
             other.iDependOn.remove(this);
         }
     }
+
+    /**
+     * Removes all the given tasks from the dependencies. The given tasks must depend on this one.
+     * @param deps the dependent tasks
+     */
+    void removeDependencies(Collection<TaskDescription> deps) {
+
+        if (this.dependOnMe != null){
+            this.dependOnMe.removeAll(deps);
+        }
+        for (TaskDescription dep : deps){
+            if (dep.iDependOn != null){
+                dep.iDependOn.remove(this);
+            }
+        }
+    }
+
 
     @Override
     public String toString() {
