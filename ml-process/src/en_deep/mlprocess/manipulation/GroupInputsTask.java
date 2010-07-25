@@ -138,6 +138,12 @@ public abstract class GroupInputsTask extends MultipleOutputsTask {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid pattern"
                     + " specifications in task parameters.");
         }
+        for (int i = 0; i < this.patterns.length; ++i){
+            if (this.patterns[i] == null){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing the "
+                        + i + "-th pattern specification.");
+            }
+        }
     }
 
     /**

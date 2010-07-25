@@ -328,13 +328,13 @@ public class StringUtils {
     /**
      * Given parameters of a {@link en_deep.mlprocess.Task} and a name prefix, this extracts the values
      * of all the parameters whose names are composed of the prefix and an ordinal number 0..count-1.
-     * If some of the parameters is missing or its name doesn't continue with an ordinal number, null
+     * If name of some of the parameters doesn't continue with an ordinal number or is out of range, null
      * is returned.
      *
      * @param parameters the parameters that contain some whose names are composed of the prefix and ordinal numbers
      * @param prefix the prefix for parameter names that must be followed by ordinal numbers
      * @param count the maximum boundary for numbers in parameter names (0..count-1)
-     * @return the ordered list of values for parameters with number 0..count-1
+     * @return the ordered list of values for parameters with number 0..count-1 (some may be null)
      */
     public static String [] getValuesField(Hashtable<String, String> parameters, String prefix, int count){
 
@@ -365,11 +365,6 @@ public class StringUtils {
             field = tmp;
         }
 
-        for (int i = 0; i < field.length; ++i) {
-            if (field[i] == null) {
-                return null;
-            }
-        }
         return field;
     }
 

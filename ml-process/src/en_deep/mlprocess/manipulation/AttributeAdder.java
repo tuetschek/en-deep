@@ -113,13 +113,14 @@ public class AttributeAdder extends Task {
                 throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attribs[attrNo]
                         + " not found in " + whatFile  + ".");
             }
+            int idx = base.numAttributes();
             if (base.attribute(attribs[attrNo]) != null){
-                base.deleteAttributeAt(base.attribute(attribs[attrNo]).index());
+                idx = base.attribute(attribs[attrNo]).index();
+                base.deleteAttributeAt(idx);
                 Logger.getInstance().message(this.id + ": Attribute overwritten -- " + attribs[attrNo], 
                         Logger.V_WARNING);
             }
-            base.insertAttributeAt(orig, base.numAttributes());
-            int idx = base.numAttributes()-1;
+            base.insertAttributeAt(orig, idx);
             
             for (int i = 0; i < base.numInstances(); i++) {
                 base.instance(i).setValue(idx, add.instance(i).value(orig));

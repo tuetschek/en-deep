@@ -109,8 +109,14 @@ public class DataMerger extends Task {
             this.fileAttributeName = this.getParameterVal(FILE_ATTR);
             this.fileNamePatterns = StringUtils.getValuesField(parameters, PATTERN_PREFIX, this.output.size());
             if (this.fileNamePatterns == null){
-                Logger.getInstance().message(this.id + ": file attribute set but no file name patterns!",
-                        Logger.V_WARNING);
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Invalid pattern"
+                        + " specifications in task parameters.");
+            }
+            for (int i = 0; i < this.fileNamePatterns.length; ++i){
+                if (this.fileNamePatterns[i] == null){
+                    throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing the "
+                            + i + "-th pattern specification.");
+                }
             }
         }
         else {
