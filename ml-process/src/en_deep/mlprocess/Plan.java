@@ -493,7 +493,7 @@ public class Plan {
                 // "here-expansion" works, too (last condition) - the task is expanded and "i" doesn't move, so
                 // the equality of the expansion result is tested in the next iteration
                 if (oldTasks.size() > 1 || !oldTasks.get(0).getId().equals(task.getId())
-                        || (task.hasInputPattern("**") && !oldTasks.get(0).hasInputPattern("**"))) {
+                        || (task.hasInputPatterns(true) && !oldTasks.get(0).hasInputPatterns(true))) {
 
                     TaskExpander expander = new TaskExpander(task);
                     Collection<TaskDescription> newTasks;

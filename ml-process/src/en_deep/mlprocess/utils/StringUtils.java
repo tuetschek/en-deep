@@ -396,11 +396,11 @@ public class StringUtils {
     }
 
     /**
-     * This returns the expansions for all the variables, if the string matches the
-     * given pattern that contains them.
+     * This returns the expansions for all the variables in the order they appear in the string, if the string matches
+     * the given pattern that contains them.
      *
      * @param string the string to be matched
-     * @param pattern a pattern with expansion variables
+     * @param pattern a pattern with expansion variables (normalized using {@link #normalizeFilePattern(String)})
      * @return the values (expansions) of all variables contained in the pattern, or null
      */
     public static String [] matchesEx(String string, String pattern){
@@ -420,31 +420,21 @@ public class StringUtils {
 
     /**
      * This simplifies a filename pattern, i.e. removes all the file sub-specifications and puts them into
-     * the constant part of the pattern, so that only a pattern with a single "*"/"**" remains.
+     * the constant part of the pattern, so that only a pattern with a single "*"/"**" or a list of variables remains.
      *
      * @param pattern the pattern to be processed
      * @return a simplified version of the pattern
      */
     public static String normalizeFilePattern(String pattern) {
 
-        if (pattern.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?).*")){
-
-            if (pattern.matches(".*\\*+\\|\\|[^|]+\\|\\|.*")){ // ||file|| pattern - special variables possible
-                return pattern.replaceFirst("\\*\\|\\|([^|]+)\\|\\|", "$1");
-            }
-            else if (pattern.matches(".*\\*\\|[^|]+\\|\\|.*")){ // must end with a specified suffix
-                return pattern.replaceFirst("(\\*+)\\|([^|]+)\\|\\|", "$1$2");
-            }
-            else if (pattern.matches(".*\\*\\|\\|[^|]+\\|.*")){ // must begin with a specified prefix
-                return pattern.replaceFirst("(\\*+)\\|\\|([^|]+)\\|", "$2$1");
-            }
+        if (pattern.matches(".*\\*+(\\|[^|]+\\|).*")){ // |file| pattern - special variables & specs. possible
+            return pattern.replaceFirst("\\*\\|([^|]+)\\|", "$1");
         }
         return pattern;
     }
 
     /**
-     * This replaces the wildcard pattern (of any type) with the given replacement. It also considers
-     * file sub-specifications (they will be a part of the new expansion).
+     * This replaces the first variable of a pattern with the given replacement.
      * 
      * @param pattern the pattern to be expanded
      * @param replacement the expansion
@@ -453,7 +443,7 @@ public class StringUtils {
     public static String replace(String pattern, String replacement){
 
         pattern = normalizeFilePattern(pattern);
-        return pattern.replaceFirst("(\\*+|\\$0)", replacement);
+        return pattern.replaceFirst("(\\*+|\\$[0-9])", replacement);
     }
 
     /**
@@ -502,10 +492,7 @@ public class StringUtils {
      */
     public static String replaceEx(String string, String replacement, int variableNo) {
 
-        string = normalizeFilePattern(string);
-        if (variableNo == 0){
-            string = string.replaceFirst("\\*+", "\\$0");
-        }
+        string = normalizeFilePattern(string).replaceFirst("\\*\\*", "\\$0").replaceFirst("\\*", "\\$1");
         if (string.contains("$" + variableNo)){
             return string.replace("$" + variableNo, replacement);
         }
@@ -517,12 +504,13 @@ public class StringUtils {
     /**
      * This will find all $X variables and return their numbers (only 0-9 are allowed). The input pattern
      * is supposed to be already {@link #normalizeFilePattern(String) normalized}.
-     * @param string
+     *
+     * @param string any string to be searched for pattern variables
      * @return list of valid variable numbers (0-9) that are present in the string, or null if none such exist
      */
-    public static int[] findVariables(String string) {
+    public static int[] findPatternVariables(String string) {
         
-        string = string.replaceFirst("\\*+", "\\$0");
+        string = string.replaceFirst("\\*\\*", "\\$0").replaceFirst("\\*", "\\$1");
         int pos = 0;
         ArrayList<Integer> vars = new ArrayList<Integer>();
 
@@ -551,8 +539,8 @@ public class StringUtils {
      */
     public static String getOccurencePattern(String file) {
         // treat "**" as "*" in patterns, also sub-specifications
-        if (file.matches(".*\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?.*") && !file.matches(".*\\*[^*]+\\*.*")) {
-            file = file.replaceFirst("\\*+(\\|(\\|)?[^|]+\\|(\\|)?)?", "*");
+        if (file.matches(".*\\*+(\\|[^|]+\\|)?.*") && !file.matches(".*\\*[^*]+\\*.*")) {
+            file = file.replaceFirst("\\*+(\\|[^|]+\\|)?", "*");
         }
         return file;
     }
@@ -612,6 +600,28 @@ public class StringUtils {
             return Process.getInstance().getWorkDir() + path;
         }
         return path;
+    }
+
+    /**
+     * This will return true, if the given string contains any pattern variables (either of expanding
+     * or listing mode).
+     * @param string the string to be searched
+     * @param listMode true if the desired mode is listing, false for expanding mode patterns
+     * @return true if the string contains the variables of the given kind
+     */
+    public static boolean hasPatternVariables(String string, boolean listMode) {
+
+        string = string.replaceFirst("\\*\\*", "\\$0").replaceFirst("\\*", "\\$1");
+        int pos = 0;
+
+        while ((pos = string.indexOf('$', pos)) != -1 && pos < string.length()-1){
+            if ((!listMode && string.charAt(pos+1) >= '1' && string.charAt(pos+1) <= '9')
+                    || (listMode && string.charAt(pos+1) == '0')){
+                return true;
+            }
+            pos++;
+        }
+        return false;
     }
 
 }

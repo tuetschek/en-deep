@@ -308,6 +308,15 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         return this.input;
     }
 
+    /**
+     * Returns the input file with the given position in the input specifications.
+     * @param pos position of the desired file
+     * @return the pos-th file in the input specifications
+     */
+    String getInput(int pos){
+        return this.input.get(pos);
+    }
+
 
     /**
      * Returns the generated output files for this Task
@@ -364,7 +373,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      */
     public TaskDescription expand(String [] expansions) {
 
-        TaskDescription copy = new TaskDescription(this, StringUtils.join(expansions, "#"));
+        TaskDescription copy = new TaskDescription(this, StringUtils.join(expansions, 1, expansions.length, "#"));
         
         for (int i = 0; i < this.input.size(); ++i){
 
@@ -373,7 +382,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
                 copy.input.set(i, StringUtils.replace(pattern, copy.getPatternReplacement()));
             }
             else {
-                for (int j = 0; j < expansions.length; ++j){
+                for (int j = 1; j < expansions.length; ++j){
                     String replacement = StringUtils.replaceEx(pattern, expansions[j], j);
 
                     if (replacement != null){
@@ -561,13 +570,15 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         if (this.id.indexOf('#') == -1){
             return null;
         }
-        return this.id.substring(this.id.indexOf('#') + 1).split("#");
+        String [] ret = this.id.substring(this.id.indexOf('#')).split("#");
+        ret[0] = null; // zero field always reserved for listing, not expanding
+        return ret;
     }
 
     /**
      * This returns only the selected pattern replacements of an expanded task, or null if not
      * applicable
-     * @param idxs the number of the selected pattern replacements to be returned
+     * @param idxs the number of the selected pattern replacements to be returned (must be all 1-9)
      * @return the selected replacements, or null if the indexes are invalid or there are no replacements
      */
     String [] getPatternReplacements(int [] idxs){
@@ -577,10 +588,10 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         if (this.id.indexOf('#') == -1){
             return null;
         }
-        all = this.id.substring(this.id.indexOf('#') + 1).split("#");
+        all = this.id.substring(this.id.indexOf('#')).split("#"); // this creates an empty zero field
         sel = new String [idxs.length];
         for (int i = 0; i < sel.length; ++i){
-            if (idxs[i] >= all.length || idxs[i] < 0){
+            if (idxs[i] >= all.length || idxs[i] <= 0){ // zero field always reserved for listing
                 return null;
             }
             sel[i] = all[idxs[i]];
@@ -594,7 +605,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      * @param pos the position to be affected
      * @param replacements the list of replacements for the original input (pattern) at that position
      */
-    void replaceInput(int pos, Vector<String> replacements) {
+    void replaceInput(int pos, Collection<String> replacements) {
 
         this.input.remove(pos);
         this.input.addAll(pos, replacements);
@@ -688,20 +699,18 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      * the pattern is found only once and is not followed by path separator character(s). The list
      * of indexes is ascending.
      *
-     * @param pattern the pattern to search for
+     * @param listMode kind of patterns to search for: false for expanding mode, true for listing mode
      * @param output if true, it searches within output, if false, it searches within input specifications
      * @return list of indexes at which the pattern was found, or null if none such exist
      */
-    private Vector<Integer> getPatternPos(String pattern, boolean output) {
+    private Vector<Integer> getPatternPos(boolean listMode, boolean output) {
 
         Vector<Integer> ret = null;
         Vector<String> field = output ? this.output : this.input;
 
         for (int i = 0; i < field.size(); ++i){
-            String elem = field.get(i);
             // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
-            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)
-                    && (elem.indexOf(File.separator) == -1 || elem.lastIndexOf(File.separator) < elem.lastIndexOf(pattern))){
+            if (StringUtils.hasPatternVariables(field.get(i), listMode)){
                 if (ret == null){
                     ret = new Vector<Integer>();
                 }
@@ -715,18 +724,16 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * This behaves exactly same as {@link findPattern}, but returns only after just one given pattern has been found.
      *
-     * @param pattern the pattern to search for
+     * @param listMode kind of patterns to search for: false for expanding mode, true for listing mode
      * @param output if true, it searches within the task input, otherwise, it searches within the output
      * @return true if the given pattern has been found within the given field
      */
-    private boolean hasPattern(String pattern, boolean output) {
+    private boolean hasPatterns(boolean listMode, boolean output) {
 
         Vector<String> field = output ? this.output : this.input;
 
         for (int i = 0; i < field.size(); ++i){
-            String elem = field.get(i);
-            // ensure we don't return ** as * etc. -- TODO check for multiple patterns in one string ?
-            if (elem.indexOf(pattern) != -1 && elem.indexOf(pattern) == elem.lastIndexOf(pattern)){
+            if (StringUtils.hasPatternVariables(field.get(i), listMode)){
                 return true;
             }
         }
@@ -737,44 +744,90 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /**
      * Returns all the positions in the input specification, on which the given pattern is found.
      *
-     * @param pattern the pattern to search for, should be "*", "**"
+     * @param listMode kind of patterns to search for: false for expanding mode, true for listing mode
      * @return the list of all positions on which the pattern is found, or null
      */
-    public Vector<Integer> getInputPatternPos(String pattern){
-        return this.getPatternPos(pattern, false);
+    public Vector<Integer> getInputPatternPos(boolean listMode){
+        return this.getPatternPos(listMode, false);
     }
 
 
     /**
      * Returns all the positions in the output specification, on which the given pattern is found.
      *
-     * @param pattern the pattern to search for, should be "*", "**"
+     * @param listMode kind of patterns to search for: false for expanding mode, true for listing mode
      * @return the list of all positions on which the pattern is found, or null
      */
-    public Vector<Integer> getOutputPatternPos(String pattern){
-        return this.getPatternPos(pattern, true);
+    public Vector<Integer> getOutputPatternPos(boolean listMode){
+        return this.getPatternPos(listMode, true);
     }
 
 
     /**
      * Returns true, if the TaskDescription has the given pattern in its input specifications.
      *
-     * @param pattern the pattern to search for, should be "*", "**"
+     * @param listMode the type of the patterns to search for, false for expanding mode, true for list mode
      * @return true if the pattern occurs in the input specifications, false otherwise
      */
-    public boolean hasInputPattern(String pattern){
-        return this.hasPattern(pattern, false);
+    public boolean hasInputPatterns(boolean listMode){
+        return this.hasPatterns(listMode, false);
     }
 
+    /**
+     * Returns true, if the TaskDescription has any patterns in its input specifications.
+     *
+     * @param listMode the type of the patterns to search for, false for expanding mode, true for list mode
+     * @return true if the pattern occurs in the input specifications, false otherwise
+     */
+    public boolean hasInputPatterns(){
+        return this.hasPatterns(false, false) || this.hasPatterns(true, false);
+    }
+
+    /**
+     * Returns true, if the TaskDescription has any patterns in its output specifications.
+     *
+     * @param listMode the type of the patterns to search for, false for expanding mode, true for list mode
+     * @return true if the pattern occurs in the input specifications, false otherwise
+     */
+    public boolean hasOutputPatterns(){
+        return this.hasPatterns(false, true) || this.hasPatterns(true, true);
+    }
+
+    /**
+     * Returns true, if all the outputs of this TaskDescription are patterns of the same type.
+     *
+     * @return true, if all the outputs are patterns, false otherwise
+     */
+    boolean allOutputPatterns() {
+
+        boolean listMode = false;
+
+        if (this.output.isEmpty()){
+            return false;
+        }
+        if (StringUtils.hasPatternVariables(this.output.get(0), true)){
+            listMode = true;
+        }
+        if (!listMode && !StringUtils.hasPatternVariables(this.output.get(0), false)){
+            return false;
+        }
+        for (int i = 1; i < this.output.size(); ++i){
+
+            if (!StringUtils.hasPatternVariables(this.output.get(i), listMode)){
+                return false;
+            }
+        }
+        return true;
+    }
 
     /**
      * Returns true, if the TaskDescription has the given pattern in its output specifications.
      *
-     * @param pattern the pattern to search for, should be "*", "**"
+     * @param listMode the type of the patterns to search for, false for expanding mode, true for list mode
      * @return true if the pattern occurs in the output specifications, false otherwise
      */
-    public boolean hasOutputPattern(String pattern){
-        return this.hasPattern(pattern, true);
+    public boolean hasOutputPatterns(boolean listMode){
+        return this.hasPatterns(listMode, true);
     }
 
     /**

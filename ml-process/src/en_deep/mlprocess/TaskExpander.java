@@ -60,16 +60,12 @@ import java.util.Vector;
  */
 public class TaskExpander {
 
+    /* CONSTANTS */
 
     /* DATA */
 
     /** The task to be processed */
     private TaskDescription task;
-
-    /** Positions in the task output listings, where are wildcard patterns to be found */
-    private Vector<Integer> inputTrans, inputHere;
-    /** Positions in the task input listings, where are wildcard patterns to be found */
-    private Vector<Integer> outputTrans, outputHere;
 
     /** Expansion pattern matches for all affected tasks */
     private HashMultimap<TaskDescription, TaskDescription> expansions;
@@ -87,11 +83,6 @@ public class TaskExpander {
 
         this.task = task;
         this.expansions = HashMultimap.create();
-
-        this.inputTrans = null;
-        this.inputHere = null;
-
-        this.outputTrans = null;
     }
 
 
@@ -103,46 +94,25 @@ public class TaskExpander {
      */
     public void expand() throws TaskException {
 
-        this.findPatterns();
-
-        // there are no patterns or just "**"s
-        if (this.inputTrans == null){
-
-            // can't have "*"-patterns in outputs since there are none in inputs
-            if (this.outputTrans != null){
+        if (!this.task.hasInputPatterns()){
+            if (this.task.hasOutputPatterns(false)){
                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
                        "No '*' patterns in inputs but some in outputs.");
             }
-            // expand "**" here if needed
-            if (this.inputHere != null){
-                this.expandHere();
-            }
             return;
         }
-        // "**" are not compatible with "*"
-        else if (this.inputHere != null){
-            if (this.inputHere.size() > 1){
-                throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
-                        "Multiple '**' patterns cannot be combined with other patterns.");
-            }
-            this.expandCombined();
-        }
-        // if there are "*"s, expand them all
-        else if (this.inputTrans != null){
-            this.expandTrans();
-        }
+
+        this.expandInputs();
 
         // check if all the outputs have "*" or "**"'s (otherwise, there's no point in using "*" or "***"
         // for inputs)
-        if ((this.outputTrans != null && this.outputTrans.size() != task.getOutput().size())
-                || (this.outputHere != null && this.outputHere.size() != task.getOutput().size())
-                || (this.outputHere == null && this.outputTrans == null)){
+        if (!task.allOutputPatterns()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
                     "All outputs must have '*' or '**' patterns if inputs have '*' patterns.");
         }
 
         // expand outputs and dependent tasks using the expanded task name (if we can--"**"'s are never expanded)
-        if (this.outputHere == null){
+        if (!this.task.hasOutputPatterns(true)){
             this.expandOutputsAndDeps(this.task);
         }
 
@@ -185,25 +155,6 @@ public class TaskExpander {
 
 
     /**
-     * Expands all the "**"s in the task inputs specification.
-     *
-     * @todo it would be better to create a completely new task object, so that it doesn't get confusing
-     */
-    private void expandHere() throws TaskException {
-        
-        Vector<String> taskInput = this.task.getInput();
-        
-        for (int i = this.inputHere.size() - 1; i >= 0; --i) {
-
-            int pos = this.inputHere.get(i);
-            Vector<String> files = this.getFilesForPattern(taskInput.get(pos), false);
-
-            task.replaceInput(pos, files);
-        }
-    }
-
-
-    /**
      * This expands outputs for all tasks to which the original task expanded, according to their
      * pattern replacements. It assumes the expansions of the task are already located in {@link #expansions}.
      * @param original the original, unexpanded task
@@ -211,7 +162,7 @@ public class TaskExpander {
     private void expandOutputs(TaskDescription original) throws TaskException {
 
         // if there are some pattern and some non-pattern outputs, something is wrong
-        if (task.getOutputPatternPos("*").size() != task.getOutput().size()){
+        if (task.getOutputPatternPos(false).size() != task.getOutput().size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId(),
                     "Some outputs have '*' patterns and some don't.");
         }
@@ -230,58 +181,6 @@ public class TaskExpander {
                 outputs.set(i, outputs.get(i).replace("*", expPat));
             }
         }
-    }
-
-
-    /**
-     * Tries to find patterns in input and output specifications of the task.
-     */
-    private void findPatterns() {
-
-        this.inputTrans = this.task.getInputPatternPos("*");
-        this.inputHere = this.task.getInputPatternPos("**");
-        this.outputTrans = this.task.getOutputPatternPos("*");
-        this.outputHere = this.task.getOutputPatternPos("**");
-    }
-
-    /**
-     * Expands a pattern for corresponding file names. Returns just the expansions or file names
-     * as a whole. The returned list is alphabetically sorted.
-     * 
-     * @param pattern the pattern to be expanded
-     * @param justExpansions should it return just the expansions ?
-     * @return expansions or file names corresponding to the pattern
-     * @throws TaskException if no files can be found for this pattern
-     */
-    private Vector<String> getFilesForPattern(String pattern, boolean justExpansions) throws TaskException {
-
-        Vector<String> ret = new Vector<String>();
-        String [] files;
-        Pair<String,String> path = this.getDirAndFilePattern(pattern);
-
-        files = this.getFilesInDir(path.first);
-        Arrays.sort(files);
-
-        // find all matching files and push the expansions or whole file names to the results list
-        for (String file : files){
-
-            String expansion = StringUtils.matches(file, path.second);
-
-            if (expansion != null && new File(path.first + File.separator + file).isFile()){
-                if (justExpansions){
-                    ret.add(expansion);
-                }
-                else {
-                    ret.add(path.first + File.separator + file);
-                }
-            }
-        }
-        // no matching files in the directory
-        if (ret.isEmpty()){
-            throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "(" + pattern + ")");
-        }
-        // return the result
-        return ret;
     }
 
     /**
@@ -319,7 +218,7 @@ public class TaskExpander {
         if (deps != null){
             for (TaskDescription dep : deps){
 
-                if (!this.expansions.containsKey(dep) && dep.hasInputPattern("*") && !dep.hasInputPattern("**")){
+                if (!this.expansions.containsKey(dep) && dep.hasInputPatterns(false) && !dep.hasInputPatterns(true)){
                     this.expandDependent(expTask, dep);
                 }
                 else if (this.expansions.containsKey(dep)){
@@ -334,7 +233,7 @@ public class TaskExpander {
 
         if (pres != null){
             for (TaskDescription pre: pres){
-                if (!this.expansions.containsKey(pre) && pre.hasOutputPattern("*") && !pre.hasOutputPattern("**")){
+                if (!this.expansions.containsKey(pre) && pre.hasOutputPatterns(false) && !pre.hasOutputPatterns(true)){
                     this.expandPrerequisite(pre, expTask);
                 }
             }
@@ -353,11 +252,11 @@ public class TaskExpander {
 
         // this means there are no more dependent expansions and we need only to put all outputs
         // from expanded anc as inputs to this task
-        if (!task.hasOutputPattern("*") && !task.hasOutputPattern("**")){
+        if (!task.hasOutputPatterns()){
 
             Vector<String> replacements = new Vector<String>();
             Vector<String> taskInput = task.getInput();
-            Vector<Integer> patterns = task.getInputPatternPos("*");
+            Vector<Integer> patterns = task.getInputPatternPos(false);
 
             for (TaskDescription ancExp : this.expansions.get(anc)){ // find pattern replacements
                 replacements.add(ancExp.getPatternReplacement());
@@ -390,7 +289,7 @@ public class TaskExpander {
         }
 
         // if there are "**" or "***" left to be expanded, we can't expand outputs and go deeper, yet
-        if (task.hasOutputPattern("**") || task.hasInputPattern("**") || task.hasInputPattern("***")){
+        if (task.hasOutputPatterns(true) || task.hasInputPatterns(true)){
             return;
         }
 
@@ -414,7 +313,7 @@ public class TaskExpander {
 
             TaskDescription expanded = pre.expand(taskExp.getPatternReplacements(commonVars));
 
-            if (expanded.hasInputPattern("*")){
+            if (expanded.hasInputPatterns(false)){
                 throw new TaskException(TaskException.ERR_PATTERN_SPECS, pre.getId(), "Could not expand"
                         + " a prerequisite task completely.");
             }
@@ -451,7 +350,7 @@ public class TaskExpander {
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, pre.getId(), "Non-existent dependency"
                     + " to " + dep.getId());
         }
-        return StringUtils.findVariables(common);
+        return StringUtils.findPatternVariables(common);
     }
 
     /**
@@ -503,92 +402,49 @@ public class TaskExpander {
 
     
     /**
-     * This expands all the "*"-patterns in the input specifications, including the sub-specifications
-     * and special variables.
+     * This expands all the patterns in the input specifications (with all variables), including the listing mode.
+     * @see #findMatches(String)
+     * @see #replaceListing(int, HashSet)
+     * @see #replaceExpanding(HashSet[]) 
      */
-    private void expandTrans() throws TaskException {
+    private void expandInputs() throws TaskException {
 
         Vector<String> taskIn = this.task.getInput();
-        Pair<String, String> [] patterns = new Pair[taskIn.size()];
-        HashSet<String> [] allMatch = new HashSet[10]; // the expansions that fit for each occurrence of the variable
+        HashSet<String> [] expMode = new HashSet[10]; // expanding mode matches
+        HashSet<String> [] listMode = new HashSet[taskIn.size()]; // listing mode matches
 
-        for (int i = 0; i < patterns.length; ++i){ // find variables and matches
+         // find variables and matches
+        for (int inputNo = 0; inputNo < taskIn.size(); ++inputNo){ 
 
-            patterns[i] = this.getDirAndFilePattern(taskIn.get(i));
-            String [] files = this.getFilesInDir(patterns[i].first);
-            int [] vars = StringUtils.findVariables(patterns[i].second);
-            HashSet<String> [] matches = new HashSet[10];
-
-            if (vars == null){
-                continue;
+            HashSet<String> [] matches = this.findMatches(taskIn.get(inputNo));
+            
+            if (matches[0] != null){ // store listing mode matches, if some
+                listMode[inputNo] = matches[0];
             }
-            for (String file : files){
+            // intersect expanding mode matches for different file patterns and the same variable
+            for (int varNo = 1; varNo < 10; ++varNo){ 
 
-                String [] curMatch = StringUtils.matchesEx(file, patterns[i].second);
-
-                if (curMatch != null){
-                    for (int j = 0; j < vars.length; ++j){
-                        if (matches[vars[j]] == null){
-                            matches[vars[j]] = new HashSet<String>();
-                        }
-                        matches[vars[j]].add(curMatch[j]);
-                    }
-                }
-            }
-            for (int j = 0; j < vars.length; ++j){
-                if (matches[vars[j]] == null){
-                    throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), taskIn.get(i));
-                }
-            }
-            for (int j = 0; j < 10; ++j){ // intersect matches for different file patterns and same variable
-
-                if (matches[j] != null){
-                    if (allMatch[j] == null){
-                        allMatch[j] = matches[j];
+                if (matches[varNo] != null){
+                    if (expMode[varNo] == null){
+                        expMode[varNo] = matches[varNo];
                     }
                     else {
-                        allMatch[j].retainAll(matches[j]);
+                        expMode[varNo].retainAll(matches[varNo]);
                     }
                 }
             }
         }
 
-        for (int i = 0; i < 10; ++i){ // expand all matched variables
-            
-            if (allMatch[i] == null){
-                continue;
-            }
-            if (allMatch[i].isEmpty()){
-                throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "Intersection of patterns"
-                        + " for variable " + i);
-            }
-            Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
-            Collection<TaskDescription> curExp;
+        // replace listing mode
+        for (int inputNo = taskIn.size()-1; inputNo >= 0; --inputNo){
 
-            if (this.expansions.get(this.task).isEmpty()){ // first iteration
-                curExp = new Vector<TaskDescription>(1);
-                curExp.add(this.task);
+            if (listMode[inputNo] != null){
+                this.replaceListing(inputNo, listMode[inputNo]);
             }
-            else { // later iterations
-                curExp = this.expansions.removeAll(this.task);
-            }
-
-            String [] matchesSort = allMatch[i].toArray(new String [allMatch[i].size()]);
-            Arrays.sort(matchesSort);
-            for (String match : matchesSort) {
-
-                for (TaskDescription t : curExp) {
-                    TaskDescription expanded = t.expand(match, i);
-                    nextExp.add(expanded);
-                }
-            }
-            for (TaskDescription t : curExp){
-                if (t != this.task){
-                    t.looseAllDeps();
-                }
-            }
-            this.expansions.putAll(this.task, nextExp);
         }
+
+        // replace expanding mode
+        this.replaceExpanding(expMode);
     }
 
 
@@ -616,28 +472,106 @@ public class TaskExpander {
     }
 
     /**
-     * This provides a method of expanding first the "**" patterns and then the "*" patterns with
-     * all the variables.
+     * This finds the matches for all the variables in the given pattern, including the listing mode variables
+     * (which are returned in the zero-index of the filed).
+     * @param pattern the pattern for whose variables we should search
+     * @return the matches for all possible variables (at non-null indexes in the array)
      */
-    private void expandCombined() throws TaskException {
+    private HashSet<String>[] findMatches(String pattern) throws TaskException {
 
-        Vector<String> taskInput = this.task.getInput();
-        Vector<String> exps = this.getFilesForPattern(taskInput.get(this.inputHere.get(0)), true);
+        Pair<String, String> dirFile = this.getDirAndFilePattern(pattern);
+        String [] files = this.getFilesInDir(dirFile.first);
+        int [] vars = StringUtils.findPatternVariables(dirFile.second);
+        HashSet<String> [] matches = new HashSet[10];
 
-        for (int i = taskInput.size()-1; i >= 0; --i){
+        if (vars == null){
+            return matches;
+        }
+        for (String file : files){
 
-            String pat = StringUtils.normalizeFilePattern(taskInput.get(i));
+            String [] curMatch = StringUtils.matchesEx(file, dirFile.second);
 
-            if (pat.contains("$0") || pat.contains("**")){
-                
-                Vector<String> repls = new Vector<String>(exps.size());
+            if (curMatch != null){
+                for (int j = 0; j < vars.length; ++j){
 
-                for (String exp : exps){
-                    repls.add(StringUtils.replace(pat, exp));
+                    // expanding mode variables
+                    if (matches[vars[j]] == null){
+                        matches[vars[j]] = new HashSet<String>();
+                    }
+                    matches[vars[j]].add(curMatch[j]);
                 }
-                task.replaceInput(i, repls);
             }
         }
-        this.expandTrans();
+        for (int j = 0; j < vars.length; ++j){
+            if (matches[vars[j]] == null){
+                throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), pattern);
+            }
+        }
+        return matches;
     }
+
+    /**
+     * This performs the listing mode replacements. It replaces the given input of the task with the whole listing of
+     * successful matches.
+     *
+     * @param inputNo the position of the input to be replaced
+     * @param matches a list of successful matches
+     */
+    private void replaceListing(int inputNo, HashSet<String> matches) {
+
+        String [] repls = matches.toArray(new String [matches.size()]);
+        Arrays.sort(repls);
+
+        for (int j = 0; j < repls.length; ++j){
+            repls[j] = StringUtils.replaceEx(task.getInput(inputNo), repls[j], 0);
+        }
+        task.replaceInput(inputNo, Arrays.asList(repls));
+    }
+
+    /**
+     * This performs the replacements in expanding mode. It expands the task to a set of tasks for every
+     * successful match of every pattern variable.
+     * @param matches the matches for the individual variables (1-9, zero position reserved for listing mode)
+     * @throws TaskException
+     */
+    private void replaceExpanding(HashSet<String>[] matches) throws TaskException {
+
+        for (int varNo = 1; varNo < 10; ++varNo){
+
+            if (matches[varNo] == null){
+                continue;
+            }
+            if (matches[varNo].isEmpty()){
+                throw new TaskException(TaskException.ERR_NO_FILES, this.task.getId(), "Intersection of patterns"
+                        + " for variable " + varNo);
+            }
+            Vector<TaskDescription> nextExp = new Vector<TaskDescription>();
+            Collection<TaskDescription> curExp;
+
+            if (this.expansions.get(this.task).isEmpty()){ // first iteration
+                curExp = new Vector<TaskDescription>(1);
+                curExp.add(this.task);
+            }
+            else { // later iterations
+                curExp = this.expansions.removeAll(this.task);
+            }
+
+            String [] matchesSort = matches[varNo].toArray(new String [matches[varNo].size()]);
+            Arrays.sort(matchesSort);
+            for (String match : matchesSort) {
+
+                for (TaskDescription t : curExp) {
+                    TaskDescription expanded = t.expand(match, varNo);
+                    nextExp.add(expanded);
+                }
+            }
+            for (TaskDescription t : curExp){
+                if (t != this.task){
+                    t.looseAllDeps();
+                }
+            }
+            this.expansions.putAll(this.task, nextExp);
+        }
+    }
+
 }
