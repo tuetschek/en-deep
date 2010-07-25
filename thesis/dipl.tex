@@ -30,6 +30,7 @@
     showstringspaces=false,
     stringstyle=\color{red},
     commentstyle=\color{blue},
+    escapechar=\^,
 }
 
 %\newindex{default}{idx}{ind}{Rejstřík} % zavádí rejstřík v případě použití balíku index
@@ -208,7 +209,7 @@ As already mentioned, each predicate, i.e. each noun or verb in a given sense, h
 
 \section{Comparison to Prague English Dependency Treebank Annotation}
 
-As we mentioned in Section \ref{problem}, the predicate-argument description is not the only way of representing semantic information. The PEDT \cite{cinkova09}, a semantic resource which is currently being developed at the Institute of Formal and Applied Linguistics, works with the same Wall Street Journal articles as the CoNLL corpus and features a syntactic layer (called \emph{analytical} in the FGD-nomenclature) with dependency trees, which were also converted from the constituent PTB trees. However, it also employs a dependency tree semantic (\emph{tectogrammatical}) schema: rather than predicates and arguments which pertain exclusively to nouns and verbs, it organizes all the words that carry some semantic information into a hierarchy of dependencies. The words whose function is mainly grammatical, such as articles, prepositions or function verbs\footnote{This also pertains to punctuation tokens, which are usually included in syntax parse trees.}, do not occur in the semantic tree as separate nodes, but are represented as features of other nodes. In addition, there are also some nodes for words that do not occur in the utterance, but their presence follows from its semantic content. 
+As we mentioned in Section \ref{problem}, the predicate-argument description is not the only way of representing semantic information. The PEDT \citep{cinkova09}, a semantic resource which is currently being developed at the Institute of Formal and Applied Linguistics, works with the same Wall Street Journal articles as the CoNLL corpus and features a syntactic layer (called \emph{analytical} in the FGD-nomenclature) with dependency trees, which were also converted from the constituent PTB trees. However, it also employs a dependency tree semantic (\emph{tectogrammatical}) schema: rather than predicates and arguments which pertain exclusively to nouns and verbs, it organizes all the words that carry some semantic information into a hierarchy of dependencies. The words whose function is mainly grammatical, such as articles, prepositions or function verbs\footnote{This also pertains to punctuation tokens, which are usually included in syntax parse trees.}, do not occur in the semantic tree as separate nodes, but are represented as features of other nodes. In addition, there are also some nodes for words that do not occur in the utterance, but their presence follows from its semantic content. 
 
 \begin{figure}[htpb]
 \caption{A comparison of PEDT and CoNLL semantic annotation.}\label{fig:tree-comp}
@@ -225,7 +226,7 @@ A comparison of both annotations is shown in Figure \ref{fig:tree-comp}\footnote
 
 It is however still possible to find some common grounds between the two sources --- both of them include labeled dependencies between noun and verbal predicates and their required or voluntary arguments. The Czech part of the CoNLL 2009 contest included the PDT data whose annotation schema is also based on the FGD and uses the same dependency concept; therefore, it is probably feasible to tweak a SRL system designed for the CoNLL annotation for use with the PEDT data, as long as it remains within the limits of finding arguments of noun and verb predicates. Full semantic dependency parsing would require more radical modifications.
 
-\section{The CoNLL Corpus: Data Format and Statistics}
+\section{The CoNLL Corpus: Data Format and Statistics}\label{data-format}
 
 Since we have described the annotation schema and sources of the CoNLL 2009\footnote{Since the concrete data format differs slightly from the 2008 version, we will now refer solely to the data sets used in this thesis.} corpus, we may now turn our attention to its technical implementation. The data is divided into three sets: \emph{training}, \emph{development} (tuning) and (final) \emph{evaluation} sentences. Each of them is included in a single text file, which contains all the plain text, morphological, syntactic and semantic information. Each line in every text file comprises all the knowledge about one token (i.e. word or punctuation sign), the individual inputs divided by tabs, forming columns. The purpose of each column is described in Table \ref{tab:st-columns}\footnote{Please see \url{http://ufal.mff.cuni.cz/conll2009-st/task-description.html} for further explanation.}. Different sentences are separated by empty lines.
 
@@ -312,13 +313,15 @@ The CoNLL corpus covers virtually all of the original PTB texts, while the vast 
 %
 %
 
-In order to achieve an easy configurability of experiments needed for the SRL system setup and their fast parallel processing on multiple interconnected computers in a computing grid or cluster, we have developed a special software framework\footnote{\url{http://code.google.com/p/en-deep/}}. We have chosen to implement it in Java environment because of its portability, performance and simple debugging and maintenance with the help of integrated development tools. We will now describe the basic concepts used by our system.
+In order to achieve an easy configurability of experiments needed for the SRL system setup and their fast parallel processing on multiple interconnected computers in a computing grid or cluster, we have developed a special software framework\footnote{\url{http://code.google.com/p/en-deep/}}. We have chosen to implement it in Java environment because of its portability, performance and simple debugging and maintenance with the help of integrated development tools. Our intention to use existing classifiers and other NLP tools in our system (see Section \ref{weka}) also spoke in favor of Java, for many of the freely available utilities feature a Java API\nomenclature{API}{Application Programming Interface}. We will now describe the basic concepts used by our system --- the decomposition of an experiment into subtasks (Section \ref{tasks}), their batch processing (Section \ref{expansions}) in parallel (Section \ref{parallel}) and the integration of existing third-party libraries (Section \ref{weka}).
 
-\section{Splitting the Experiments into Subtasks}
+\section{Splitting the Experiments into Subtasks}\label{tasks}
 
 As we described already in Section \ref{problem}, the whole SRL process that is the subject of this thesis consists of several multiple subtasks. Having considered the pipeline approach to the system architecture and the implementation of multiple classifiers for different lemmas or senses (see Section \ref{related} for details), we realized that it will be profitable to divide the whole analysis into very simple and compact subtask and process some of them in parallel. It is apparent that for multiple classifiers or other operations on independent parts of the data, parallelization is feasible and speeds up the whole process, thus allowing more time-consuming computation. 
 
-We have considered employing the GNU Make utility\footnote{\url{http://www.gnu.org/software/make/}}, but decided to create our own, more specific application, which would allow us to define our custom description of the task with simpler subtask specifications\footnote{This also includes the \emph{task expansions} described in Section \ref{expansions}.}, as well as running not only in multiple threads, but also in multiple processes running on different computers in a cluster. We also decided to implement all the possible tasks as functions within a single executable application in order to reduce the OS overhead for process creation. The intended implementation in Java offered a simple concept which makes this possible while still maintaining modularity and extensibility: Every subtask is defined as a Java class derived from the base class called \texttt{Task}. In order to enable configurability, the individual settings or parameters of all the subtasks are then represented as name-value pairs handled by their concrete implementations\footnote{It is of course possible that some tasks do not need any parameters, which is regarded as an empty list of parameters. Similarly, binary parameters are viewed as parameters with an empty value.}.
+We have considered employing the GNU Make utility\footnote{\url{http://www.gnu.org/software/make/}}, but decided to create our own, more specific application, which would allow us to define our custom description of the task with simpler subtask specifications\footnote{This also includes the \emph{task expansions} described in Section \ref{expansions}.}, as well as running not only in multiple threads, but also in multiple processes running on different computers in a cluster. 
+
+We also decided to implement all the possible tasks as functions within a single executable application in order to reduce the OS overhead for process creation. The intended implementation in Java offered a simple concept which makes this possible while still maintaining modularity and extensibility: Every subtask is defined as a Java class derived from the base class called \texttt{Task}. In order to enable configurability, the individual settings or parameters of all the subtasks are then represented as name-value pairs handled by their concrete implementations\footnote{It is of course possible that some tasks do not need any parameters, which is regarded as an empty list of parameters. Similarly, binary parameters are viewed as parameters with an empty value.}. We divided all the tasks implemented in our system into three groups for convenience: the classification, evaluation and data manipulation tasks.
 
 Although it is possible to process many tasks in parallel, there will necessarily be dependencies among some of them --- one subtask requiring the output of another subtask as it input. The dependencies should further be handled in such a way that it is still possible to use multiple machines for the computation. We have chosen the only straightforward way to implement this, even if it poses a load on the interconnecting network: The inputs and outputs of all tasks are always saved to files. This further simplifies the description of the subtask dependencies -- it is possible to determine the necessary flow of the SRL process only by examining the names of input and output files of the individual tasks.
 
@@ -341,14 +344,14 @@ end;
 \end{center}
 \end{figure}
 
-This all yields a task description which consists of a Java class name, its parameters and a list of inputs and outputs, which also define its dependencies and prerequisites. The whole experiment is then a list of such (sub)tasks. We represent the descriptions in a simple configuration file called the \emph{scenario} (see Figure \ref{fig:scenario}), which is parsed and topologically sorted \ref{kahn62} to create a to-do list or \emph{plan}, used by the individual running processes to retrieve the next subtasks that need to be computed.
+This all yields a task description which consists of a Java class name, its parameters and a list of inputs and outputs, which also define its dependencies and prerequisites. The whole experiment is then a list of such (sub)tasks. We represent the descriptions in a simple configuration file called the \emph{scenario} (see Figure \ref{fig:scenario}), which is parsed and topologically sorted \citep{kahn62} to create a to-do list or \emph{plan}, used by the individual running processes (see Section \ref{parallel}) to retrieve the next subtasks that need to be computed: Each subtask description in the plan contains an indication whether all of its prerequisites have already been completed.
 
 \section{Wildcards and Task Expansion}\label{expansions}
 
 Since we planned on using multiple machine learning classifiers or other operations which run multiple times on different data sets, we needed to have some means of describing that the same subtask should run several times with different data. Therefore, we introduced simple wildcards into the description of the inputs and outputs of subtasks. An asterisk character (``*'') in a file name within the input or output specifications may stand for any string, thus forming a pattern. All the files from the current directory that match it are then transfered to the subtask definitions in the following two modes determined by the number of asterisks in the file name:
 \begin{itemize}
     \item \emph{Expanding mode (``*'')}, which cause the subtask to \emph{expand} to multiple tasks, each taking one of the matching files. If there are multiple expanding mode patterns in the input specifications, only the corresponding ones, i.e. those where the ``*'' stands for the same string, are put together to create an expanded task (see Figure \ref{fig:expansion} for an example).
-    \item \emph{Listing mode (``**'')}, which let the subtask take all the matching files as its input, or create multiple matching files on the output.
+    \item \emph{Listing mode (``**'')}, which let the subtask take all the matching files as its input, or create multiple matching files on the output. The output expansions are left up to the individual impelementations of the subtasks.
 \end{itemize}
 
 \begin{figure}
@@ -366,11 +369,11 @@ in: "data-*.dat",
     "setting-*.dat";\end{lstlisting} &
 $\rightarrow$ &
 \textbf{Expanded tasks:} \par \begin{lstlisting}
-task sample#a;
+task sample^\#^a;
 # (...)
 in: "data-a.dat", 
     "setting-a.dat";\end{lstlisting} \par \begin{lstlisting}
-task sample#b;
+task sample^\#^b;
 # (...)
 in: "data-b.dat", 
     "setting-b.dat";\end{lstlisting}
@@ -378,24 +381,82 @@ in: "data-b.dat",
 \end{center}
 \end{figure}
 
-% postupne byly vylepseny o subspecifikace a vice promennych, takze umoznuji kombinovat ruzne nazvy
-% behem expanzi jsou zachovavany topolog. poradi
-% task muze zadavat dalsi tasky
+These basic patterns were then further improved to suit all the batch processing needs during our experiments, so that they now allow for further specification enclosed in vertical bar (``\textbar'') characters immediately following the asterisk. The detailed specifications are ignored when determining the subtask dependencies, which allows to select just a subset of multiple outputs produced by subtask $A$ as the input of subtask $B$, while the dependency $A\rightarrow B$ remains. We also included the possibility to expand a task using inputs from different sources whose file names do not match (in contrast to the situation shown in Figure \ref{fig:expansion}), which results in a cartesian product. Further, it is possible to combine the two pattern modes in a limited way (only one ``**''-pattern is allowed in conjunction with ``*''-patterns), where at first, the listing mode is applied and then the expanding mode to the results of the first step\footnote{This possibility should be further extended, so that it is applicable to a wider variety of situations.}.
 
-\section{Running the Tasks in Parallel}
-% spousteni vlaken, ktera si odebiraji zadany pocet ukolu
-\section{Integration of WEKA and LP\_Solve}
+The expansion of a task is also transferred to its dependencies, if they contain the expanding mode patterns in their input specifications. This is done already with the expansion of the prerequisite task, so that the individual computing processes (see Section \ref{parallel}) may start working on some of the expansions of the dependency even if other prerequisite expansions are not yet finished. However, the topological order of the whole plan is always preserved. 
+ 
+An important feature of our experiment framework is also the possibility that the individual tasks assign further subtasks themselves, which then occupy the immediately following position in the experiment plan. Inner dependencies of all such subtasks must always then result in one single termination subtask, so that the outer dependencies are left untouched. This allows for further parallelization of such time-consuming operations as greedy feature selection (see Section \ref{featsel}).
 
+\section{Running the Tasks in Parallel}\label{parallel}
+
+As we already mentioned in the previous sections of this chapter, our whole experiment software is designed to run in several instances in parallel. The number of working threads, i.e. the level of maximum possible parallelization along with the maximum possible load on the CPUs and data flow, is determined by the user: The main executable may be launched in multiple copies on the same machine, as well as on different computers in a cluster. There is also a possibility to start multiple threads within one program instance, which simplifies the usage with multi-core machines.
+
+The running threads are then completely independent of one another --- the only information exchange among them takes place in the plan file (see Section \ref{tasks}). The thread that started as the first one automatically parses the experiment scenario configuration file, if it does not find the plan file in the working directory. Consequently, all the working instances retrieve the pending subtasks from the plan file and remove the completed ones, while indicating that any depending subtasks are no longer blocked. The number of tasks retrieved at a time by one computing thread may be configured for the particular experiment based on the complexity of its subtask, so that program instances do not get blocked and the input and output load on the plan file is not excessive.
+
+If an error occurs within one of the subtasks, all the subtasks not depending on it will continue to be processed, so that the user can correct the error and relaunch only a part of the original plan. The logging feature with configurable verbosity simplifies the debugging of the experiment setup.
+
+\section{Integration of Third-Party Libraries}\label{weka}
+
+There is a wide variety of freely available NLP tools, such as classifiers or data filters, on the Internet. We decided to profit from some of them, while still keeping our framework relatively independent. Therefore, the individual implementations of various subtasks in our system use the integrated tools, but the task descriptions, the scenario and plan file format and the mechanisms that launch them in the correct order are independent of any third-party tools\footnote{Google Collections (\url{http://code.google.com/p/google-collections/}) and Java-GetOpt (\url{http://www.urbanophile.com/\~arenn/hacking/getopt/}) are the only exceptions from this rule. They are invisible to the programmer who creates additional subtask algorithms, though.}. It is very simple to use additional Java libraries and programs with our system, since for each tool, only one wrapper Java class which defines the subtask and calls the particular tool with the correct parameters needs to be implemented.
+
+We have chosen to integrate the Waikato Environment for Knowledge Analysis \citep[WEKA][]{garner95}\footnote{Version 3.7.1, \url{http://www.cs.waikato.ac.nz/~ml/weka/}}\nomenclature{WEKA}{Waikato Environment for Knowledge Analysis} with most of the subtasks our system, since it offers a very wide collection of classifiers, feature selection algorithms and data filters with a unified API and a transparent default data format --- the Attribute-Relation File Format (ARFF)\nomenclature{ARFF}{Attribute-Relation File Format}, which thus became the default format for our classification tasks.
+
+As one of our classification subtasks uses the Integer Linear Programming technique (see \ref{post-inference}), we also included the LP\_Solve\footnote{Version 5.5, \url{http://lpsolve.sourceforge.net/}.} tool into our system. Although the program is written in the C++ programming language and called via a wrapper library using Java Native Interface (JNI)\nomenclature{JNI}{Java Native Interface}, which makes it less portable among different computer platforms, this problem is bound solely to the subtask that uses this utility.
+
+%
+%
 \chapter{Machine Learning in Semantic Analysis}\label{ml-semantic}
+%
+%
+
+After careful consideration of the various machine learning solutions available (most of which were already discussed in Chapter \ref{related}), we decided to use the traditional supervised classifiers, such as SVM or MaxEnt, in our SRL system due to their competitive performance and simple configuration. The inclusion of many different algorithms in one software package --- WEKA --- poses also an advantage of this choice. We will now describe the basic concepts of the classification algorithms we tested in our experiments. As we already mentioned in Section \ref{data-format}, the original data format of the used corpus is not well-suited for the operation of machine learning procedures. Therefore, we also include an account of the data conversion that was required for their proper function.
+
 \section{Classifiers}\label{classifiers}
-% odkaz na CoNLL2009, knihovny LibLINEAR, LibSVM -- kratky obecny popis L2-reg Log. Regression, SVM
-% vztah Log. Regr. a MaxEnt
+
+As we already pointed out in Chapters \ref{intro} and \ref{related}, the \emph{Maxim Entropy} (MaxEnt) models \citep[p. 219ff.]{jelinek97} are one of the most used techniques in many different NLP tasks \citep[p. 607f.]{manning00} including SRL \citep{jiang06,zhao09,che09,chen09}. This is possibly thanks to the fact that their base idea of finding a conditional probability distribution with a maximum entropy subject to given constraints, i.e. ``the most uniform model subject to our knowledge'' \citep[p. 41]{berger96} is very straightforward and effective. The basic form of the conditional probability model \citep{malouf02}, which predicts a probability of target event (such as semantic class) $y$ given a context $x$, looks as follows: 
+\begin{equation}
+q_\theta(y|x) = \frac{\exp(\theta^T f(y)}{\sum y'\in Y(x) \exp(\theta^T f(y'))}
+\end{equation}
+The function $f$ corresponds to an $N$-dimensional vector of features (see Section \ref{features}) and $\theta$ is the corresponding weight vector. $Y$ determines all the possible events given the context $x$. The weights of the model are then trained to satisfy the maximum entropy condition, which is equivalent to minimizing the relative entropy \citep[or Kullback-Leibler Divergence][p. 72]{manning00} of the model $q_\theta$ to the empirical distribution $p$ observed on the training data (expectation of the individual features' frequencies), or maximizing the log-likelihood:
+\begin{equation}
+\min_\theta D(p||q_\theta) = \sum_{y,x} p(y,x) \log\frac{p(y|x)}{q_\theta(y|x)} = \max_\theta L(\theta) = \sum_{y,x} p(y,x) \log q_\theta(y|x)
+\end{equation}
+The techniques of fitting the model to the training data usually involve an iterative approach to the zero gradient of the log-likelihood function.
+
+Another widely used approach to classification is the Support Vector Machine \citep{boser92}. Its basic idea is representing the (training) data as points in $N+1$-dimensional space, whose coordinates are given by the function $\phi(x)$ of the features and by the value of the target event $y$, and trying to separate the different target events with a hyperplane that has the maximum margin (distance to the nearest point). If we assume that the target event $y$ has only two possible values $\{1,-1\}$\footnote{Most SVM libraries are, however, capable of solving a problem with multiple possible target classes, e.g. by using multiple SVMs, each predicting one of the classes.}, the hyperplanes that are parallel to the maximum margin separator and touch the nearest data points of both target classes (the \emph{support vectors}) are then described by the equations:
+\begin{equation}
+w^T x + b = 1\quad\mbox{and}\quad w^T x + b = -1
+\end{equation}
+Maximizing the distance $\frac{2}{||w||}$ leads to minimizing $||w||$ under the circumstances that the hyperplane fits the training data, which yields the following optimization problem \citep{hsu03}, given training examples $x_i,y_i;\ i = 1\dots p$:
+\begin{equation}\label{eq:svm-primal}
+\min_{w,b} \frac{1}{2}w^T w\quad\mbox{subject to}\quad y_i(w^T\phi(x_i) + b)\geq 1
+\end{equation}
+This may then be transformed using Lagrangian multipliers \citep{cristianini00}:
+\begin{equation}
+\min_{w,b} \max_{\alpha} \frac{1}{2}w^T w - \sum_{i=1}^p \alpha_i(y_i(w^T\phi(x_i) _ b) - 1)
+\end{equation}
+Now we may solve the equation using Quadratic Programming and get the solution $w = \sum_{i=1}^p \alpha_i y_i \phi(x_i)$, $\sum_{i=1}^p \alpha_i y_i = 0$, which finally results in the optimization problem:
+\begin{equation}
+\max_{\alpha} = \sum_{i=1}^p \alpha_i - \frac{1}{2}\sum_{i=1}^p y_i y_j \alpha_i \alpha_j (\phi(x_i)^T \phi(x_j))\quad\mbox{subject to}\quad \sum_{i=1}^p \alpha_i y_i = 0,\ \alpha_i = 0\ \forall i
+\end{equation}
+The $\phi(x_i)^T \phi(x_j)$ term is called the \emph{kernel} function, while the most usual kernels are linear ($x_i^T x_j$)\footnote{In the CoNLL 2009 contest, \citet{che09} describes using SVM with this type of kernel.} and radial ($\gamma x_i^T x_j + r)^d$). As in most real-life classification problems it is impossible to find a hyperplane that would separate both target event values for all training examples, a regularization \citep{neumaier98} term $\xi$ is introduced into the Equation \ref{eq:svm-primal}, which penalizes classification errors, transforming it to the following shape \citep{cortes95}:
+\begin{equation}
+\min_{w,b} \frac{1}{2}w^T w + C\sum_{i=1}^p \xi_i \quad\mbox{subject to}\quad y_i(w^T\phi(x_i) + b)\geq 1 - \xi_i
+\end{equation}
+The $C$ parameter is then interpreted as the penalty cost. There are several possible shapes of the regularization function, most common being $L_1$ ($\max(1-y_i w^T x_i, 0)$) and $L_2$ ($\max(1-y_i w^T x_i, 0)^2$) norms for support vector machines \citep{fan08}.
+
+The Logistic Regression \citep{hosmer00}, another common classifier type, is a variant of a generalized linear regression model \citep{maccullagh91}. The following model form is used to predict the binary target event $y$ given a feature vector $x$ and a weight vector $\theta$ \citep{lee06}:
+\begin{equation}
+p(y = 1|x,\theta) = \frac{1}{1 + \exp(-\theta^T x)}
+\end{equation}
+
+
 \section{Data Conversion}\label{conversion}
 % prevod z puv. formatu do formatu pro klasifikatory
 % sent-id word-id
-\section{Features}
+\section{Features}\label{features}
 % popis vsech featur, vc. word clusteru
-\section{Feature Selection Algorithms}
+\section{Feature Selection Algorithms}\label{featsel}
 % ruzne druhy rankingu, mRMR, mutual information etc.
 % greedy forward
 
@@ -418,7 +479,7 @@ in: "data-b.dat",
 % oddeleni identifikace a klasifikace vs. klasifikace rovnou
 \section{Merging Rare Predicates}
 % slucovani ridkych predikatu se shodnym valencnim ramcem <- nezapomenout na prohazování pos, když vypadalo chybne
-\section{Post-Inference on Valency Arguments}
+\section{Post-Inference on Valency Arguments}\label{post-inference}
 % omezeni na neopakovani se valencnich roli
 % pokusy s primitivnim klasifikatorem, s LPSolve 
 \section{Adverbial Modifiers Labelling}
