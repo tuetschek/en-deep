@@ -374,7 +374,7 @@ public class StringUtils {
     }
 
     /**
-     * This returns the expansion, if the given string matches the given "*"/"**"-pattern (only one "*" allowed).
+     * This returns the expansion, if the given string matches the given "*"/"**"-pattern (only one variable allowed).
      * If file sub-specifications are needed, call {@link #normalizeFilePattern(java.lang.String)} first.
      * 
      * @param string the string to be tested
@@ -383,7 +383,7 @@ public class StringUtils {
      */
     public static String matches(String string, String pattern){
 
-        pattern = pattern.replaceFirst("\\*+", "*"); // ensure we have just one star in the pattern
+        pattern = pattern.replaceFirst("(\\*+|\\$[0-9])", "*"); // ensure we have just one variable in the pattern
 
         String patternStart = pattern.substring(0, pattern.indexOf("*"));
         String patternEnd = pattern.endsWith("*") ? "" : pattern.substring(pattern.indexOf("*") + 1);

@@ -81,6 +81,8 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String SAVE_MODEL = "save_model";
     /** Name of the `load_model' parameter */
     private static final String LOAD_MODEL = "load_model";
+    /** Pattern to match input files and create output files */
+    private static final String PATTERN = "pattern";
 
     /* DATA */
 
@@ -140,7 +142,10 @@ public class WekaClassifier extends GeneralClassifier {
      * and binarization settings are then taken from this file as well (i.e. all attributes except <tt>prob_dist</tt>
      * are ignored).</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
-     * additional output) for later use<tt>
+     * additional output) for later use<tt></li>
+     * <li><tt>pattern</tt> -- if the parameter is set and the (first) output is a pattern,
+     * this is assumed to be a pattern matching the input evaluation files, so that replacements may be created
+     * on the output for every one of them.</li>
      * </ul>
      * <p>
      * Parameters <tt>select_args</tt> a <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
@@ -265,7 +270,7 @@ public class WekaClassifier extends GeneralClassifier {
             this.trainModel(trainFile);
         }
 
-        for (int fileNo = 0; fileNo < evalFiles.size(); ++fileNo){
+        for (int fileNo = 0; evalFiles != null && fileNo < evalFiles.size(); ++fileNo){
 
             // read the evaluation data and find out the target class
             Logger.getInstance().message(this.id + ": reading " + evalFiles.get(fileNo) + "...", Logger.V_DEBUG);
@@ -470,9 +475,29 @@ public class WekaClassifier extends GeneralClassifier {
         return out;
     }
 
+    /**
+     * This not only checks the number of inputs and outputs, but also handles output '**' patterns,
+     * if there are some.
+     * @throws TaskException
+     */
     @Override
     protected void checkNumberOfOutputs() throws TaskException {
-        
+
+        if (this.hasParameter(PATTERN) && StringUtils.hasPatternVariables(this.output.get(0), true)){
+
+            String pattern = StringUtils.getPath(this.parameters.remove(PATTERN));
+            Vector<String> repls = new Vector<String>();
+
+            for (String in : this.input){
+                String match = StringUtils.matches(in, pattern);
+                if (match != null){
+                    repls.add(StringUtils.replace(this.output.get(0), match));
+                }
+            }
+            this.output.remove(0);
+            this.output.addAll(0, repls);
+        }
+
         int numIn = this.input.size()-1;
         if (this.getBooleanParameterVal(ARGS_FILE)){
             numIn--;
