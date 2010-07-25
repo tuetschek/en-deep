@@ -31,7 +31,9 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Set;
 import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instances;
@@ -168,7 +170,7 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @throws NumberFormatException
      * @throws TaskException
      */
-    private String filterAttribute(String attrName, Instances[] data, boolean [] allowedIndexes) throws
+    private String filterAttribute(String attrName, Instances[] data, Set<String> allowedValues) throws
             NumberFormatException, TaskException {
 
         String newName = attrName + ATTR_NAME_SUFF;
@@ -183,18 +185,11 @@ public class AttributeFilter extends MergedHeadersOutput {
             }
         }
 
-        Vector<String> allowedValues = new Vector<String>();
-
-        for (int i = 0; i < allowedIndexes.length; ++i) {
-            if (allowedIndexes[i]) {
-                allowedValues.add(data[0].attribute(attrName).value(i));
-            }
-        }
         allowedValues.add(OTHER_VALUE);
 
-        Attribute newAttr = new Attribute(newName, allowedValues);
+        Attribute newAttr = new Attribute(newName, new Vector<String>(allowedValues));
         for (int i = 0; i < data.length; ++i) {
-            this.addFiltered(data[i], attrName, newAttr, allowedIndexes);
+            this.addFiltered(data[i], attrName, newAttr, allowedValues);
             if (this.delOrig) {
                 // delete the old attribute if necessary
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
@@ -237,14 +232,33 @@ public class AttributeFilter extends MergedHeadersOutput {
         // filter all matching attributes
         StringBuilder sb = new StringBuilder();
         for (String attrName : matches){
+
+            Vector<String> vals = this.getAttributeValues(data[0], attrName);
             // collect statistics about the given attribute and create its filtered version
             int minOccur = this.getMinOccurrences(data);
             int[] stats = this.collectStatistics(data, attrName);
-            boolean[] allowedIndexes = this.filterValues(stats, minOccur);
+            Set<String> allowedVals = this.filterValues(stats, minOccur, vals);
 
-            sb.append(this.filterAttribute(attrName, data, allowedIndexes)).append("\n");
+            sb.append(this.filterAttribute(attrName, data, allowedVals)).append("\n");
         }
         return sb.toString();
+    }
+
+    /**
+     * This returns all the values of the given attribute.
+     * @param data the data where the attribute is located
+     * @param attrName the name of the attribute
+     * @return all the possible values of the attribute
+     */
+    private Vector<String> getAttributeValues(Instances data, String attrName){
+
+        Attribute attr = data.attribute(attrName);
+        Vector<String> vals = new Vector<String>(attr.numValues());
+
+        for (int i = 0; i < attr.numValues(); ++i){
+            vals.add(attr.value(i));
+        }
+        return vals;
     }
 
 
@@ -279,9 +293,9 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param minOccurrences the minimum number of occurrences the values must have
      * @return true for the values that have passed the filtering, false otherwise
      */
-    private boolean [] filterValues(int[] stats, int minOccurrences) {
+    private Set<String> filterValues(int[] stats, int minOccurrences, Vector<String> vals) {
 
-        boolean [] allowedVals = new boolean [stats.length];
+        HashSet<String> allowedVals = new HashSet<String>();
 
         if (this.mostCommon > 0){
             
@@ -302,13 +316,13 @@ public class AttributeFilter extends MergedHeadersOutput {
                 }
             }
             for (int i = 0; i < top.length && top[i] != -1; ++i){
-                allowedVals[top[i]] = true;
+                allowedVals.add(vals.get(top[i]));
             }
         }
         else {
             for (int i = 0; i < stats.length; ++i){
                 if (stats[i] > minOccurrences){
-                    allowedVals[i] = true;
+                    allowedVals.add(vals.get(i));
                 }
             }
         }
@@ -322,19 +336,28 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param data the data where the attribute is to be inserted
      * @param attrPrefix the name of the old attribute
      * @param newAttr the new attribute
-     * @param allowedIndexes indexes of the allowed values of the old attribute
+     * @param allowedValues the allowed values of the old attribute
      */
-    private void addFiltered(Instances data, String attrName, Attribute newAttr, boolean [] allowedIndexes) {
+    private void addFiltered(Instances data, String attrName, Attribute newAttr, Set<String> allowedValues) {
 
-        int oldIndex = data.attribute(attrName).index();
+        Attribute oldAttr = data.attribute(attrName);
+        int oldIndex = oldAttr.index();
         
+        boolean [] allowedIdxs = new boolean [oldAttr.numValues()]; // create map for faster queries
+        for (int i = 0; i < oldAttr.numValues(); ++i){
+            if (allowedValues.contains(oldAttr.value(i))){
+                allowedIdxs[i] = true;
+            }
+        }
+
         data.insertAttributeAt(newAttr, oldIndex + 1);
         newAttr = data.attribute(oldIndex + 1);
 
         for (int i = 0; i < data.numInstances(); ++i){
-            int value = (int) data.instance(i).value(oldIndex);
-            if (allowedIndexes[value]){
-                data.instance(i).setValue(newAttr, data.attribute(oldIndex).value(value));
+            int val = (int) data.instance(i).value(oldIndex);
+            
+            if (allowedIdxs[val]){
+                data.instance(i).setValue(newAttr, oldAttr.value(val));
             }
             else {
                 data.instance(i).setValue(newAttr, OTHER_VALUE);
@@ -408,21 +431,11 @@ public class AttributeFilter extends MergedHeadersOutput {
 
     /**
      * This is the main data processing method -- it calls {@link #filterAttributePrefix(Instances[], String)} for
-     * all the attribute prefixes.
+     * all the attribute prefixes. Data compatibility is assumed.
      * @param data the data to be processed
      */
     @Override
     protected String processData(Instances[] data, String info) throws Exception {
-
-        // check data compatibility
-        if (data.length > 1) {
-            for (int i = 1; i < data.length; ++i) {
-                if (!data[i].equalHeaders(data[0])) {
-                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                            "Data from different files are not compatible.");
-                }
-            }
-        }
 
         if (info == null){
             StringBuilder sb = new StringBuilder();
@@ -436,8 +449,8 @@ public class AttributeFilter extends MergedHeadersOutput {
 
             for (String attribInfo : attribInfos){
                 String [] nameVal = attribInfo.split(":", 2);
-                boolean [] allowedIndexes = this.findAllowedIndexes(data, nameVal[0], nameVal[1]);
-                this.filterAttribute(nameVal[0], data, allowedIndexes);
+                Set<String> allowedVals = this.findAllowedValues(data, nameVal[0], nameVal[1]);
+                this.filterAttribute(nameVal[0], data, allowedVals);
             }
             return info;
         }
@@ -445,14 +458,14 @@ public class AttributeFilter extends MergedHeadersOutput {
 
 
     /**
-     * Given the input info line, this finds out the valid attribute indexes.
+     * Given the input info line, this finds out the valid attribute values.
+     *
      * @param data the data to be processed (equal headers assumed)
      * @param attrName the name of the attribute to be processed
      * @param values the string list of allowed attribute value labels (quoted)
-     * @return array with true set at allowed indexes
-     * @throws TaskException
+     * @return a set of allowed values
      */
-    private boolean [] findAllowedIndexes(Instances [] data, String attrName, String values) throws TaskException{
+    private Set<String> findAllowedValues(Instances [] data, String attrName, String values) throws TaskException{
 
         Attribute attr = data[0].attribute(attrName);
         if (attr == null || !attr.isNominal()){
@@ -460,18 +473,13 @@ public class AttributeFilter extends MergedHeadersOutput {
         }
 
         // parse the values
-        boolean [] valMap = new boolean [attr.numValues()];
         Vector<String> valList = StringUtils.parseCSV(values);
+        HashSet<String> valSet = new HashSet<String>(valList.size());
 
-        for (String val : valList){
-            val = StringUtils.unquote(val.trim());
-            if (attr.indexOfValue(val) == -1){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attrName + " missing"
-                        + " value " + val);
-            }
-            valMap[attr.indexOfValue(val)] = true;
+        for (int i = 0; i < valList.size(); ++i){
+            valSet.add(StringUtils.unquote(valList.get(i).trim()));
         }
-        return valMap;
+        return valSet;
     }
 
 }
