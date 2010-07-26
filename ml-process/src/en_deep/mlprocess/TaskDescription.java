@@ -402,7 +402,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      *
      * @param expansion the pattern expansion to be used
      * @param variableNo the number of the variable to be replaced
-     * @return a copy of this task, expanded, or null if the expansion is not valid.
+     * @return a copy of this task, expanded, or a total copy.
      */
     public TaskDescription expand(String expansion, int variableNo){
 

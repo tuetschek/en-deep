@@ -102,14 +102,14 @@ public class TaskExpander {
             return;
         }
 
-        this.expandInputs();
-
-        // check if all the outputs have "*" or "**"'s (otherwise, there's no point in using "*" or "***"
-        // for inputs)
-        if (!task.allOutputPatterns()){
+        // check if all the outputs have "*" or "**"'s (otherwise, there's no point in using "*" for inputs)
+        if (this.task.hasInputPatterns(false) && !this.task.allOutputPatterns()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, this.task.getId(),
                     "All outputs must have '*' or '**' patterns if inputs have '*' patterns.");
         }
+
+        // expand the inputs
+        this.expandInputs();
 
         // expand outputs and dependent tasks using the expanded task name (if we can--"**"'s are never expanded)
         if (!this.task.hasOutputPatterns(true)){

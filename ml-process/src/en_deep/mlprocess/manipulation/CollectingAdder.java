@@ -224,7 +224,7 @@ public class CollectingAdder extends Task {
                     mainHeader.deleteAttributeAt(idx);
                     mainHeader.insertAttributeAt(newAttr, idx);
                     this.addedIdxs[i] = idx;
-                    Logger.getInstance().message(this.id + "Attributre " + this.attribNames[i] + " will be overwritten"
+                    Logger.getInstance().message(this.id + "Attribute " + this.attribNames[i] + " will be overwritten"
                             + " in the main data set.", Logger.V_WARNING);
                 }
                 else {

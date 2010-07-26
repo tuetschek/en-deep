@@ -111,11 +111,11 @@ public class FileGroupsMerger extends GroupInputsTask {
             for (String key : files[i].keySet()){               
                 for (int j = i+1; j < files.length; ++j){
 
-                    key = this.reAffix(key, i, j);
+                    String affixKey = this.reAffix(key, i, j);
 
-                    if (files[j].containsKey(key)){
+                    if (files[j].containsKey(affixKey)){
                         throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
-                                "Files " + files[i].get(key) + " and " + files[j].get(key) +
+                                "Files " + files[i].get(key) + " and " + files[j].get(affixKey) +
                                 " collide in their expansion.");
                     }
                 }
