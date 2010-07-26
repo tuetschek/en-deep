@@ -66,6 +66,8 @@ public class CollectingAdder extends Task {
     private static final String ATTRIBS = "attribs";
     /** The 'pattern' parameter name */
     private static final String PATTERN = "pattern";
+    /** The `nominal' parameter name */
+    private static final String NOMINAL = "nominal";
 
     /* DATA */
 
@@ -111,9 +113,11 @@ public class CollectingAdder extends Task {
      * <li><tt>attribs</tt> -- the attributes that should be added into the large data set</li>
      * <li><tt>pattern</tt> -- pattern for creating file names of small data sets from the file attribute in
      * the large data sets</tt>
+     * <li><tt>nominal</tt> -- if set, the added nominal attribute won't be converted to string, but must
+     * have the same set of values across all small data files </li>
      * </ul>
      * There must be more than one input and just one output. All nominal attributes are considered string on
-     * the output.
+     * the output (except for the added nominal attribute).
      */
     public CollectingAdder(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
@@ -213,7 +217,7 @@ public class CollectingAdder extends Task {
             for (int i = 0; i < this.attribNames.length; ++i){
 
                 Attribute newAttr = smallHeader.attribute(this.attribNames[i]);
-                if (newAttr.type() == Attribute.NOMINAL){
+                if (newAttr.type() == Attribute.NOMINAL && !this.getBooleanParameterVal(NOMINAL)){
                     newAttr = new Attribute(newAttr.name(), (List<String>) null);
                 }
 
@@ -266,6 +270,9 @@ public class CollectingAdder extends Task {
 
                 default:
                     data[numTokens] = this.arffTokenizer.sval != null ? this.arffTokenizer.sval : "";
+                    if (data[numTokens].equals("?")){
+                        data[numTokens] = null;
+                    }
                     try {
                         if ((this.arffTokenizer.sval.charAt(0) >= '0' && this.arffTokenizer.sval.charAt(0) <= '9')
                                 || this.arffTokenizer.sval.charAt(0) == '.'){
@@ -405,13 +412,13 @@ public class CollectingAdder extends Task {
         }
         this.out.print(StringUtils.join(orig, ",", true));
         for (int i = 0; i < this.addedIdxs.length; ++i){
-            if (this.addedIdxs[i] <= orig.length){
+            if (this.addedIdxs[i] >= orig.length){
                 Attribute attr = this.smallData.attribute(this.attribNames[i]);
                 if (attr.isNumeric()){
                     this.out.print("," + added.value(attr));
                 }
                 else {
-                    this.out.print(",\"" + added.stringValue(attr) + "\"");
+                    this.out.print(",\"" + StringUtils.escape(added.stringValue(attr)) + "\"");
                 }
             }
         }

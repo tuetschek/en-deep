@@ -243,7 +243,7 @@ public class PredicateMerger extends GroupInputsTask {
      * The sub-tasks are created with main task id and synchronously, so that they can't be distinguished
      * from the main task.
      */
-    private void mergeGroups() throws TaskException {
+    private void mergeGroups() throws TaskException, IOException {
 
         Hashtable<String, String> mergeParams = new Hashtable<String, String>();
 
@@ -253,6 +253,17 @@ public class PredicateMerger extends GroupInputsTask {
         }
         for (String frame : this.grouped.keySet()){
 
+            // just one word of the frame - we earn nothing by merging -> just copy it
+            if (this.grouped.get(frame).size() == 1){
+
+                String in = this.grouped.get(frame).iterator().next();
+
+                Logger.getInstance().message(this.id + ": Copying single " + in + " to the output ...",
+                        Logger.V_INFO);
+                FileUtils.copyFile(in, StringUtils.replace(this.output.get(0), this.outPrefix 
+                        + StringUtils.matches(in, this.patterns[0])));
+                continue;
+            }
             Vector<String> mergeIn = new Vector<String>(this.grouped.get(frame));
             Vector<String> mergeOut = new Vector<String>(1);
             mergeOut.add(StringUtils.replace(this.output.get(0), this.outPrefix + frame));

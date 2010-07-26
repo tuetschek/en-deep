@@ -112,7 +112,7 @@ public class TaskExpander {
         this.expandInputs();
 
         // expand outputs and dependent tasks using the expanded task name (if we can--"**"'s are never expanded)
-        if (!this.task.hasOutputPatterns(true)){
+        if (this.task.hasOutputPatterns(false) && !this.task.hasOutputPatterns(true)){
             this.expandOutputsAndDeps(this.task);
         }
 
@@ -157,12 +157,14 @@ public class TaskExpander {
     /**
      * This expands outputs for all tasks to which the original task expanded, according to their
      * pattern replacements. It assumes the expansions of the task are already located in {@link #expansions}.
+     * It also assumes that there are some outputs to be expanded.
+     * 
      * @param original the original, unexpanded task
      */
     private void expandOutputs(TaskDescription original) throws TaskException {
 
         // if there are some pattern and some non-pattern outputs, something is wrong
-        if (task.getOutputPatternPos(false).size() != task.getOutput().size()){
+        if (this.task.getOutputPatternPos(false).size() != this.task.getOutput().size()){
             throw new TaskException(TaskException.ERR_PATTERN_SPECS, task.getId(),
                     "Some outputs have '*' patterns and some don't.");
         }

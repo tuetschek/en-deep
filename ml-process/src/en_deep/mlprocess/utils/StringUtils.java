@@ -85,7 +85,8 @@ public class StringUtils {
      * given string.
      * @param data the objects, whose string representations are to be joined
      * @param sep field separator
-     * @param escape if set, it will enclose all string values in quotes and escape them
+     * @param escape if set, it will enclose all string values in quotes and escape them; treat missing values
+     *  as unquoted `?'s.
      * @return the concatenation of all the objects' string representations using the given separator
      */
     public static String join(Object[] data, String sep, boolean escape) {
@@ -95,7 +96,10 @@ public class StringUtils {
             if (i > 0){
                 sb.append(sep);
             }
-            if (escape && !(data[i] instanceof Double)){
+            if (escape && data[i] == null){
+                sb.append("?");
+            }
+            else if(escape && !(data[i] instanceof Double)){
                 sb.append("\"").append(escape(data[i].toString())).append("\"");
             }
             else {

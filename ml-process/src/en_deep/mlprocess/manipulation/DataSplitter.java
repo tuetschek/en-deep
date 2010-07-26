@@ -56,6 +56,8 @@ public class DataSplitter extends MultipleOutputsTask {
     private static final String ONE_VS_OTHERS = "one_vs_others";
     /** The name of the 'attr_rel' parameter */
     private static final String ATTR_REL = "attr_rel";
+    /** The remove_attr parameter name */
+    private static final String REMOVE_ATTR = "remove_attr";
 
     /* DATA */
 
@@ -84,6 +86,7 @@ public class DataSplitter extends MultipleOutputsTask {
      * (the filename will have "others" in it)</li>
      * <li><tt>attr_rel</tt> -- enables a special mode where the values of the splitting attribute
      * are used as relation names and expansion patterns for the new files</li>
+     * <li><tt>remove_attr</tt> -- if set, removes the attribute of splitting (not for one-vs-others)</li>
      * </u>
      *
      * @param id the task id
@@ -190,11 +193,16 @@ public class DataSplitter extends MultipleOutputsTask {
                 subset.setRelationName(oldName);
                 outputFile = StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-" + value);
             }
+            if (this.getBooleanParameterVal(REMOVE_ATTR)){
+                subset.deleteAttributeAt(splitAttrib.index());
+            }
 
-            // write the output to the file            
-            Logger.getInstance().message(this.id + ": splitting " + inputFile
-                    + " to " + outputFile + "...", Logger.V_DEBUG);
-            FileUtils.writeArff(outputFile, subset);
+            // write the output to the file
+            if (!subset.isEmpty()){
+                Logger.getInstance().message(this.id + ": splitting " + inputFile
+                        + " to " + outputFile + "...", Logger.V_DEBUG);
+                FileUtils.writeArff(outputFile, subset);
+            }
         }
     }
 
@@ -230,10 +238,14 @@ public class DataSplitter extends MultipleOutputsTask {
 
         Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
 
-        FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-"
-                + this.selectedVal), positive);
-        FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-other"),
-                negative);
+        if (!positive.isEmpty()){
+            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-"
+                    + this.selectedVal), positive);
+        }
+        if (!negative.isEmpty()){
+            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-other"),
+                    negative);
+        }
 
     }
 
