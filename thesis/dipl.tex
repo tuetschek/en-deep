@@ -413,17 +413,31 @@ After careful consideration of the various machine learning solutions available 
 
 \section{Classifiers}\label{classifiers}
 
-As we already pointed out in Chapters \ref{intro} and \ref{related}, the \emph{Maxim Entropy} (MaxEnt) models \citep[p. 219ff.]{jelinek97} are one of the most used techniques in many different NLP tasks \citep[p. 607f.]{manning00} including SRL \citep{jiang06,zhao09,che09,chen09}. This is possibly thanks to the fact that their base idea of finding a conditional probability distribution with a maximum entropy subject to given constraints, i.e. ``the most uniform model subject to our knowledge'' \citep[p. 41]{berger96} is very straightforward and effective. The basic form of the conditional probability model \citep{malouf02}, which predicts a probability of target event (such as semantic class) $y$ given a context $x$, looks as follows: 
+As we already pointed out in Chapters \ref{intro} and \ref{related}, the \emph{Maximum Entropy} (MaxEnt) models \citep[p. 219ff.]{jelinek97} are one of the most used techniques in many different NLP tasks \citep[p. 607f.]{manning00} including SRL \citep{jiang06,zhao09,che09,chen09}. This is possibly thanks to the fact that their base idea of finding a conditional probability distribution with a maximum entropy subject to given constraints, i.e. ``the most uniform model subject to our knowledge'' \citep[p. 41]{berger96} is very straightforward and effective. The basic form of the conditional probability model \citep{malouf02}, which predicts a probability of target event (such as semantic class) $y\in Y$ given a context $x$, looks as follows: 
 \begin{equation}
-q_\theta(y|x) = \frac{\exp(\theta^T f(y)}{\sum y'\in Y(x) \exp(\theta^T f(y'))}
+q_\theta(y|x) = \frac{\exp(\theta^T f(x,y))}{\sum_{y'\in Y} \exp(\theta^T f(x,y'))}
 \end{equation}
-The function $f$ corresponds to an $N$-dimensional vector of features (see Section \ref{features}) and $\theta$ is the corresponding weight vector. $Y$ determines all the possible events given the context $x$. The weights of the model are then trained to satisfy the maximum entropy condition, which is equivalent to minimizing the relative entropy \citep[or Kullback-Leibler Divergence][p. 72]{manning00} of the model $q_\theta$ to the empirical distribution $p$ observed on the training data (expectation of the individual features' frequencies), or maximizing the log-likelihood:
-\begin{equation}
-\min_\theta D(p||q_\theta) = \sum_{y,x} p(y,x) \log\frac{p(y|x)}{q_\theta(y|x)} = \max_\theta L(\theta) = \sum_{y,x} p(y,x) \log q_\theta(y|x)
+The function $f$ represents an $N$-dimensional vector of features (see Section \ref{features}) and $\theta$ is the corresponding weight vector. The weights of the model are then trained to satisfy the maximum entropy condition, which is equivalent to minimizing the relative entropy \citep[or Kullback-Leibler Divergence][p. 72]{manning00} of the model $q_\theta$ to the empirical distribution $p$ observed on the training data (expectation of the individual features' frequencies), or maximizing its a-posteriori probability (conditional probability given the training data), which is usually expressed in terms of the log-likelihood function:
+\begin{equation}\label{eq:maxent}
+\min_\theta D(p||q_\theta) = \min_\theta \sum_{y,x} p(y,x) \log\frac{p(y|x)}{q_\theta(y|x)} = \max_\theta L(\theta) = \max_\theta \sum_{y,x} p(y,x) \log q_\theta(y|x)
 \end{equation}
 The techniques of fitting the model to the training data usually involve an iterative approach to the zero gradient of the log-likelihood function.
 
-Another widely used approach to classification is the Support Vector Machine \citep{boser92}. Its basic idea is representing the (training) data as points in $N+1$-dimensional space, whose coordinates are given by the function $\phi(x)$ of the features and by the value of the target event $y$, and trying to separate the different target events with a hyperplane that has the maximum margin (distance to the nearest point). If we assume that the target event $y$ has only two possible values $\{1,-1\}$\footnote{Most SVM libraries are, however, capable of solving a problem with multiple possible target classes, e.g. by using multiple SVMs, each predicting one of the classes.}, the hyperplanes that are parallel to the maximum margin separator and touch the nearest data points of both target classes (the \emph{support vectors}) are then described by the equations:
+The Logistic Regression \citep{hosmer00}, another very common classifier type, is a variant of a generalized linear regression model \citep{maccullagh91}. The following model form is used to predict the binary\footnote{It is, however, technically possible to classify multi-class target event using a binary classifier, e.g. by using multiple classifiers, each predicting one of the classes.} target event $y \in\{-1,1\}$ given a feature vector $x$ and a weight vector $\theta$ \citep{lee06}:
+\begin{equation}
+p(y|x,\theta) = \frac{1}{1 + \exp(-y\theta^T x)}
+\end{equation}
+The model is fitted to the training data $x_i,y_i;\ i = 1\dots p$ by maximizing its a-posteriori probability --- in a way analogous to MaxEnt (Equation \ref{eq:maxent}):
+\begin{equation}\label{eq:logreg}
+\max_\theta L(\theta) = \max_\theta \sum_{i=1}^p \log \frac{1}{1 + \exp(-y_i\theta^T x_i)} = \min_\theta \sum\log(1 + \exp(-y_i\theta^T x_i))
+\end{equation}
+This optimization problem is also solved using iterative methods \citep{fan08}. \citet{blower04} provides a proof that the logistic regression is equivalent to MaxEnt (for binary target events):
+\begin{equation}
+
+\end{equation}
+This gives us two variants of the same basic idea.
+
+Another widely used approach to classification is the Support Vector Machine \citep{boser92}. Its basic idea is representing the (training) data as points in $N+1$-dimensional space, whose coordinates are given by the function $\phi(x)$ of the features and by the value of the target event $y$, and trying to separate the different target events with a hyperplane that has the maximum margin (distance to the nearest point). If we assume that the target event $y$ is binary\footnote{Most SVM libraries are also capable of solving a problem with multiple possible target classes.} --- $y\in \{1,-1\}$, the hyperplanes that are parallel to the maximum margin separator and touch the nearest data points of both target classes (the \emph{support vectors}) are then described by the equations:
 \begin{equation}
 w^T x + b = 1\quad\mbox{and}\quad w^T x + b = -1
 \end{equation}
@@ -439,17 +453,19 @@ Now we may solve the equation using Quadratic Programming and get the solution $
 \begin{equation}
 \max_{\alpha} = \sum_{i=1}^p \alpha_i - \frac{1}{2}\sum_{i=1}^p y_i y_j \alpha_i \alpha_j (\phi(x_i)^T \phi(x_j))\quad\mbox{subject to}\quad \sum_{i=1}^p \alpha_i y_i = 0,\ \alpha_i = 0\ \forall i
 \end{equation}
-The $\phi(x_i)^T \phi(x_j)$ term is called the \emph{kernel} function, while the most usual kernels are linear ($x_i^T x_j$)\footnote{In the CoNLL 2009 contest, \citet{che09} describes using SVM with this type of kernel.} and radial ($\gamma x_i^T x_j + r)^d$). As in most real-life classification problems it is impossible to find a hyperplane that would separate both target event values for all training examples, a regularization \citep{neumaier98} term $\xi$ is introduced into the Equation \ref{eq:svm-primal}, which penalizes classification errors, transforming it to the following shape \citep{cortes95}:
+The $\phi(x_i)^T \phi(x_j)$ term is called the \emph{kernel} function, while the most usual kernels are linear ($x_i^T x_j$)\footnote{In the CoNLL 2009 contest, \citet{che09} describes using SVM with this type of kernel.} and radial ($\gamma x_i^T x_j + r)^d$). 
+
+As in most real-life classification problems it is impossible to find a hyperplane that would separate both target event values for all training examples, a regularization \citep{neumaier98} term $\xi$ is introduced into the Equation \ref{eq:svm-primal}, which penalizes classification errors, transforming it to the following shape \citep{cortes95}:
 \begin{equation}
 \min_{w,b} \frac{1}{2}w^T w + C\sum_{i=1}^p \xi_i \quad\mbox{subject to}\quad y_i(w^T\phi(x_i) + b)\geq 1 - \xi_i
 \end{equation}
-The $C$ parameter is then interpreted as the penalty cost. There are several possible shapes of the regularization function, most common being $L_1$ ($\max(1-y_i w^T x_i, 0)$) and $L_2$ ($\max(1-y_i w^T x_i, 0)^2$) norms for support vector machines \citep{fan08}.
+The $C$ parameter is then interpreted as the penalty cost. There are several possible shapes of the regularization function for the SVM, most common being $L_1$ ($\max(1-y_i w^T x_i, 0)$) and $L_2$ ($\max(1-y_i w^T x_i, 0)^2$) norms \citep{fan08}.
 
-The Logistic Regression \citep{hosmer00}, another common classifier type, is a variant of a generalized linear regression model \citep{maccullagh91}. The following model form is used to predict the binary target event $y$ given a feature vector $x$ and a weight vector $\theta$ \citep{lee06}:
+Since correct classification of all the training examples may not be feasible with logistic regression, too, regularization is also applied to it \citep{ng04,fan08}, which transfers the Equation \ref{eq:logreg} to the following form:
 \begin{equation}
-p(y = 1|x,\theta) = \frac{1}{1 + \exp(-\theta^T x)}
+\min_\theta \sum\log(1 + \exp(-y_i\theta^T x_i)) + R(\theta)
 \end{equation}
-
+A function of the weight vector is used as the regularization term --- \citet{ng04} describe the application of $L_1$ and $L_2$ norms of $\theta$.
 
 \section{Data Conversion}\label{conversion}
 % prevod z puv. formatu do formatu pro klasifikatory
