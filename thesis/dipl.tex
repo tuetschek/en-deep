@@ -593,11 +593,13 @@ Moreover, we always convert the multiple-valued string features to a set of bina
  
 \chapter{Predicate Disambiguation}\label{pd}
 
-This chapter contains the technical description of the first part of our system. We have split the PD problem into several parts, according to the nature of the particular predicates (see Chapter \ref{pd-observe}), and applied various machine learning techniques described in Chapter \ref{ml-semantic}. Our data-conversion algorithm (introduced in Section \ref{conversion}) produced only the predicate words for the entire PD task, split into individual files for each predicate lemma. An account of our classifier tuning is given in Sections \ref{classifier-setting} and \ref{pd-training}. We will then include an overview of the whole solution.
+This chapter contains the technical description of the first part of our system. We have split the PD problem into several parts, according to the nature of the particular predicates (see Chapter \ref{pd-observe}), and applied various machine learning techniques described in Chapter \ref{ml-semantic}. An account of our classifier tuning is given in Sections \ref{classifier-setting} and \ref{pd-training}. We will then include an overview of the whole solution.
 
 \section{Observations on the Data}\label{pd-observe}
 
-As we already mentioned in Section \ref{data-format} and depicted in Table \ref{tab:corpus-stats}, a very broad range of predicates occurs in the CoNLL 2009 Corpus, with a small subset of them appearing only in one or two of the data sets. In addition, table \ref{tab:lemma-stats} shows the numbers of predicate lemmas and their coverage. We must therefore distinguish among the following cases:
+The first and most significant observation we made on the data is that as the predicate always consists of a lemma and a sense number, it is evident that predicate senses for different lemmas are completely independent of each other. This implies that splitting the data according to the lemma and training a separate classifier for each lemma is profitable, since this prevents the machine learning algorithm from selecting an incorrect lemma at all times, even with rare predicates. We therefore adopted this practice, similarly to \citet{che09} and \citet{nugues09}. Our data-conversion algorithm (introduced in Section \ref{conversion}) thus produced only the predicate words as the input for the entire PD task, split into individual files for each predicate lemma. 
+
+As we already mentioned in Section \ref{data-format} and depicted in Table \ref{tab:corpus-stats}, a very broad range of predicates occurs in the CoNLL 2009 Corpus, with a small subset of them appearing only in one or two of the data sets. Additionally, Table \ref{tab:lemma-stats} shows the numbers of predicate lemmas and their coverage. We must therefore distinguish among the following cases:
 \begin{enumerate}
     \item There are training and development instances of the given predicate lemma. \\
 This is by far the most common case, not only in number of the unique lemmas, but mainly in the number of instances. We are able to tune the classifier setting on the development set for such predicates.
@@ -655,14 +657,73 @@ The Group column contains the total numbers of lemmas assigned to the individual
 
 However, still a large number of predicate lemmas are not unary. We have divided them into three groups and handle them in a different way. Many lemmas sport only two or three senses; we denote such lemmas \emph{simple}, for their classification problems are not very complicated (as the number of instances is also not very high on average), which makes the classifier tuning less important and shifts the stress on the speed of the solution, so that all of the lemmas can be processed within a reasonable amount of time.
 
-Another, smaller group of predicate lemmas has a greater number of senses (four to eight, designated \emph{harder}), but there are still considerably many such lemmas. Therefore, the tuning of the classifier must be more sophisticated, but still fast enough to cope with many lemmas.
+Another, smaller group of predicate lemmas has a greater number of senses (four to eight, labeled \emph{harder}), but there are still considerably many such lemmas. Therefore, the tuning of the classifier must be more sophisticated, but still fast enough to cope with many lemmas.
 
 The last, but very important group of lemmas is highly ambiguous (we will refer to them as \emph{tough}) --- in most cases it is functional verbs and verbs that serve as the base element of multiple phrasal verbs, such as ``go'', ``take'', ``get'' etc. Only very few noun lemmas belong to the group, all of them representing very abstract and vague terms --- ``line'', ``way'', ``place'', ``hand''. We believe that for such a small group, a more time-consuming, but very accurate tuning algorithm must be applied.
 
 \section{Selecting the Classifier Setting}\label{classifier-setting}
+
+We have decided to use just one type of classifier with the same set of parameters for the whole task, because selecting the best algorithm and parameter set for each predicate lemma would complicate the process and increase the training times excessively. Therefore, we needed to obtain a classifier and a set of parameters with the highest average performance. We therefore created an experiment that would test several classifier types from the LibLINEAR and LibSVM packages (as indicated in Section \ref{classifiers}) with many different settings and compare them to each other. We used \emph{accuracy} \citep[a percentage of correctly classified senses][p. 269]{manning00} as the measure of comparison for the individual configurations, because all of the instances must be classified and there is no distinction between ``positive'' and ``negative'' instances, as with other standard measures, such as \emph{precision} and \emph{recall}.
+
+Since the amount of input data is too high to test each algorithm and each configuration on the whole training set, we created a smaller subset for our experiments, selecting 100 predicate lemmas with the biggest development data sets. Since most of the plentifully represented predicates are also more ambiguous than the average, this proved convenient for the selection of the optimal configuration mainly for the harder and tough lemmas, where the tuning is of the highest importance.
+
+We planned to apply feature selection on the training algorithms and hence took this into account also for this experiment: Our system used all the feature rankings discussed in Section \ref{featsel} and tried to find the optimal number of attributes in the range 4--30, then selected the best result of the individual rankings. We then averaged the results with the same classifier setting and established an estimate of confidence intervals using the \emph{bootstrapping} method \citep{efron79}: By iteratively selecting random subsets of the original output and determining their accuracy, we obtain an estimate of the probability distribution for the classifier output, whose percentiles give the desired interval. % TODO kontrola? 
+
+\begin{table}[htbp]
+\caption{Tested classifier configurations and their performance on the PD testing subset}\label{tab:pd-classifiers}\footnotesize
+\begin{center}
+\begin{tabular}{|l|l|l|c|c|c|}\hline
+\bf Software & \bf Classifier & \bf Parameters & \bf Acc. & \bf 5\% & \bf 95\% \\\cline{2-6}
+\multirow{24}{*}{LibLINEAR} & \multirow{4}{*}{$L_2$-Log. Regression} & C = 2; E = 0.001 & \bf 92.9 & 91.3 & 94.5 \\
+ & & C = 5, 10; E = 0.001 & 92.8 & 91.1 & 94.5 \\
+ & & C = 1; E = 0.001 & 92.7 & 91.0 & 94.4 \\
+ & & C = 5; E = 0.01 & 92.7 & 91.0 & 94.4 \\\cline{2-6}
+ & \multirow{5}{*}{Multiclass SVM} & C = 2; E = 0.001, 0.01, 0.1 & \bf 92.9 & 91.3 & 94.5 \\ 
+ &  & C = 0.05; E = 1 & 92.8 & 91.0 & 94.4 \\
+ &  & C = 0.1; E = 0.001, 1 & 92.8 & 91.2 & 94.2 \\
+ &  & C = 2; E = 1 & 92.8 & 91.3 & 94.4 \\
+ & & C = 5; E = * & 92.8 & 91.1 & 94.6 \\\cline{2-6}
+ & \multirow{5}{*}{$L_1$-SVM (Dual)} & C = 2; E = 0.001, 0.01, 0.1 & \bf 92.9 & 91.2 & 94.4 \\
+ & & C = 0.05; E = 1 & 92.8 & 91.2 & 94.4 \\
+ &  & C = 0.1; E = 0.001, 1 & 92.8 & 91.1 & 94.4 \\
+ & & C = 2; E = 1 & 92.8 & 91.1 & 94.5 \\
+ & & C = 5; E = * & 92.8 & 91.1 & 94.4 \\\cline{2-6}
+ & \multirow{5}{*}{$L_2$-SVM (Dual)} & C = 2; E = 0.001, 0.01, 0.1 & \bf 92.9 & 91.1 & 94.4 \\
+ &  & C = 0.05; E = 1 & 92.8 & 91.2 & 94.4 \\
+ &  & C = 0.1; E = 0.001, 1 & 92.8 & 91.2 & 94.5 \\
+ &  & C = 2; E = 1 & 92.8 & 91.1 & 94.4 \\
+ & & C = 5; E = * & 92.8 & 91.1 & 94.5 \\\cline{2-6}
+ & \multirow{5}{*}{$L_2$-SVM (Primal)} & C = 2; E = 0.001, 0.01, 0.1 & \bf 92.9 & 91.1 & 94.5 \\
+ &  & C = 0.05; E = 1 & 92.8 & 91.2 & 94.4 \\
+ &  & C = 0.1; E = 0.001, 1 & 92.8 & 91.2 & 94.4 \\
+ &  & C = 2; E = 1 & 92.8 & 91.2 & 94.5 \\
+ &  & C = 5; E = * & 92.8 & 91.1 & 94.4 \\\hline
+ \multirow{4}{*}{LibSVM} & \multirow{2}{*}{Linear Kernel} & C = 2, 5 & \bf 93.1 & 91.4 & 94.6 \\
+ &  & C = 1, 10 & 92.8 & 91.2 & 94.5 \\\cline{2-6}
+ & \multirow{2}{*}{Radial Kernel} & C = 2, 5; $\gamma$ = * & \bf 93.1 & 91.5 & 94.6 \\
+ &  & C = 1, 10; $\gamma$ = * & 92.8 & 91.1 & 94.4 \\\hline
+\end{tabular}
+\end{center}
+The listed values are: accuracy on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. Only up to five best performing configurations for each classifier are listed; if the performance on the whole set is identical, the lines are merged and the outermost bootstrap values are shown.
+\end{table}
+
+We have discovered in preliminary experiments with no feature selection that if the regularization penalty cost parameter is set higher than $10$, the performance of all classifiers is lowered and training duration becomes much longer. Additionally, lower termination criterion for the iterative fitting step of LibLINEAR classifiers than $0.001$ does not change the algorithm output. We have therefore selected the parameter values accordingly and tested the following classifier setups:
+\begin{itemize}
+    \item $L_2$-regularized logistic regression from the LibLINEAR package, with the penalty cost parameter $C\in\{0.05,0.1,0.2,0.5,1,2,5,10\}$ and the termination criterion $C=0.001, 0.01, 0.1, 1$.
+    \item $L_2$-SVM primal and dual problem, $L_1$-SVM dual problem and Multiclass SVM from the LibLINEAR package, with the same penalty cost and termination criterion parameters as previous.
+    \item SVM with a linear kernel from the LibSVM package, with the penalty cost parameter $C\in\{0.05,0.1,0.2,0.5,1,2,5,10\}$.
+    \item SVM with a radial basis kernel from the LibSVM package, with the same regularization cost and the parameter $\gamma\in\{0.001,0.01,0.1,1\}$ 
+\end{itemize}
+The list of the best-performing classifier algorithms and parameter settings, along with their results, is given in Table \ref{tab:pd-classifiers}. It is now apparent that the various classifiers perform very similarly; the results of the various SVM variants from the LibLINEAR package are almost identical. The confidence intervals estimated by bootstrap overlap for all the algorithms, and thus higher accuracy on the experiment data set cannot be considered a decisive criterion for selecting one of them. 
+
+However, the results of the test also show that all of the classifiers are relatively sensitive to parameter settings. The logistic regression does not reach $87\%$ accuracy with the termination criterion set at $1$, independent of the cost value. Both LibSVM classifiers reach only $90\%$ accuracy with inadequate configuration. The LibLINEAR SVM methods are less prone to misconfiguration, their worst outputs rate at $91.8\%$. It is also apparent from Table \ref{tab:pd-classifiers} that the regularization penalty $C$ set at $2$ proves as the best for all the machine learning techniques.
+
 % vyber nejlepsiho nastaveni klasifikatoru na testovaci mnozine
-\section{Training Approaches}\label{pd-training}
-% ruzna feature selection pro ruzne "slozite" predikaty
+
+\section{Feature Selection Approaches}\label{pd-training}
+
+
+
 \section{The Predicate Disambiguation System}
 % celkova organizace systemu, vc. nejakeho schematu
 
