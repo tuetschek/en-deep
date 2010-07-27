@@ -39,6 +39,7 @@ import java.util.Vector;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Stack;
+import java.util.TreeSet;
 
 /**
  * This class describes one {@link Task} within the {@link Plan}, with respect to the
@@ -46,7 +47,7 @@ import java.util.Stack;
  * 
  * @author Ondrej Dusek
  */
-public class TaskDescription implements Serializable/*, Comparable<TaskDescription>*/ {
+public class TaskDescription implements Serializable, Comparable<TaskDescription> {
 
     /* CONSTANTS */
 
@@ -70,7 +71,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     /* DATA */
 
     /** The task global ID */
-    private String id;
+    private final String id;
     /** The current task status */
     private TaskStatus status;
 
@@ -87,9 +88,9 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     private int topolOrder;
 
     /** All the Tasks that this Task depends on */
-    private HashSet<TaskDescription> iDependOn;
+    private TreeSet<TaskDescription> iDependOn;
     /** All the Task that are depending on this one */
-    private HashSet<TaskDescription> dependOnMe;
+    private TreeSet<TaskDescription> dependOnMe;
 
 
     /* METHODS */
@@ -108,6 +109,9 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     public TaskDescription(String id, String algorithm, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output){
 
+        if (id == null){
+            throw new NullPointerException("NULL ID");
+        }
         this.id = id;
         this.algorithm = algorithm;
         this.parameters = parameters;
@@ -165,12 +169,12 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
         }
 
         if (this.iDependOn == null){
-            this.iDependOn = new HashSet<TaskDescription>();
+            this.iDependOn = new TreeSet<TaskDescription>();
         }
         this.iDependOn.add(source);
 
         if (source.dependOnMe == null){
-            source.dependOnMe = new HashSet<TaskDescription>();
+            source.dependOnMe = new TreeSet<TaskDescription>();
         }
         source.dependOnMe.add(this);
     }
@@ -441,7 +445,7 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
      */
     public void looseDeps(String idPrefix, boolean backwards){
 
-        HashSet<TaskDescription> dependSet = backwards ? this.iDependOn : this.dependOnMe;
+        Set<TaskDescription> dependSet = backwards ? this.iDependOn : this.dependOnMe;
 
         if (idPrefix == null){ // null id prefix -- remove all dependencies
             idPrefix = "";
@@ -829,6 +833,16 @@ public class TaskDescription implements Serializable/*, Comparable<TaskDescripti
     public boolean hasOutputPatterns(boolean listMode){
         return this.hasPatterns(listMode, true);
     }
+
+    /**
+     * This compares the task descriptions according to their ids.
+     * @param other the other task description to be compared to this one
+     * @return -1 if the first one's id s lower in the alphabet, 1 for greater and 0 for equal
+     */
+    public int compareTo(TaskDescription other) {
+        return this.id.compareTo(other.id);
+    }
+
 
     /**
      * This compares the tasks according to their topological order.
