@@ -14,6 +14,7 @@
 \usepackage[round]{natbib}
 \usepackage{multirow}
 \usepackage{array}
+\usepackage{amsmath}
 \usepackage{listings}
 
 % pro scenario soubory
@@ -124,7 +125,7 @@ The task of deep analysis of an English sentence using predicate-argument struct
     \item \emph{Argument Classification} (AC)\nomenclature{AC}{Argument Classification} or \emph{Argument Labeling} -- the particular semantic role of each predicate needs to be identified.
 \end{enumerate}
 
-The output of automated semantic analysis may then find further applications in natural language processing, namely in information retrieval, question answering or machine translation systems. Most of the current research in this field concentrates on using statistical learning approaches -- applying a machine learning classifier algorithm, such as a \emph{Support Vector Machine} (SVM)\nomenclature{SVM}{Support Vector Machine} \citep{boser92} or a \emph{Maximum Entropy Model} (MaxEnt)\nomenclature{MaxEnt}{Maximum Entropy model, Maximum Entropy classifier} \citep{jelinek97}, to estimate a set of unknown parameters using features of the hand-annotated training data and then to use these parameters to automatically classify further texts.
+The output of automated semantic analysis may then find further applications in natural language processing, namely in information retrieval, question answering or machine translation systems. Most of the current research in this field concentrates on using statistical learning approaches -- applying a machine learning classifier algorithm, such as a \emph{Support Vector Machine} (SVM)\nomenclature{SVM}{Support Vector Machine} \citep{boser92} or a \emph{Maximum Entropy Model} (MaxEnt)\nomenclature{MaxEnt}{Maximum Entropy model, Maximum Entropy classifier} \citep{jelinek97}, to estimate a set of unknown parameters using \emph{features}\footnote{In statistics, features are usually called \emph{attributes}.} of the hand-annotated training data instances (i.e. any characteristics of the individual instances, such as word forms, parts of speech, syntactic features etc.) and then to use these parameters to automatically classify further texts.
 
 \section{The Aims of This Work}\label{aims}
 
@@ -140,9 +141,9 @@ In Chapter \ref{related}, we discuss the related work in the field of semantic a
 
 The Chapter \ref{data} is focused on the description of the used corpus --- the provided annotation and the data format use for the CoNLL competition. A comparison to the Prague tectogrammatical annotation \citep{cinkova09} is also included.
 
-We have designed and implemented a Java framework for processing multiple machine learning tasks in parallel, which we then apply in our semantic analysis system. Its description may be found in Chapter \ref{mlprocess}. Chapter \ref{ml-semantic} then continues with the description of used classifiers and their particular settings, along with the data conversion necessary for the classification.
+We have designed and implemented a Java framework for processing multiple machine learning tasks in parallel, which we then apply in our semantic analysis system. Its description may be found in Chapter \ref{mlprocess}. Chapter \ref{ml-semantic} then continues with the description of the basic techniques we adopted for our SRL system. 
 
-The description of our SRL system then follows in Chapter \ref{pd}, which concentrates on predicate disambiguation, in Chapter \ref{ac} focused on argument identification and classification and finally in Chapter \ref{setup}, which contains the overall description and performance of our setup.
+The detailed description of the particular applications of these methods in our solution then continues in Chapter \ref{pd}, which concentrates on predicate disambiguation, in Chapter \ref{ac} focused on argument identification and classification and finally in Chapter \ref{setup}, which contains the overall description and performance of our setup.
 
 Chapter \ref{conclusions} then concludes the thesis with discussion of our results and improvement proposals.
 
@@ -152,7 +153,7 @@ Chapter \ref{conclusions} then concludes the thesis with discussion of our resul
 %
 %
 
-% zacalo uz 2002 -- dodat clanek
+% TODO zacalo uz 2002 -- dodat clanek
 Automatic deep analysis using supervised machine learning, i.e. estimating the unknown parameters of a classification model statistically from hand-annotated (\emph{gold standard}) training data set, has been made possible with the emerging of semantically annotated treebanks, such as the PDT or PropBank. The research in this field has been rather active since that time, and therefore plenty of information and original concepts is now available. 
 
 \section{The CoNLL 2009 Shared Task}\label{conll2009}
@@ -163,7 +164,7 @@ Most of the systems included a classifier algorithm and various feature selectio
 
 Now let us take a look at the machine learning cores of the participating setups: The approaches of \citet{zhao09}, \citet{che09} and \citet{chen09}, as well as of several others, feature a MaxEnt classifier, which is a very common and successful practice in various NLP tasks. \citet{nugues09} apply Logistic Regression on the data, which is in a way similar to the MaxEnt method\footnote{We will discuss this similarity in Section \ref{classifiers}.}. \citet{che09} also use SVM classifers in the PD part of their system, as do \citet{tackstrom09}. Other systems \citep{bohnet09,asahara09} employ various maximum-margin algorithms, such as the Margin-Infused Relaxed Algorithm (MIRA)\nomenclature{MIRA}{Margin-Infused Relaxed Algorithm} \citep{crammer03}. There is also a group of systems based on diverse logic devices: \citet{meza-ruiz09} use Markov Logic Networks in combination with the MIRA algorithm, while \citet{moreau09} work with Conditional Random Fields and \citet{merlo09} with Incremental Sigmoid Belief Networks. Many of systems included not one, but multiple classifiers, one for each predicate lemma or sense \citep{che09}; \citep{nugues09}. The results of the competition show that most of the used machine learning approaches are capable of reaching a comparable quality level of results if trained properly. This becomes apparent also from our own classifier selection and tuning tests (see Sections \ref{classifiers} and \ref{classifier-setting}).
 
-Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to reduce the amount of data that is needed be passed to the classifier --- \citet{zhao09} and \citet{asahara09} describe a very similar approach to this.
+Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words\footnote{Please note that in this and the following chapters, we the term ``word'' refers not only to words, but also to other tokens in the input text, such as punctuation signs.} in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to reduce the amount of data that is needed be passed to the classifier --- \citet{zhao09} and \citet{asahara09} describe a very similar approach to this.
 
 Most of the authors introduced also some further enhancements into their systems. The iterative approach, where the results of the semantic analysis are taken as an input for a repeated classification, taken by \citet{chen09} is one of them. Other researchers included global re-ranking of semantic argument candidates \citep{nugues09} or other forms of post-inference, such as Integer Linear Programming\nomenclature{ILP}{Integer Linear Programming} \citep{che09}.
 
@@ -173,7 +174,7 @@ The CoNLL 2009 Shared Task contest has provided us with a variety of options to 
 
 There are also many other works in semantic analysis and particularly in automatic SRL systems using machine learning techniques. The CoNLL Shared Tasks of 2004, 2005 \citep{carreras04,carreras05} and 2008 \citep{surdeanu08} have all been dedicated to semantic analysis of English using the PropBank corpus\footnote{The 2008 contest included also syntactic parsing.}. The SRL solvers described in the proceedings of these contests stick mostly to the pipeline classification scheme described in Section \ref{conll2009}, with MaxEnt and SVM as the most widely used machine learning techniques. Some of the 2008 systems have been adapted for the 2009 competition, which provides us with more information about the versions of both years, as well as additional information about gradual improvements \citep{che08,chen08}.
 
-% dopsat cluster-based approach
+% TODO dopsat cluster-based approach
 Further research concentrates on similar tasks: \citet{jiang06} provide an analysis of NomBank \citep{meyers04} semantic annotation and a description of a MaxEnt deep analysis system. \citet{giuglea06} presented a system that retrieves its semantic annotation training data from three different resources --- PropBank, NomBank and FrameNet. \citet{loper07} are developing a project to link several annotated resources permanently, which has been a valuable tool for our preliminary analyses of predicate behavior. 
 
 %
@@ -194,7 +195,7 @@ The original PTB employed a constituent parse tree schema based on the theory of
 Since dependency parsing algorithms have become more effective and can handle non-projectivity \citep[cf.][]{mcdonald05}, it is more convenient to use dependency structures to describe syntactic relationships.For the purposes of CoNLL 2008/9, the PTB corpus has therefore been automatically converted to a dependency schema \citep{johansson07,surdeanu08}, while the edge labels have been adapted to meet the new paradigm and further enriched, so that they can serve to a better automatic semantic analysis\footnote{For details on the dependency labels and syntax in this corpus, see the file format and the description of the DEPREL field at \url{http://yr-bcn.es/conll2008}.}. The modified dependency labels also include named entity indication, which originates from the \emph{BBN Pronoun Coreference and Entity Type Corpus} \citep{weischedel05}.
 % pridat seznam tagu obou veci do priloh ???
 
-\section{PropBank and NomBank Semantic Annotation}
+\section{PropBank and NomBank Semantic Annotation}\ref{propbank-nombank}
 
 The semantic information in the CoNLL English corpus incorporates annotations from PropBank and NomBank, both of which feature a predicate-argument structure (cf. Section \ref{problem}). Not only the structure itself is very similar, they also use the same approach to semantic argument labeling. They distinguish the following four kinds of semantic arguments\footnote{For more details on PropBank annotation, see the instructions at \url{http://verbs.colorado.edu/~mpalmer/projects/ace.html} or \citep{moreda06}.}~\footnote{The NomBank annotation is thoroughly described in the guidelines at: \\ \url{http://nlp.cs.nyu.edu/meyers/nombank/nombank-specs-2007.pdf}.}:
 \begin{itemize} 
@@ -205,7 +206,7 @@ The semantic information in the CoNLL English corpus incorporates annotations fr
 \end{itemize}
 There are indeed minor differences between the observed labels in NomBank and PropBank, but their basic concepts remain the same.
 
-As already mentioned, each predicate, i.e. each noun or verb in a given sense, has its own argument number assignment or \emph{frame} --- even nouns and verbs with the same base form may use different numberings. The frames describe the individual arguments and their semantic properties, e.g. in most verbs, \texttt{A0} refers to the semantic actor of the event. The frames are provided for all the predicates that occur in the corpus, thus completing its semantic description.
+As already mentioned, each predicate, i.e. each noun or verb in a given sense, has its own argument number assignment or \emph{frame} --- even nouns and verbs with the same base form may use different numberings. The frames describe the individual arguments and their semantic properties, e.g. in most verbs, \texttt{A0} refers to the semantic actor of the event. A lexicon of frames is provided for all the predicates that occur in the corpus, thus completing its semantic description.
 
 \section{Comparison to Prague English Dependency Treebank Annotation}
 
@@ -405,15 +406,25 @@ As one of our classification subtasks uses the Integer Linear Programming techni
 
 %
 %
-\chapter{Machine Learning in Semantic Analysis}\label{ml-semantic}
+\chapter{Fundaments of Our Deep Analysis System}\label{ml-semantic}
 %
 %
 
-After careful consideration of the various machine learning solutions available (most of which were already discussed in Chapter \ref{related}), we decided to use the traditional supervised classifiers, such as SVM or MaxEnt, in our SRL system due to their competitive performance and simple configuration. The inclusion of many different algorithms in one software package --- WEKA --- poses also an advantage of this choice. We will now describe the basic concepts of the classification algorithms we tested in our experiments. As we already mentioned in Section \ref{data-format}, the original data format of the used corpus is not well-suited for the operation of machine learning procedures. Therefore, we also include an account of the data conversion that was required for their proper function.
+We will now describe the strategy that we decided to pursue in the solution of our SRL problem (Section \ref{approach}), including an account of the classification algorithms we tested in our experiments (Section \ref{classifiers}). As we already mentioned in Section \ref{data-format}, the original data format of the used corpus is not well-suited for the operation of machine learning procedures. In addition, the set of properties for each word in the corpus does not describe the relations of the individual words. Therefore, we also include an account of the data conversion (Section \ref{conversion}), as well as feature generation and selection (Sections \ref{features} and \ref{featsel}), all of which is required for proper classifier function and high performance output.
+
+\section{Basic Approaches}\label{approach}
+
+After careful consideration of the various machine learning solutions available (most of which were already discussed in Chapter \ref{related}), we decided to use the traditional supervised classifiers, such as SVM, MaxEnt or logistic regression, in our SRL system due to their competitive performance and simple configuration. The inclusion of many different algorithms in one software package, WEKA, and the extent of the available sources of information poses also an advantage of this choice.
+
+It follows from the selected machine learning methods that it is now necessary to split the predicate disambiguation (PD) and argument classification (AC) task. The traditional classifiers are only able to infer the values of one target parameter at a time. Additionally, it is only needed to classify the predicates in the PD task, whereas all words could possibly appear as arguments of some of the predicates in the AC problem. The division among argument identification and argument labeling is then possible, but not necessary (please refer to Section \ref{ai-ac} for this particular topic). 
+
+The order in which these two subtasks will be processed is also not given. Although the reports of \citet{bohnet09} and \citet{zhao09} show that solving the AC problem before the PD problem may lead to very good results, after a preliminary analysis of the frame lexicons provided (see Section \ref{propbank-nombank}), we decided to take the more usual approach of disambiguating the predicates first, since the nature and number of arguments usually depends very closely on the predicate sense.
+
+%TODO jeste neco sem? 
 
 \section{Classifiers}\label{classifiers}
 
-As we already pointed out in Chapters \ref{intro} and \ref{related}, the \emph{Maximum Entropy} (MaxEnt) models \citep[p. 219ff.]{jelinek97} are one of the most used techniques in many different NLP tasks \citep[p. 607f.]{manning00} including SRL \citep{jiang06,zhao09,che09,chen09}. This is possibly thanks to the fact that their base idea of finding a conditional probability distribution with a maximum entropy subject to given constraints, i.e. ``the most uniform model subject to our knowledge'' \citep[p. 41]{berger96} is very straightforward and effective. The basic form of the conditional probability model \citep{malouf02}, which predicts a probability of target event (such as semantic class) $y\in Y$ given a context $x$, looks as follows: 
+As we already pointed out in Chapters \ref{intro} and \ref{related}, the \emph{Maximum Entropy} (MaxEnt) models \citep[p. 219ff.]{jelinek97} are one of the most used techniques in many different NLP tasks \citep[p. 607f.]{manning00} including SRL \citep{jiang06,zhao09,che09,chen09}. This is possibly thanks to the fact that their base idea of finding a conditional probability distribution with a maximum entropy \citep[average uncertainty][p. 61]{manning00} subject to given constraints, i.e. ``the most uniform model subject to our knowledge'' \citep[p. 41]{berger96} is very straightforward and effective. The basic form of the conditional probability model \citep{malouf02}, which predicts a probability of target event (such as semantic class) $y\in Y$ given a context $x$, looks as follows: 
 \begin{equation}
 q_\theta(y|x) = \frac{\exp(\theta^T f(x,y))}{\sum_{y'\in Y} \exp(\theta^T f(x,y'))}
 \end{equation}
@@ -431,13 +442,14 @@ The model is fitted to the training data $x_i,y_i;\ i = 1\dots p$ by maximizing 
 \begin{equation}\label{eq:logreg}
 \max_\theta L(\theta) = \max_\theta \sum_{i=1}^p \log \frac{1}{1 + \exp(-y_i\theta^T x_i)} = \min_\theta \sum\log(1 + \exp(-y_i\theta^T x_i))
 \end{equation}
-This optimization problem is also solved using iterative methods \citep{fan08}. \citet{blower04} provides a proof that the logistic regression is equivalent to MaxEnt (for binary target events):
-\begin{equation}
+This optimization problem is also solved using iterative methods \citep{fan08}. \citet{blower04} provides a proof that the logistic regression is equivalent to MaxEnt (for binary target events)\footnote{Cf. also the presentation by Pereira at:\\ \url{http://www.cis.upenn.edu/\~pereira/classes/CIS620/lectures/maxent.pdf}.}:
+\begin{align}
+p(y=1|x) & = \frac{\exp(\theta^T f(x,1)}{\sum_{y'\in Y} \exp(\theta^T f(x,y'))} = \frac{\exp(\theta^T f(x,1))}{\exp(\theta^T f(x,1)) + \exp(\theta^T f(x,-1))} \\
+& = \frac{1}{1 + \exp(-\theta^T f(x,-1))} = \frac{1}{1 + \exp(-\theta^T g(x))}
+\end{align}
+This gives us two variants of the same basic idea. Given that logistic regression is integrated into WEKA via the LibLINEAR\footnote{Version 1.51, \url{http://www.csie.ntu.edu.tw/\~cjlin/liblinear/}.} package \citep{fan08}, we decided to test the performance of this very classifier for our experiments.
 
-\end{equation}
-This gives us two variants of the same basic idea.
-
-Another widely used approach to classification is the Support Vector Machine \citep{boser92}. Its basic idea is representing the (training) data as points in $N+1$-dimensional space, whose coordinates are given by the function $\phi(x)$ of the features and by the value of the target event $y$, and trying to separate the different target events with a hyperplane that has the maximum margin (distance to the nearest point). If we assume that the target event $y$ is binary\footnote{Most SVM libraries are also capable of solving a problem with multiple possible target classes.} --- $y\in \{1,-1\}$, the hyperplanes that are parallel to the maximum margin separator and touch the nearest data points of both target classes (the \emph{support vectors}) are then described by the equations:
+Another widely used approach to classification is the Support Vector Machine \citep{boser92}. Its basic idea is representing the (training) data as points in $N+1$-dimensional space, whose coordinates are given by the function $\phi(x)$ of the features and by the value of the target event $y$, and trying to separate the different target events with a hyperplane that has the maximum margin (distance to the nearest point). If we assume that the target event $y$ is binary\footnote{Most SVM libraries are also capable of solving a problem with multiple target classes.} --- $y\in \{1,-1\}$, the hyperplanes that are parallel to the maximum margin separator and touch the nearest data points of both target classes (the \emph{support vectors}) are then described by the equations:
 \begin{equation}
 w^T x + b = 1\quad\mbox{and}\quad w^T x + b = -1
 \end{equation}
@@ -453,45 +465,216 @@ Now we may solve the equation using Quadratic Programming and get the solution $
 \begin{equation}
 \max_{\alpha} = \sum_{i=1}^p \alpha_i - \frac{1}{2}\sum_{i=1}^p y_i y_j \alpha_i \alpha_j (\phi(x_i)^T \phi(x_j))\quad\mbox{subject to}\quad \sum_{i=1}^p \alpha_i y_i = 0,\ \alpha_i = 0\ \forall i
 \end{equation}
-The $\phi(x_i)^T \phi(x_j)$ term is called the \emph{kernel} function, while the most usual kernels are linear ($x_i^T x_j$)\footnote{In the CoNLL 2009 contest, \citet{che09} describes using SVM with this type of kernel.} and radial ($\gamma x_i^T x_j + r)^d$). 
+The $\phi(x_i)^T \phi(x_j)$ term is called the \emph{kernel} function, while the most usual kernels are linear ($x_i^T x_j$)\footnote{In the CoNLL 2009 contest, \citet{che09} describe using SVM with this type of kernel.} and radial ($\gamma x_i^T x_j + r)^d$). We chose to test some variants of SVMs in our experiments because of their reported performance and usage simplicity: many different SVM types are integrated into WEKA through the LibLINEAR and LibSVM\footnote{Version 2.91, \url{http://www.csie.ntu.edu.tw/\~cjlin/libsvm/}.} \citep{chang01} libraries.
 
 As in most real-life classification problems it is impossible to find a hyperplane that would separate both target event values for all training examples, a regularization \citep{neumaier98} term $\xi$ is introduced into the Equation \ref{eq:svm-primal}, which penalizes classification errors, transforming it to the following shape \citep{cortes95}:
 \begin{equation}
 \min_{w,b} \frac{1}{2}w^T w + C\sum_{i=1}^p \xi_i \quad\mbox{subject to}\quad y_i(w^T\phi(x_i) + b)\geq 1 - \xi_i
 \end{equation}
-The $C$ parameter is then interpreted as the penalty cost. There are several possible shapes of the regularization function for the SVM, most common being $L_1$ ($\max(1-y_i w^T x_i, 0)$) and $L_2$ ($\max(1-y_i w^T x_i, 0)^2$) norms \citep{fan08}.
+The $C$ parameter is then interpreted as the penalty cost. There are several possible shapes of the regularization function for the SVM, most common being $L_1$ ($\max(1-y_i w^T x_i, 0)$) and $L_2$ ($\max(1-y_i w^T x_i, 0)^2$) norms, both of them integrated into LibLINEAR or LibSVM \citep{fan08,chang01}.
 
 Since correct classification of all the training examples may not be feasible with logistic regression, too, regularization is also applied to it \citep{ng04,fan08}, which transfers the Equation \ref{eq:logreg} to the following form:
 \begin{equation}
 \min_\theta \sum\log(1 + \exp(-y_i\theta^T x_i)) + R(\theta)
 \end{equation}
-A function of the weight vector is used as the regularization term --- \citet{ng04} describe the application of $L_1$ and $L_2$ norms of $\theta$.
+A function of the weight vector is used as the regularization term --- \citet{ng04} describe the application of $L_1$ and $L_2$ norms of $\theta$, the LibLINEAR version of logistic regression is $L_2$-regularized.
+
+Since WEKA in the combination of LibLINEAR and LibSVM libraries provides the described high-performance classifiers out-of-the-box, we decided to apply them for our experiments. We also performed some simple preliminary tests with other traditional classifiers implemented in WEKA libraries, such as Decision Trees, Naive Bayes or Perceptron. However, their performance did not indicate that they could possibly surpass the selected ones by a significant margin and the need for other tests and (albeit minimal) reconfiguration would delay our work excessively.
 
 \section{Data Conversion}\label{conversion}
-% prevod z puv. formatu do formatu pro klasifikatory
-% sent-id word-id
-\section{Features}\label{features}
-% popis vsech featur, vc. word clusteru
-\section{Feature Selection Algorithms}\label{featsel}
-% ruzne druhy rankingu, mRMR, mutual information etc.
-% greedy forward
 
+In Section \ref{data-format}, we described the advantages and drawbacks of the input corpus data format. Since it is unsuitable for use with ML classifiers such as SVM or MaxEnt in its original form, we needed to convert the sentences into the required layout with one instance, i.e. one token relating to one predicate, per line and a constant number of columns. We have used directly the ARFF file format as the target of our conversion in order to easily use the generated files with WEKA classifiers.
+
+The conversion of each sentence looks as follows:
+\begin{enumerate}
+    \item The sentence is loaded and a unique ID is assigned to it, so that its data is easily recognized during the conversion process.
+    \item For each predicate in the sentence, the following is done:
+    \begin{enumerate}
+        \item Each pre-selected word of the sentence is taken and all the input CoNLL corpus columns (see Section \ref{data-format}), excluding all the \texttt{APRED} values, are augmented with more generated features, mainly regarding the context of the word with respect to the predicate (see Section \ref{features}) to generate one line of output.
+        \item Only the value of \texttt{APRED} pertaining to the current predicate is added to the output line\footnote{At this point, it is also possible to separate the \texttt{APRED} values into two groups. For details, see Section \ref{arg-types}.}.
+        \item The output lines for each pre-selected word in the sentence are written into the output file.
+    \end{enumerate}
+    This means that if there are 5 predicates in the sentence, it appears 5 times on the output, but always in relation to a different predicate.
+\end{enumerate}
+The character of the output file(s) and the selection of the words that are output depends on the pre-set mode of operation. 
+
+There are the following three modes of output file creation:
+\begin{enumerate}
+    \item An output file is created for each predicate lemma, i.e. all sentences with relation to the same predicate lemma are output into one file. The nominal and verbal predicates are also split, e.g. all sentences that contain the verbal predicate ``give'' fall into the file whose name contains ``give.v''. This serves the purpose of predicate disambiguation (see Chapter \ref{pd}).
+    \item There is an output file for each predicate sense, e.g. ``give.01.v''. This is used for argument labelling (see Chapter \ref{ac}).
+    \item All the data from one input file (e.g. the whole training set) are written into one output file. The predicates to which the data lines relate are indicated in a special column. This mode is also used in the argument labelling process.
+\end{enumerate}
+
+The selection of words that appear on the output may be set-up in the four following ways:
+\begin{enumerate}
+    \item Each word is selected, nothing is left out. This is used for the argument classification subtask.
+    \item Only the predicates are selected. We use this setting for predicate disambiguation.
+    \item A syntactic pruning algorithm \citep{asahara09,zhao09} is applied, so that only the ``syntactic neighborhood'' of the predicate is selected. We also tested this mode for predicate disambiguation (see section \ref{pruning}).
+    \item Only tokens with the pre-selected part-of-speech values are selected. This is a somewhat simpler method of pruning, which has also been tested for predicate disambiguation (please refer to Section \ref{pruning} for details).
+\end{enumerate}
+
+This gives us a highly configurable tool that provides us with the input of all the various subtasks of our SRL solution.
+
+\section{Generated Features}\label{features}
+
+We will now turn our attention to the generated features mentioned in Section \ref{conversion}. Since all the classifiers we used regard the training and testing instances (that is words that may belong to the same sentence) as independent, the input set of data columns is insufficient as a feature set for the classification of one word, since it does not provide any information about other words in the sentence, which often co-determine its semantic characteristics. Therefore, additional features must be introduced that describe the particular word, its syntactical and topological neighborhood and the relations to other words in the sentence.
+
+Our system is able to generate several types of features from the input data. To begin with, there are various qualities of the syntactical neighborhood of the given node and its relation to the predicate. The following features have been described by \citet{nugues09}, among others:
+\begin{itemize}
+    \item \emph{Siblings} -- word form, lemma, part-of-speech (POS)\nomenclature{POS}{Part-of-Speech} and \emph{coarse} POS (CPOS)\nomenclature{CPOS}{Coarse Part-of-Speech (first letter of the part-of-speech tag)} \citep[first character of the POS-tag][]{che09} of the nearest syntactical siblings of the given word, if there are some
+    \item \emph{Dependency relation path} -- a string consisting of ``/'' (``up'') and ``\textbackslash'' (``down'') characters which describes the syntactic path from the given word to the predicate, interleaved with word forms, lemmas, POS, CPOS or the DEPREL labels (see Section \ref{data-format}) of the nodes encountered on the path, or left as such
+    \item \emph{Children} -- word forms, lemmas, POSs and CPOSs of the syntactic children of the given word
+\end{itemize}
+
+There are further syntactic features, already mentioned by \citet{zeman09}, \citet{chen09} and \citet{asahara09}, and others:
+\begin{itemize}
+    \item \emph{Syntactic Dependence on Predicate} -- this feature is ``1'', if the given word depends syntactically (even indirectly) on the predicate, ``0'' otherwise
+    \item \emph{Sibling or Child} -- ``1'', if the given word is a sibling or a direct child of the predicate, ``0'' otherwise
+    \item \emph{Head Position} -- the topological position relative to the syntactic head (Before, After)
+    \item \emph{Head} -- word form, lemma, POS and CPOS of the syntactic head of the given word
+    \item \emph{Predicate} -- the same properties of the predicate; also in a bigram with the properties of the given word
+\end{itemize}
+
+In addition to the listed syntactic features, we introduced the following feature type, which is, to our knowledge, new:
+\begin{itemize}
+    \item \emph{Children Types} -- this lists the word forms, lemmas, POSs and CPOSs and the total number of the children that belong to a word class. We distinguish the following word classes for the sake of this feature:
+    \begin{itemize}
+        \item Nominal POSs (nouns, adjectives and pronouns)
+        \item Verbs (including modals)
+        \item Open POSs (nouns, adjectives, pronouns and verbs)
+        \item Prepositions
+        \item Particles
+    \end{itemize}
+\end{itemize}
+
+We also include the following features that describe the topological neighborhood and morphological features of the given word:
+\begin{itemize}
+    \item \emph{Voice} -- the voice of the verb \citep{che09}, inferred from its POS and the POS of its head node
+    \item \emph{Left\dots Right} -- morphological features (form, lemma, POS, CPOS) of the first three words to the left and right of the given word, including a bigram for the first two in each direction
+    \item \emph{Position} -- the topological position relative to the predicate (Before, After, On) \citep{nugues09}
+    \item \emph{Word Distance} -- the topological distance from the predicate (absolute value, number of words separating the predicate and the given word) \citep{asahara09}
+\end{itemize}
+
+The last type of features generated by our system is based on the technique of Word Clustering \citep{pereira93}, which tries to select words and group the ones that usually appear in similar syntactic contexts, thus automatically creating classes of words that often share similar semantic properties. We used the SenseClusters\footnote{Version 1.01, \url{http://senseclusters.sourceforge.net/}.} tool \citep{kulkarni05} to generate clusters on word forms and lemmas as they appear in the original corpus sentences, also in combination with POS, thus creating a group of features that involve the different cluster types for topological and syntactical neighbors\footnote{In particular, they are analogous to the Left\dots Right, Dependency path, Head, Siblings and Children features.} of the given word.
+
+\section{Feature Filtering and Selection}\label{featsel}
+
+Given such a large set of features as described in Section \ref{features} (consisting of up to 150 features), it is very probable that some of them will be irrelevant or redundant for the inference of the target class \citep{john94}, or even introduce noise that increases the classification error \citep[p. 251]{manning08}. Therefore, we needed to implement some feature filtering and selection techniques.
+
+As to the feature filtering, we implemented and apply these two simple techniques in our system:
+\begin{enumerate}
+    \item \emph{Filtering irrelevant attribute values} --- for most features with multiple string values, such as Children, Dependency path or Left\dots Right, we filter all the values that do not occur very often in the training data and unify them under a new single value, ``other''. This removes all values that would otherwise be ignored by the classifier or introduce noise. This is analogous to frequency-based selection described by \citet[p. 257]{manning08}.
+    \item \emph{Filtering irrelevant attributes} -- we filter all the attributes that are, in the given case, obviously irrelevant, i.e. they either do not contain any value that would repeat in the training data, or are constant across the whole training set.
+\end{enumerate}
+
+After the filtering, one must select a set of features that gives the best performance. For this purpose, the usual approach is to train the classifier iteratively for different feature subset and evaluate its performance on the development data set (see Section \ref{data-format}), thus obtaining the best performing subset. Since it is not feasible to try every possible combination of features, we have to apply faster algorithms that may produce a suboptimal solution. We employ two different basic techniques in our SRL setup:
+\begin{enumerate}
+    \item \emph{Feature ranking} --- the features are ordered according to a given criterion (see below) and the $N$ best are selected \cite[p. 251ff.]{manning08}. In our system, we usually gradually increase the $N$ in a certain range and then select the best value.
+    \item \emph{Greedy algorithm} --- this iterative algorithm keeps a set of features and tries to add all the remaining features in each step, then selects the best one \cite{caruana94}. In our setting, we either start with one feature, or try all possible combinations in a small subset of features (with the best ranking). Of equally performing features, we always select the one that has been rated as the best one in the ranking.
+\end{enumerate}
+
+Our system contains the following feature ranking criteria:
+\begin{itemize}
+    \item \emph{$\chi^2$-Criterion} \citep[p. 255]{manning08} --- this evaluates the features using the $\chi^2$-statistics against the target feature, which is computed as $\sum_{f\in F}\sum_{t\in T}\frac{(N_{ft}-E_{ft})^2}{E_{ft}}$, where $f,t$ are all possible values of the feature $F$ and the target $T$, respectively, and $E,N$ are the expected and observed frequencies of the values occurring together.
+    \item \emph{Mutual Information}(MI)\nomenclature{MI}{Mutual Information} \citep[p. 583]{manning00}, or \emph{Information Gain} \citep[p. 264]{manning08} --- this computes the difference of the entropy of the target feature alone and the conditional entropy of the target feature given the ranked feature, that is how much the knowledge of this feature lower the entropy of the target one.
+    \item \emph{Symmetric Uncertainty} \citep[p. 291f.]{witten05} --- this statistics is defined as $\frac{2I(F,T)}{H(F) + H(T)}$, where $H$ is the entropy, $I$ is the MI and $F,T$ stand for the evaluated and target feature, respectively.
+    \item \emph{ReliefF} \citep{kira92,kononenko94} --- this is an algorithm that ranks the features depending on how well they distinguish between the values of the target event: In a pre-set number of iterations, it selects random instances and then searches for the ``nearest hit'' (nearest instance, based on the value of the ranked feature, that has the same target event class) and ``nearest misses'' with different classes. The worth of the feature is then a sum of distance differences between the hits and misses weighted by the probability of possible target feature values.
+    \item \emph{Significance} \citep{ahmad05} --- this algorithm is based on a similar assumption to the previous one, namely that a ``valuable'' feature should differentiate between the values of the target event. Given the training data statistics, it computes the average probability of the most probable set of target classes (the ``support set'') for each value  of the evaluated feature, then a symmetric value describing the most probable sets of the evaluated feature values for each target class. The average of the two values is then returned as the final rank.
+    \item \emph{Minimum Redundancy-Maximum Relevance}(mRMR)\nomenclature{mRMR}{Minimum Redundancy-Maximum Relevance} \citep{peng05} --- using the concept of MI, this technique maintains a set of features, starting with an empty set, and greedily selects a feature that is most relevant to the target event, but not too redundant with respect to the already selected features. This feature is a solution to the following optimization problem (where $S_{m-1}$ is the currently selected set of features):
+\begin{equation}
+\max_{F_j\not\in S_{m-1}} \left[ I(F_j,T) - \frac{1}{m-1} \sum_{F_i\in S_{m-1}} I(F_i,F_j)\right]
+\end{equation}
+\end{itemize}
+All the criteria but mRMR were integrated into the WEKA framework; we implemented the mRMR ranking algorithm (including an implementational variant of MI) for the purpose of this work. We also made tests with averaging the rankings --- either all the rankings or only mRMR and ReliefF, following the ideas of \citet{zhang08} in a simplified way.
+
+Our decision to apply or combine the various rankings or to employ the greedy algorithm in the individual subtasks in our system (see Chapters \ref{pd} and \ref{ac}) depends on the complexity and data volume in the particular case and is a trade-off between computation speed and final classifier performance.
+
+Moreover, we always convert the multiple-valued string features to a set of binary features, each indicating the presence of one possible value, as the classifiers used in our experiments interpret all features as numeric. The values of numeric attributes are then normalized \citep[p. 56f.]{witten05} to lie within the $[0,1]$ interval, so that the classifiers may use them as a metric.
+ 
 \chapter{Predicate Disambiguation}\label{pd}
-\section{Observations on the Data}
-% urceni nekolika skupin ruzne "slozitych" problemu, podle poctu vyznamu slova
+
+This chapter contains the technical description of the first part of our system. We have split the PD problem into several parts, according to the nature of the particular predicates (see Chapter \ref{pd-observe}), and applied various machine learning techniques described in Chapter \ref{ml-semantic}. Our data-conversion algorithm (introduced in Section \ref{conversion}) produced only the predicate words for the entire PD task, split into individual files for each predicate lemma. An account of our classifier tuning is given in Sections \ref{classifier-setting} and \ref{pd-training}. We will then include an overview of the whole solution.
+
+\section{Observations on the Data}\label{pd-observe}
+
+As we already mentioned in Section \ref{data-format} and depicted in Table \ref{tab:corpus-stats}, a very broad range of predicates occurs in the CoNLL 2009 Corpus, with a small subset of them appearing only in one or two of the data sets. In addition, table \ref{tab:lemma-stats} shows the numbers of predicate lemmas and their coverage. We must therefore distinguish among the following cases:
+\begin{enumerate}
+    \item There are training and development instances of the given predicate lemma. \\
+This is by far the most common case, not only in number of the unique lemmas, but mainly in the number of instances. We are able to tune the classifier setting on the development set for such predicates.
+    \item Only training instances are available. \\
+In that case it is possible to train the classifier, but no tuning can be done. 
+    \item There are no training data for the particular predicate lemma. \\
+With no training data, only a dummy classifier that assigns always the same value is possible.
+\end{enumerate}
+This division does not take the evaluation data into consideration, apart from the fact that it is ready for previously unseen predicates. We can solve the individual cases and prepare the best possible classifier setting, which is then used only for those predicates that actually occur in the evaluation data.
+
+\begin{table}[htbp]
+\caption{Predicate lemma statistics for the CoNLL 2009 corpus}\label{tab:lemma-stats}
+\begin{center}
+\begin{tabular}{|c|rrr|}\hline
+& \bf Predicates  &\bf Lemmas & \bf Coverage (Lemmas) \\\hline
+Training & 9228 & 7639 &  - \\
+Development & 2151 & 1946 & 95.5 \% \\
+Evaluation &  2610 & 2340 & 95.8 \%  \\\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+There is another distinction that must be done prior to the actual classifier training, namely based on the number of senses for each predicate. As is evident from Table \ref{tab:senses-num}, a vast majority of the predicates, and also of their number of occurrences, although not predominant, has a unique sense (we will refer to them as \emph{unary}), which means that the classification of those predicates is trivial. We will therefore always assign the only observed sense to them.  
+
+\begin{table}[htbp]
+\caption{Number of senses for the individual predicate lemmas as observed in the training data set}\label{tab:senses-num}\footnotesize
+\begin{center}
+\begin{tabular}{|r|rrr|rrr|}\hline
+\multirow{2}{*}{\bf Senses} & \multicolumn{3}{|c|}{\bf Predicate Lemmas} & \multicolumn{3}{|c|}{\bf Number of occurrences} \\
+ & Total & \% & Group & Total & \% & Group \\\hline
+1 & 6541 & 85.6 & 6541 & 112994 & 63.1 & 112994 \\\hline
+2 & 773 & 10.1  & \multirow{2}{*}{961} & 27395 & 15.3 & \multirow{2}{*}{41801} \\
+3 & 188 & 2.4 & & 14406 & 8.0 & \\\hline
+4 & 66 & 0.8 & \multirow{4}{*}{120} & 7726 & 4.3 & \multirow{4}{*}{16291} \\
+5 & 24 & 0.3 & & 3571 & 2.0 & \\
+6 & 13 & 0.2 & & 1745 & 1.0 & \\
+7 & 13 & 0.2 & & 2522 & 1.4 & \\
+8 & 4 & 0.0 & & 727 & 0.4 & \\\hline
+9 & 3 & 0.0 & \multirow{11}{*}{17} & 883 & 0.5 & \multirow{11}{*}{7928} \\
+10 & 3 & 0.0 & & 929 & 0.5 & \\
+11 & 3 & 0.0 & & 882 & 0.5 & \\
+12 & 2 & 0.0 & & 1638 & 0.9 & \\
+13 & 1 & 0.0 & & 141 & 0.0 & \\
+14 & 2 & 0.0 & & 1105 & 0.6 & \\
+15 & - & - & & - & - & \\
+16 & - & - & & - & - & \\
+17 & 1 & 0.0 & & 585 & 0.3 & \\
+18 & 1 & 0.0 & & 809 & 0.5 & \\
+19 & - & - & & - & - & \\
+20 & 1 & 0.0 & & 956 & 0.5 & \\\hline
+\end{tabular}
+\end{center}
+The Group column contains the total numbers of lemmas assigned to the individual groups (unary, simple, harder, tough).
+\end{table}
+
+However, still a large number of predicate lemmas are not unary. We have divided them into three groups and handle them in a different way. Many lemmas sport only two or three senses; we denote such lemmas \emph{simple}, for their classification problems are not very complicated (as the number of instances is also not very high on average), which makes the classifier tuning less important and shifts the stress on the speed of the solution, so that all of the lemmas can be processed within a reasonable amount of time.
+
+Another, smaller group of predicate lemmas has a greater number of senses (four to eight, designated \emph{harder}), but there are still considerably many such lemmas. Therefore, the tuning of the classifier must be more sophisticated, but still fast enough to cope with many lemmas.
+
+The last, but very important group of lemmas is highly ambiguous (we will refer to them as \emph{tough}) --- in most cases it is functional verbs and verbs that serve as the base element of multiple phrasal verbs, such as ``go'', ``take'', ``get'' etc. Only very few noun lemmas belong to the group, all of them representing very abstract and vague terms --- ``line'', ``way'', ``place'', ``hand''. We believe that for such a small group, a more time-consuming, but very accurate tuning algorithm must be applied.
+
 \section{Selecting the Classifier Setting}\label{classifier-setting}
 % vyber nejlepsiho nastaveni klasifikatoru na testovaci mnozine
-\section{Applying Multiple Feature Selection Algorithms}
+\section{Training Approaches}\label{pd-training}
 % ruzna feature selection pro ruzne "slozite" predikaty
 \section{The Predicate Disambiguation System}
 % celkova organizace systemu, vc. nejakeho schematu
 
 \chapter{Argument Labelling}\label{ac}
-\section{Different Argument Types}
+\section{Argument Candidates}\label{pruning}
+% pruning, jen hodne kratce
+\citep{asahara09,zhao09} Only the words that depend syntactically on one of the nodes syntactically superordinate to the predicate (i.e. on the syntactic path from the predicate to syntactic root of the sentence; including the predicate itself) are selected.
+\section{Different Argument Types}\label{arg-types}
 % prisl. urceni a reference nezavisi na valencnim ramci, valencni argumenty ano
 % test s jednim klasifikatorem na vsechna data
 % oddeleni klasifikace prisl. urceni a valencnich argumentu
-\section{Argument Selection vs. Argument Labelling}
+\section{Argument Selection vs. Argument Labelling}\label{ai-ac}
 % oddeleni identifikace a klasifikace vs. klasifikace rovnou
 \section{Merging Rare Predicates}
 % slucovani ridkych predikatu se shodnym valencnim ramcem <- nezapomenout na prohazování pos, když vypadalo chybne
@@ -512,6 +695,10 @@ A function of the weight vector is used as the regularization term --- \citet{ng
 \chapter{Conclusions}\label{conclusions}
 \section{Comparison to CoNLL 2009 Shared Task Systems}
 \section{Further Possibilities of Improvement}
+% lepis feat-sel ,nejaky algoritmus co porovna casto vyplivovane subsety z rankingu
+% pripadne feat-sel na jednotlivych binarizovany featurach, ale to by bylo strasne drahe
+% mozna tuning parametru, to by treba slo, s malym poctem moznosti
+% nebo inteligentnejsi tuning nez vyzkouseni predem zadanych moznosti
 \section{Application to Prague English Dependency Treebank}
 % kratky teoreticky navrh
 
