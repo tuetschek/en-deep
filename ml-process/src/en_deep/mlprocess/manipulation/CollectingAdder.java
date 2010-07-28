@@ -175,18 +175,18 @@ public class CollectingAdder extends Task {
      */
     private void collect() throws Exception {
 
-        Object [] inst;
+        Object [] bigInst;
         Object [] idFields = new Object [this.instIdIdxs.length];
 
-        while ((inst = this.readInstance()) != null){
+        while ((bigInst = this.readInstance()) != null){
 
             for (int i = 0; i < idFields.length; ++i){
-                idFields[i] = inst[this.instIdIdxs[i]];
+                idFields[i] = bigInst[this.instIdIdxs[i]];
             }
 
-            this.loadSmallData((String) inst[this.fileAttrIdx]);
-            this.findInstance(idFields);
-            this.writeInstance(inst, this.smallData.get(this.smallCurPos));
+            this.loadSmallData((String) bigInst[this.fileAttrIdx]);
+            Instance smallInst = this.findInstance(idFields);
+            this.writeInstance(bigInst, smallInst);
         }
     }
 
@@ -269,19 +269,23 @@ public class CollectingAdder extends Task {
                     }
                     break;
 
-                case '?':
-                    data[numTokens++] = null;
-                    break;
-
                 default:
-                    data[numTokens] = this.arffTokenizer.sval != null ? this.arffTokenizer.sval : "";
-                    try {
-                        if ((this.arffTokenizer.sval.charAt(0) >= '0' && this.arffTokenizer.sval.charAt(0) <= '9')
-                                || this.arffTokenizer.sval.charAt(0) == '.'){
-                            data[numTokens] = Double.valueOf(this.arffTokenizer.sval);
-                        }
+                    // missing value ~ UNQUOTED question mark
+                    if ((this.arffTokenizer.ttype == StreamTokenizer.TT_WORD && "?".equals(this.arffTokenizer.sval))
+                            || this.arffTokenizer.ttype == '?'){
+                        data[numTokens] = null;
                     }
-                    catch (Exception e){
+                    else {
+                        // register empty vlaues
+                        data[numTokens] = this.arffTokenizer.sval != null ? this.arffTokenizer.sval : "";
+                        try {
+                            if ((this.arffTokenizer.sval.charAt(0) >= '0' && this.arffTokenizer.sval.charAt(0) <= '9')
+                                    || this.arffTokenizer.sval.charAt(0) == '.'){
+                                data[numTokens] = Double.valueOf(this.arffTokenizer.sval);
+                            }
+                        }
+                        catch (Exception e){
+                        }
                     }
                     numTokens++;
                     break;

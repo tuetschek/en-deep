@@ -219,7 +219,11 @@ public class ResultsToSt extends StManipulation {
 
         int predicateNo = 0;
         int sentId = this.reader.getSentenceId();
-
+       
+        // ensure there are always enough columns, even if the sentence doesn't contain any predicates at all
+        if (this.reader.width() < this.reader.IDXI_PRED + 1){
+            this.reader.setField(this.reader.IDXI_PRED, 0, this.reader.EMPTY_VALUE);
+        }
         for (int i = 0; i < this.reader.length(); ++i){           
 
             if (!this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals(this.reader.EMPTY_VALUE)){ // predicate found
@@ -235,7 +239,7 @@ public class ResultsToSt extends StManipulation {
                 }
 
                 for (int j = 0; j < this.reader.length(); ++j){
-                    this.reader.setField(this.reader.IDXI_SEMROLE + predicateNo, j, predicts.get(sentId, j));
+                    this.reader.setField(this.reader.IDXI_SEMROLE + predicateNo, j, predicts.get(sentId, j+1));
                 }
                 predicateNo++;
             }

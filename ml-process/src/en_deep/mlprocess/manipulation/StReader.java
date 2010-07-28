@@ -307,6 +307,17 @@ public class StReader {
     }
 
     /**
+     * Returns the number of columns for each word in the current sentence
+     * @return the number of columns for each word in the current sentence
+     */
+    public int width() {
+        if (this.words.isEmpty()){
+            return 0;
+        }
+        return this.words.get(0).length;
+    }
+
+    /**
      * Returns all the information about the given word.
      * @param wordNo the number of the word in the sentence
      * @return the whole information about the word

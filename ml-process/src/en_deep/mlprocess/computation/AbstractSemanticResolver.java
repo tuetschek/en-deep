@@ -54,6 +54,8 @@ public abstract class AbstractSemanticResolver extends Task {
     protected static final String SENTENCE = "sentence";
     /** The 'no_duplicate' parameter name */
     protected static final String NO_DUP = "no_duplicate";
+    /** Attribute-value separator for prob. distribution parameters */
+    private static final String ATTR_VAL_SEP = "_";
 
     /* DATA */
 
@@ -112,7 +114,7 @@ public abstract class AbstractSemanticResolver extends Task {
         Enumeration<Attribute> attribs = this.data.enumerateAttributes();
         while (attribs.hasMoreElements()){
             Attribute curAttr = attribs.nextElement();
-            if (curAttr.name().startsWith(this.distrPrefix)){
+            if (curAttr.name().startsWith(this.distrPrefix + ATTR_VAL_SEP)){
                 this.distrAttribs.add(curAttr);
             }
         }
@@ -143,7 +145,7 @@ public abstract class AbstractSemanticResolver extends Task {
 
         ArrayList<String> classVals = new ArrayList<String>();
         for (int i = 0; i < this.distrAttribs.size(); ++i){
-            classVals.add(this.distrAttribs.get(i).name().substring(this.distrPrefix.length() + 1));
+            classVals.add(this.distrAttribs.get(i).name().substring(this.distrPrefix.length() + ATTR_VAL_SEP.length()));
         }
         Attribute attr = new Attribute(this.distrPrefix, classVals);
         this.data.insertAttributeAt(attr, this.data.numAttributes());
