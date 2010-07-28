@@ -44,7 +44,7 @@ import weka.filters.unsupervised.instance.SubsetByExpression;
  * This class splits the data into equal pieces by lines.
  * @author Ondrej Dusek
  */
-public class DataSplitter extends MultipleOutputsTask {
+public class SimpleDataSplitter extends MultipleOutputsTask {
 
     /* CONSTANTS */
 
@@ -67,7 +67,7 @@ public class DataSplitter extends MultipleOutputsTask {
     /* METHODS */
 
     /**
-     * This creates a new {@link DataSplitter} task. 
+     * This creates a new {@link SimpleDataSplitter} task.
      * <p>
      * The output specification must have a "**" pattern, in order to produce more output files. If there
      * are more input files, the exactly same number of outputs (with "**") must be given. If the inputs
@@ -94,7 +94,7 @@ public class DataSplitter extends MultipleOutputsTask {
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public DataSplitter(String id, Hashtable<String, String> parameters,
+    public SimpleDataSplitter(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
         
         super(id, parameters, input, output);
@@ -113,39 +113,9 @@ public class DataSplitter extends MultipleOutputsTask {
             }
         }
 
-        if (input.size() != output.size()){
+        if (this.input.size() != this.output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Numbers of inputs and outputs" +
                     "don't match.");
-        }
-    }
-
-
-    /**
-     * Performs the task operation -- splits all the given input file(s) according to the parameters.
-     * @throws TaskException
-     */
-    @Override
-    public void perform() throws TaskException {
-
-        try {         
-            for (int i = 0; i < this.input.size(); ++i){
-                if (this.selectedVal != null){
-                    this.splitOneVsOthers(this.input.get(i), this.output.get(i));
-                }
-                else if(this.hasParameter(BY_ATTRIBUTE)){
-                    this.splitByAttribute(this.input.get(i), this.output.get(i));
-                }
-                else {
-                    this.splitByPartsNumber(this.input.get(i), this.output.get(i));
-                }
-            }
-        }
-        catch (TaskException e){
-            throw e;
-        }
-        catch (Exception e){
-            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
-            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
 
@@ -319,6 +289,38 @@ public class DataSplitter extends MultipleOutputsTask {
         return data;
     }
 
+    /**
+     * This performs the splitting of one file into the multiple outputs given by the pattern.
+     * @param inputFile the input file name
+     * @param outputPattern the output file pattern
+     */
+    protected void split(String inputFile, String outputPattern) throws Exception {
+        if (this.selectedVal != null) {
+            this.splitOneVsOthers(inputFile, outputPattern);
+        }
+        else if (this.hasParameter(SimpleDataSplitter.BY_ATTRIBUTE)) {
+            this.splitByAttribute(inputFile, outputPattern);
+        }
+        else {
+            this.splitByPartsNumber(inputFile, outputPattern);
+        }
+    }
 
+
+    @Override
+    public final void perform() throws TaskException {
+        try {
+            for (int i = 0; i < this.input.size(); ++i) {
+                this.split(this.input.get(i), this.output.get(i));
+            }
+        }
+        catch (TaskException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
+            throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
+        }
+    }
 
 }
