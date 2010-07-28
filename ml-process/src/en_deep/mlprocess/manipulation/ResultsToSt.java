@@ -222,7 +222,7 @@ public class ResultsToSt extends StManipulation {
 
         for (int i = 0; i < this.reader.length(); ++i){           
 
-            if (!this.reader.getWordInfo(i, this.reader.IDXI_PRED).equals(this.reader.EMPTY_VALUE)){ // predicate found
+            if (!this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals(this.reader.EMPTY_VALUE)){ // predicate found
 
                 String predName = this.reader.getWordInfo(i, this.reader.IDXI_PRED) +
                         this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));

@@ -47,6 +47,7 @@ import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.converters.ArffLoader.ArffReader;
 
 /**
  * This is a special attribute adder version for enormously large data sets. It collects data that are
@@ -268,11 +269,12 @@ public class CollectingAdder extends Task {
                     }
                     break;
 
+                case '?':
+                    data[numTokens++] = null;
+                    break;
+
                 default:
                     data[numTokens] = this.arffTokenizer.sval != null ? this.arffTokenizer.sval : "";
-                    if (data[numTokens].equals("?")){
-                        data[numTokens] = null;
-                    }
                     try {
                         if ((this.arffTokenizer.sval.charAt(0) >= '0' && this.arffTokenizer.sval.charAt(0) <= '9')
                                 || this.arffTokenizer.sval.charAt(0) == '.'){
