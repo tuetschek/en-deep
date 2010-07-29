@@ -581,7 +581,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
 
     /**
      * This returns only the selected pattern replacements of an expanded task, or null if not
-     * applicable
+     * applicable. It returns them as 1->max., depending on the number of indexes given.
      * @param idxs the number of the selected pattern replacements to be returned (must be all 1-9)
      * @return the selected replacements, or null if the indexes are invalid or there are no replacements
      */
@@ -593,12 +593,12 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
             return null;
         }
         all = this.id.substring(this.id.indexOf('#')).split("#"); // this creates an empty zero field
-        sel = new String [idxs.length];
-        for (int i = 0; i < sel.length; ++i){
-            if (idxs[i] >= all.length || idxs[i] <= 0){ // zero field always reserved for listing
+        sel = new String [idxs.length+1];
+        for (int i = 1; i < all.length; ++i){
+            if (idxs[i-1] >= all.length || idxs[i-1] <= 0){ // zero field always reserved for listing
                 return null;
             }
-            sel[i] = all[idxs[i]];
+            sel[i] = all[idxs[i-1]];
         }
         return sel;
     }

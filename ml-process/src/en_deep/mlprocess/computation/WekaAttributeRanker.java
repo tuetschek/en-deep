@@ -146,9 +146,10 @@ public class WekaAttributeRanker extends GeneralClassifier {
             for (String evalFile : evalFiles){
 
                 Instances eval = FileUtils.readArff(evalFile);
+                this.setClassFeature(train, eval);
                 if (!eval.equalHeaders(train)){
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, evalFile + " and "
-                            + trainFile + " don't have equal headers.");
+                            + trainFile + " don't have equal headers:" + eval.equalHeadersMsg(train));
                 }
                 // merge the data
                 Enumeration<Instance> evalInst = eval.enumerateInstances();
