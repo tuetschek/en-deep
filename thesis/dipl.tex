@@ -113,7 +113,7 @@ e-mail vedoucího: \texttt{hajic@ufal.mff.cuni.cz}\\
 
 Both in descriptive linguistic theories and in automatic natural language processing (NLP)\nomenclature{NLP}{Natural Language Processing} applications, the formalization of the language concept is usually split into several linguistic layers, which differ in the level of abstraction -- from the bare matter of spoken word or written text itself up to the cognitive content of the utterance. The number and extent of those layers may vary across different approaches and theories, but their hierarchical structure remains. Language descriptions include most usually phonetics or graphemics\footnote{In language processing, splitting the text to individual words or tokens is the first task.}, morphology, syntax, semantics and pragmatics. Our work is mainly concerned with semantics, i.e. with obtaining the meaning of language expressions. We consider the language analysis to be a sequence of analyses on the individual layers, successively climbing from the most concrete to more abstract layers. Therefore, the deep or semantic analysis comes after the phonetic, morphological and syntactic (i.e. shallower) analyses have taken place.
 
-In some theoretical approaches, such as the Prague \emph{Functional Generative Description} (FGD)\nomenclature{FGD}{Functional Generative Description} \citep{sgall86}, the description of (linguistic) meaning\footnote{Please note that language meaning differs from the cognitive content, as it refers solely to the meaning expressed in a language.} is included in the deep syntax (\emph{tectogrammatical}) layer. On the other hand, the resources used in this thesis, such as the \emph{Proposition Bank} (PropBank)\nomenclature{PropBank}{The Proposition Bank} \linebreak[4] \citep{palmer05}, describe the analogical layer of annotation as semantic. However, both descriptions work with a labeled dependency structure, which is the main object of the following work. Other meaning representations, such as \emph{Frame\-Net} \citep{baker98}, operate with comparable constructs.
+In some theoretical approaches, such as the Prague \emph{Functional Generative Description} (FGD)\nomenclature{FGD}{Functional Generative Description} \citep{sgall86}, the description of (linguistic) meaning\footnote{Please note that linguistic meaning differs from the cognitive content, as it refers solely to the content expressed by the language, without taking pragmatics into account.} is included in the deep syntax (\emph{tectogrammatical}) layer. On the other hand, the resources used in this thesis, such as the \emph{Proposition Bank} (PropBank)\nomenclature{PropBank}{The Proposition Bank} \linebreak[4] \citep{palmer05}, describe the analogical layer of annotation as semantic. However, both descriptions work with a labeled dependency structure, which is the main object of the following work. Other meaning representations, such as \emph{Frame\-Net} \citep{baker98}, operate with comparable constructs.
 
 While the FGD and the projects stemming from it, such as the \emph{Prague Dependency Treebank} (PDT)\nomenclature{PDT}{Prague Dependency Treebank} \citep{hajic06} or the \emph{Prague English Dependency Treebank} (PEDT)\nomenclature{PEDT}{Prague English Dependency Treebank} \citep{cinkova09} use dependency tree structure on the tectogrammatical level with semantic roles as dependency labels, the PropBank annotation \citep{kingsbury03} employs a predicate-argument structure --- \emph{semantic predicates}, i.e. words in a given sense that require or attract other words, their \emph{arguments}, to complete the meaning in various ways, thus representing different semantic roles. The underlying notion of \emph{valency} is visible in both structures, though. In this thesis, we focus on the predicate-argument description.
 
@@ -164,7 +164,7 @@ Most of the systems included a classifier algorithm and various feature selectio
 
 Now let us take a look at the machine learning cores of the participating setups: The approaches of \citet{zhao09}, \citet{che09} and \citet{chen09}, as well as of several others, feature a MaxEnt classifier, which is a very common and successful practice in various NLP tasks. \citet{nugues09} apply Logistic Regression on the data, which is in a way similar to the MaxEnt method\footnote{We will discuss this similarity in Section \ref{classifiers}.}. \citet{che09} also use SVM classifers in the PD part of their system, as do \citet{tackstrom09}. Other systems \citep{bohnet09,asahara09} employ various maximum-margin algorithms, such as the Margin-Infused Relaxed Algorithm (MIRA)\nomenclature{MIRA}{Margin-Infused Relaxed Algorithm} \citep{crammer03}. There is also a group of systems based on diverse logic devices: \citet{meza-ruiz09} use Markov Logic Networks in combination with the MIRA algorithm, while \citet{moreau09} work with Conditional Random Fields and \citet{merlo09} with Incremental Sigmoid Belief Networks. Many of systems included not one, but multiple classifiers, one for each predicate lemma or sense \citep{che09}; \citep{nugues09}. The results of the competition show that most of the used machine learning approaches are capable of reaching a comparable quality level of results if trained properly. This becomes apparent also from our own classifier selection and tuning tests (see Sections \ref{classifiers} and \ref{classifier-setting}).
 
-Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words\footnote{Please note that in this and the following chapters, we the term ``word'' refers not only to words, but also to other tokens in the input text, such as punctuation signs.} in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to reduce the amount of data that is needed be passed to the classifier --- \citet{zhao09} and \citet{asahara09} describe a very similar approach to this.
+Most of the systems use quite similar kinds of features that are extracted from the training and evaluation data sets, exploiting the provided morphological and syntactical annotations and combining it to describe the various relations between the words\footnote{Please note that in this and the following chapters, we the term ``word'' refers not only to words, but also to other tokens in the input text, such as punctuation signs.} in a sentence. \citet{asahara09} use also ``global features", i.e. a set of all arguments of one predicate, in their semantic labeler. \citet{nugues09} incorporates also feature bigrams to enlarge the feature set of the training data. The feature selection techniques include the greedy search procedure \citep[among others]{nugues09,zeman09}, as well as beam search \citep[][and others]{merlo09,nugues09} and various ranking approaches. Some authors chose to prune the semantic argument candidates to reduce the amount of data that is needed be passed to the classifier --- both \citet{zhao09} and \citet{asahara09} describe very similar solutions to this problem.
 
 Most of the authors introduced also some further enhancements into their systems. The iterative approach, where the results of the semantic analysis are taken as an input for a repeated classification, taken by \citet{chen09} is one of them. Other researchers included global re-ranking of semantic argument candidates \citep{nugues09} or other forms of post-inference, such as Integer Linear Programming\nomenclature{ILP}{Integer Linear Programming} \citep{che09}.
 
@@ -172,14 +172,14 @@ The CoNLL 2009 Shared Task contest has provided us with a variety of options to 
 
 \section{Other Approaches to Deep Language Analysis}
 
-There are also many other works in semantic analysis and particularly in automatic SRL systems using machine learning techniques. The CoNLL Shared Tasks of 2004, 2005 \citep{carreras04,carreras05} and 2008 \citep{surdeanu08} have all been dedicated to semantic analysis of English using the PropBank corpus\footnote{The 2008 contest included also syntactic parsing.}. The SRL solvers described in the proceedings of these contests stick mostly to the pipeline classification scheme described in Section \ref{conll2009}, with MaxEnt and SVM as the most widely used machine learning techniques. Some of the 2008 systems have been adapted for the 2009 competition, which provides us with more information about the versions of both years, as well as additional information about gradual improvements \citep{che08,chen08}.
+There are also many other works in semantic analysis and particularly in automatic SRL systems using machine learning techniques. The CoNLL Shared Tasks of 2004, 2005 \citep{carreras04,carreras05} and 2008 \citep{surdeanu08} have all been dedicated to semantic analysis of English using the PropBank corpus\footnote{The 2008 contest included also syntactic parsing.}. The SRL solvers described in the proceedings of these contests stick mostly to the pipeline classification scheme described in Section \ref{conll2009}, with MaxEnt and SVM as the most widely used machine learning techniques. Some of the 2008 systems have been adapted for the 2009 competition, which provides us with more information about the versions of both years, as well as additional reports of gradual improvements \citep{che08,chen08}.
 
 % TODO dopsat cluster-based approach
-Further research concentrates on similar tasks: \citet{jiang06} provide an analysis of NomBank \citep{meyers04} semantic annotation and a description of a MaxEnt deep analysis system. \citet{giuglea06} presented a system that retrieves its semantic annotation training data from three different resources --- PropBank, NomBank and FrameNet. \citet{loper07} are developing a project to link several annotated resources permanently, which has been a valuable tool for our preliminary analyses of predicate behavior. 
+Further research concentrates on similar tasks: \citet{jiang06} provide an analysis of NomBank \citep{meyers04} semantic annotation and a description of a MaxEnt deep analysis system. \citet{punyakanok04} introduced the ILP technique into SRL and gave a detailed report. \citet{giuglea06} presented a system that retrieves its semantic annotation training data from three different resources --- PropBank, NomBank and FrameNet. \citet{loper07} are developing a project to link several annotated resources permanently, which has been a valuable tool for our preliminary analyses of predicate behavior. 
 
 %
 %
-\chapter{Used Data}\label{data}
+\chapter{Data Used}\label{data}
 %
 %
 
@@ -195,7 +195,7 @@ The original PTB employed a constituent parse tree schema based on the theory of
 Since dependency parsing algorithms have become more effective and can handle non-projectivity \citep[cf.][]{mcdonald05}, it is more convenient to use dependency structures to describe syntactic relationships.For the purposes of CoNLL 2008/9, the PTB corpus has therefore been automatically converted to a dependency schema \citep{johansson07,surdeanu08}, while the edge labels have been adapted to meet the new paradigm and further enriched, so that they can serve to a better automatic semantic analysis\footnote{For details on the dependency labels and syntax in this corpus, see the file format and the description of the DEPREL field at \url{http://yr-bcn.es/conll2008}.}. The modified dependency labels also include named entity indication, which originates from the \emph{BBN Pronoun Coreference and Entity Type Corpus} \citep{weischedel05}.
 % pridat seznam tagu obou veci do priloh ???
 
-\section{PropBank and NomBank Semantic Annotation}\ref{propbank-nombank}
+\section{PropBank and NomBank Semantic Annotation}\label{propbank-nombank}
 
 The semantic information in the CoNLL English corpus incorporates annotations from PropBank and NomBank, both of which feature a predicate-argument structure (cf. Section \ref{problem}). Not only the structure itself is very similar, they also use the same approach to semantic argument labeling. They distinguish the following four kinds of semantic arguments\footnote{For more details on PropBank annotation, see the instructions at \url{http://verbs.colorado.edu/~mpalmer/projects/ace.html} or \citep{moreda06}.}~\footnote{The NomBank annotation is thoroughly described in the guidelines at: \\ \url{http://nlp.cs.nyu.edu/meyers/nombank/nombank-specs-2007.pdf}.}:
 \begin{itemize} 
@@ -410,7 +410,7 @@ As one of our classification subtasks uses the Integer Linear Programming techni
 %
 %
 
-We will now describe the strategy that we decided to pursue in the solution of our SRL problem (Section \ref{approach}), including an account of the classification algorithms we tested in our experiments (Section \ref{classifiers}). As we already mentioned in Section \ref{data-format}, the original data format of the used corpus is not well-suited for the operation of machine learning procedures. In addition, the set of properties for each word in the corpus does not describe the relations of the individual words. Therefore, we also include an account of the data conversion (Section \ref{conversion}), as well as feature generation and selection (Sections \ref{features} and \ref{featsel}), all of which is required for proper classifier function and high performance output.
+We will now describe the strategy that we decided to pursue in the solution of our SRL problem (Section \ref{approach}), including an account of the classification algorithms (from publicly available ML libraries) we tested in our experiments (Section \ref{classifiers}). As we already mentioned in Section \ref{data-format}, the original data format of the used corpus is not well-suited for the operation of machine learning procedures. In addition, the set of properties for each word in the corpus does not describe the relations of the individual words. Therefore, we also include an account of our implementations the data conversion (Section \ref{conversion}), as well as feature generation and selection (Sections \ref{features} and \ref{featsel}), all of which is required for proper classifier function and high performance output. Our system uses various generated features described by other authors and several additional, which we originally designed for the purpose of this thesis. The feature selection algorithms comprise our own application of well-known approaches, using ranking algorithms provided by the WEKA framework and our own implementation of the mRMR algorithm. We conclude this chapter with a description of the standard comparison metrics we adopted and programmed for our experiments.
 
 \section{Basic Approaches}\label{approach}
 
@@ -585,15 +585,47 @@ Our system contains the following feature ranking criteria:
 \max_{F_j\not\in S_{m-1}} \left[ I(F_j,T) - \frac{1}{m-1} \sum_{F_i\in S_{m-1}} I(F_i,F_j)\right]
 \end{equation}
 \end{itemize}
-All the criteria but mRMR were integrated into the WEKA framework; we implemented the mRMR ranking algorithm (including an implementational variant of MI) for the purpose of this work. We also made tests with averaging the rankings --- either all the rankings or only mRMR and ReliefF, following the ideas of \citet{zhang08} in a simplified way.
+All the criteria but mRMR were integrated into the WEKA framework; we implemented the mRMR ranking algorithm (including our own implementational variant of MI, which we also use in the rankings) for the purpose of this work. We also made performed tests with averaging the rankings --- either all the rankings or only mRMR and ReliefF, following the ideas of \citet{zhang08} in a simplified way, so that the average is less prone to possible failures of one of the ranking algorithms.
 
 Our decision to apply or combine the various rankings or to employ the greedy algorithm in the individual subtasks in our system (see Chapters \ref{pd} and \ref{ac}) depends on the complexity and data volume in the particular case and is a trade-off between computation speed and final classifier performance.
 
 Moreover, we always convert the multiple-valued string features to a set of binary features, each indicating the presence of one possible value, as the classifiers used in our experiments interpret all features as numeric. The values of numeric attributes are then normalized \citep[p. 56f.]{witten05} to lie within the $[0,1]$ interval, so that the classifiers may use them as a metric.
- 
-\chapter{Predicate Disambiguation}\label{pd}
 
-This chapter contains the technical description of the first part of our system. We have split the PD problem into several parts, according to the nature of the particular predicates (see Chapter \ref{pd-observe}), and applied various machine learning techniques described in Chapter \ref{ml-semantic}. An account of our classifier tuning is given in Sections \ref{classifier-setting} and \ref{pd-training}. We will then include an overview of the whole solution.
+\section{Measuring the Classifier Performance}\label{metrics}
+
+In order to compare the different versions of our system, we adopted the standard metrics used in NLP tasks \citep[p. 268ff.]{manning00}, \citep[p. 142ff.]{manning08}, \citep[p. 171ff.]{witten05} --- \emph{accuracy}, \emph{precision and recall}  and \emph{F-measure} ($F_1$)\footnote{We implemented a simple evaluation subtask that is able to compute all four of them.}. 
+
+Accuracy is the most straightforward one of them; it is computed as the percentage of correctly classified (\emph{true}) data instances.
+\begin{equation}
+A = \frac{t}{t + f}
+\end{equation}
+In the equation, $t$ stands for true examples and $f$ for \emph{false} (wrongly classified) instances. It is obvious that this measure can be used for multi-class problems, such as the PD problem (see Chapter \ref{pd} for its application in our system).
+
+The other measures of comparison are based on the concept of \emph{negative} and \emph{positive} data instances. It relates to a binary classification problem situation where a part of the data is relevant and needs to be retrieved. Such data examples are called positive, whereas the rest of the input is referred to as negative. Precision and recall lay a greater focus on the positive examples, since their number is usually much smaller than that of the negative ones, which would lead to all instances being classified as negative if the ultimate goal was to maximize accuracy.
+
+The formulas for computing precision and recall are defined in the following way ($tp,tn$ being true positive and negative instances and $fp,fn$ false positive and negative instances, respectively):
+\begin{equation}
+P = \frac{tp}{tp + fp}\quad R = \frac{tp}{tp + fn}
+\end{equation}
+This means that maximizing precision means improving the system, so that it does not retrieve irrelevant data, while maximizing recall means striving to retrieve as much relevant data as possible, regardless of false positives. In many situations, it is important for the optimum performance of a solution that both precision and recall stay high. Therefore, an additional metrics has been introduced, which makes a compromise between them, the F-measure. The most usual variant, $F_1$, which weighs precision and recall equally, computes as the harmonic mean of the two values:
+\begin{equation}
+F_1 = \frac{1}{\frac{1}{P} + \frac{1}{R}} = \frac{2PR}{P+R}
+\end{equation}
+
+In the CoNLL 2009 contest, a \emph{labeled} variant of precision, recall and $F_1$ \citep{hajic09} was used in addition to the standard versions to compare the competing systems' SRL results. It uses the same notion of positive and negative examples, while effectively counting correctly retrieved, but wrongly labeled data instances as both false positive and false negative. We adopted this approach for our AC system (see Chapter \ref{ac}), since it both measures the correctness of the semantic labeling and focuses on the positive instances, i.e. semantic arguments.
+
+For the total evaluation of the whole system, we used the original CoNLL 2009 scorer\footnote{\url{http://ufal.mff.cuni.cz/conll2009-st/scorer.html}}, which computes labeled and unlabeled precision, recall and $F_1$ scores, while combining predicate senses with semantic arguments.
+
+We needed also a measure of difference relevance in order to compare the different setups. For this purpose, we adopted and implemented the \emph{bootstrap} technique \citep[p. 152]{efron79,witten05}, which is very fast to compute and renders reliable results. We chose not to use other commonly applied approach, the cross-validation \citep[p. 241ff.]{hastie09}, due to its higher computational requirements.
+The bootstrap is computed in the following way: By iteratively selecting random subsets of the original output and determining the classifier performance on these subsets, we obtain an estimate of the probability distribution for the classifier output, whose percentiles give the desired confidence interval (90\% is used in this thesis). In conclusion, if the confidence intervals for two classifier variants do not overlap, one of them performs significantly better.
+
+%
+% 
+\chapter{Predicate Disambiguation}\label{pd}
+%
+%
+
+This chapter contains the technical description of the first part of our system. We have split the PD problem into several parts, according to the nature of the particular predicates (see Chapter \ref{pd-observe}), and applied various machine learning techniques described in Chapter \ref{ml-semantic}. An account of our classifier tuning is given in Sections \ref{classifier-setting} and \ref{pd-training}. We will then include an overview of the whole solution (Section \ref{pd-overview}).
 
 \section{Observations on the Data}\label{pd-observe}
 
@@ -617,14 +649,14 @@ This division does not take the evaluation data into consideration, apart from t
 & \bf Predicates  &\bf Lemmas & \bf Coverage (Lemmas) \\\hline
 Training & 9228 & 7639 &  - \\
 Development & 2151 & 1946 & 95.5 \% \\
-Evaluation &  2610 & 2340 & 95.8 \%  \\\hline
+Evaluation &  2610 & 2337 & 96.2 \%  \\\hline
 \end{tabular}
 \end{center}
 \end{table}
 
 There is another distinction that must be done prior to the actual classifier training, namely based on the number of senses for each predicate. As is evident from Table \ref{tab:senses-num}, a vast majority of the predicates, and also of their number of occurrences, although not predominant, has a unique sense (we will refer to them as \emph{unary}), which means that the classification of those predicates is trivial. We will therefore always assign the only observed sense to them.  
 
-\begin{table}[htbp]
+\begin{table}[htb]
 \caption{Number of senses for the individual predicate lemmas as observed in the training data set}\label{tab:senses-num}\footnotesize
 \begin{center}
 \begin{tabular}{|r|rrr|rrr|}\hline
@@ -663,17 +695,17 @@ The last, but very important group of lemmas is highly ambiguous (we will refer 
 
 \section{Selecting the Classifier Setting}\label{classifier-setting}
 
-We have decided to use just one type of classifier with the same set of parameters for the whole task, because selecting the best algorithm and parameter set for each predicate lemma would complicate the process and increase the training times excessively. Therefore, we needed to obtain a classifier and a set of parameters with the highest average performance. We therefore created an experiment that would test several classifier types from the LibLINEAR and LibSVM packages (as indicated in Section \ref{classifiers}) with many different settings and compare them to each other. We used \emph{accuracy} \citep[a percentage of correctly classified senses][p. 269]{manning00} as the measure of comparison for the individual configurations, because all of the instances must be classified and there is no distinction between ``positive'' and ``negative'' instances, as with other standard measures, such as \emph{precision} and \emph{recall}.
+We have decided to use just one type of classifier with the same set of parameters for the whole task, because selecting the best algorithm and parameter set for each predicate lemma would complicate the process and increase the training times excessively. Therefore, we needed to obtain a classifier and a set of parameters with the highest average performance. We therefore created an experiment that would test several classifier types from the LibLINEAR and LibSVM packages (as indicated in Section \ref{classifiers}) with many different settings and compare them to each other. We used \emph{accuracy} as the measure of comparison for the individual configurations, since the PD task is a multi-class problem with no well-defined ``positive'' and ``negative'' data instances, which are needed for the other metrics described in Section \ref{metrics}.
 
-Since the amount of input data is too high to test each algorithm and each configuration on the whole training set, we created a smaller subset for our experiments, selecting 100 predicate lemmas with the biggest development data sets. Since most of the plentifully represented predicates are also more ambiguous than the average, this proved convenient for the selection of the optimal configuration mainly for the harder and tough lemmas, where the tuning is of the highest importance.
+Since the amount of input data is too high to test each algorithm and each configuration on the whole training set, we created a smaller subset of both training and development data for our experiments (referred to as \emph{PD Experimental Subset}), selecting 100 predicate lemmas with the biggest development data sets. Since most of the plentifully represented predicates are also more ambiguous than the average, this proved convenient for the selection of the optimal configuration mainly for the harder and tough lemmas, where the tuning is of the highest importance.
 
-We planned to apply feature selection on the training algorithms and hence took this into account also for this experiment: Our system used all the feature rankings discussed in Section \ref{featsel} and tried to find the optimal number of attributes in the range 4--30, then selected the best result of the individual rankings. We then averaged the results with the same classifier setting and established an estimate of confidence intervals using the \emph{bootstrapping} method \citep{efron79}: By iteratively selecting random subsets of the original output and determining their accuracy, we obtain an estimate of the probability distribution for the classifier output, whose percentiles give the desired interval. % TODO kontrola? 
+We planned to apply feature selection on the training algorithms and hence took this into account also for this experiment: Our system used all the feature rankings discussed in Section \ref{featsel} and tried to find the optimal number of attributes in the range $4--30$ by consecutively adding the attributes in the order given by the particular ranking, then selected the best result of the individual rankings\footnote{We also use this feature selection technique with harder lemmas in our PD system. Cf. Section \ref{pd-training} for details.}. We then averaged the results with the same classifier setting and established an estimate of confidence intervals using the \emph{bootstrapping} method (see Section \ref{metrics}).
 
 \begin{table}[htbp]
-\caption{Tested classifier configurations and their performance on the PD testing subset}\label{tab:pd-classifiers}\footnotesize
+\caption{Classifier performance on the PD Experimental Subset with feature ranking}\label{tab:pd-classifiers}\footnotesize
 \begin{center}
 \begin{tabular}{|l|l|l|c|c|c|}\hline
-\bf Software & \bf Classifier & \bf Parameters & \bf Acc. & \bf 5\% & \bf 95\% \\\cline{2-6}
+\bf Software & \bf Classifier & \bf Parameters & \bf Acc. & \bf 5\% & \bf 95\% \\\hline
 \multirow{24}{*}{LibLINEAR} & \multirow{4}{*}{$L_2$-Log. Regression} & C = 2; E = 0.001 & \bf 92.9 & 91.3 & 94.5 \\
  & & C = 5, 10; E = 0.001 & 92.8 & 91.1 & 94.5 \\
  & & C = 1; E = 0.001 & 92.7 & 91.0 & 94.4 \\
@@ -704,7 +736,7 @@ We planned to apply feature selection on the training algorithms and hence took 
  &  & C = 1, 10; $\gamma$ = * & 92.8 & 91.1 & 94.4 \\\hline
 \end{tabular}
 \end{center}
-The listed values are: accuracy on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. Only up to five best performing configurations for each classifier are listed; if the performance on the whole set is identical, the lines are merged and the outermost bootstrap values are shown.
+The listed values are: accuracy percentage on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. Only up to five best performing configurations for each classifier are listed; if the performance on the whole set is identical, the lines are merged and the outermost bootstrap values are shown. An asterisk (``*'') in the parameters specifications signifies that any of the tested values is possible.
 \end{table}
 
 We have discovered in preliminary experiments with no feature selection that if the regularization penalty cost parameter is set higher than $10$, the performance of all classifiers is lowered and training duration becomes much longer. Additionally, lower termination criterion for the iterative fitting step of LibLINEAR classifiers than $0.001$ does not change the algorithm output. We have therefore selected the parameter values accordingly and tested the following classifier setups:
@@ -716,35 +748,194 @@ We have discovered in preliminary experiments with no feature selection that if 
 \end{itemize}
 The list of the best-performing classifier algorithms and parameter settings, along with their results, is given in Table \ref{tab:pd-classifiers}. It is now apparent that the various classifiers perform very similarly; the results of the various SVM variants from the LibLINEAR package are almost identical. The confidence intervals estimated by bootstrap overlap for all the algorithms, and thus higher accuracy on the experiment data set cannot be considered a decisive criterion for selecting one of them. 
 
-However, the results of the test also show that all of the classifiers are relatively sensitive to parameter settings. The logistic regression does not reach $87\%$ accuracy with the termination criterion set at $1$, independent of the cost value. Both LibSVM classifiers reach only $90\%$ accuracy with inadequate configuration. The LibLINEAR SVM methods are less prone to misconfiguration, their worst outputs rate at $91.8\%$. It is also apparent from Table \ref{tab:pd-classifiers} that the regularization penalty $C$ set at $2$ proves as the best for all the machine learning techniques.
+However, the results of the test also show that all of the classifiers are relatively sensitive to parameter settings. The logistic regression stays under $87\%$ accuracy with the termination criterion set at $1$, independent of the cost value; however, its results remained at the top level as long as this this variable was set at $0.01$ or lower. Both LibSVM classifiers reach only $90\%$ accuracy with inadequate configuration. The LibLINEAR SVM methods are less prone to misconfiguration, their worst outputs rate at $91.8\%$. It is also apparent from Table \ref{tab:pd-classifiers} that the regularization penalty $C$ set at $2$ proves as the best for all the machine learning techniques, albeit by a very narrow margin.
 
-% vyber nejlepsiho nastaveni klasifikatoru na testovaci mnozine
+\begin{table}[htpb]
+\caption{Classifier performance on the PD Experimental Subset with no feature selection}\label{tab:pd-allfeat}\footnotesize
+\begin{center}
+\begin{tabular}{|l|l|l|c|c|c|}\hline
+\bf Software & \bf Classifier & \bf Parameters & \bf Acc. & \bf 5\% & \bf 95\% \\\hline
+\multirow{11}{*}{LibLINEAR} & \multirow{3}{*}{$L_2$-Log. Regression} & C = 0.1; E = 0.1 & \bf 91.5 & 89.5 & 93.1 \\
+ & & C = 0.1, 0.5; E = 0.001 & 91.4 & 89.7 & 93.1 \\
+ & & C = 0.1; E = 0.01 & 91.4 & 89.7 & 93.1 \\\cline{2-6}
+ & \multirow{2}{*}{Multiclass SVM} & C = 0.05; E = 0.1, 0.01, 0.001 & \bf 91.1 & 89.3 & 92.8 \\ 
+ &  & C = 0.1; E = 0.01 & 90.6 & 88.9 & 92.4 \\\cline{2-6}
+ & \multirow{2}{*}{$L_1$-SVM (Dual)} & C = 0.05; E = 1 & \bf 91.5 & 89.8 & 93.3 \\
+ & & C = 0.05; E = 0.001 & 91.4 & 89.5 & 93.2 \\ \cline{2-6}
+ & \multirow{2}{*}{$L_2$-SVM (Dual)} & C = 0.05; E = 1 & \bf 91.2 & 89.4 & 93.0 \\
+ &  & C = 0.05; E = 0.1,0.01,0.001 & 91.1 & 89.3 & 92.8 \\\cline{2-6}
+ & \multirow{2}{*}{$L_2$-SVM (Primal)} & C = 0.05; E = 0.001 & \bf 91.4 & 89.5 & 93.1 \\
+ &  & C = 0.05; E = 0.01 & 91.2 & 89.4 & 92.8  \\\hline
+ \multirow{4}{*}{LibSVM} & \multirow{2}{*}{Linear Kernel} & C = 0.1, 0.2 & \bf 86.7 & 84.5 & 88.9  \\
+ &  & C = 1, 2 & 86.3 & 84.2 & 88.4 \\\cline{2-6}
+ & \multirow{2}{*}{Radial Kernel} & C = 2; $\gamma$ = 0.001 & \bf 89.1 & 87.2 & 91.1 \\
+ &  & C = 5, 10; $\gamma$ = 0.001 & 88.9 & 86.9 & 90.8 \\\hline
+\end{tabular}
+\end{center}
+The format of this table is the same as in Table \ref{tab:pd-classifiers}. Only a maximum of three best settings is listed.
+\end{table}
+
+In order to test classifier sensitivity to irrelevant features, we performed a variant of the above experiment with the same software and configuration, but no feature selection, i.e. all the generated features were present in the classifier inputs. Table \ref{tab:pd-allfeat} lists the results of this trial, which showed that the performance of the LibSVM classifiers depends very strongly on the relevance of the input features. All the LibLINEAR methods proved significantly better, with the results of logistic regression performing slightly better than the SVM algorithms. In addition, the results of all LibLINEAR models and the LibSVM linear kernel SVM for different parameters do not vary nearly as much as with feature selection (the highest interval between the best and the worst result was $1.1\%$ with $L_1$-SVM). The LibSVM radial kernel SVM is very sensitive to the parameter values --- their proper setting yields as much as $5$ accuracy percent points difference. 
+
+As a result of this experiment, we have chosen to perform the PD task classification with the $L_2$-regularized logistic regression from the LibLINEAR package, for it reaches high performance with most configurations, provided the termination criterion parameter is low enough. Therefore, this variable was set at $0.001$ for all subtasks, and the penalty cost at $2$.
 
 \section{Feature Selection Approaches}\label{pd-training}
 
+% TODO hodit uz do pd-observe ?
+Having selected the classifier settings, we focused on perfecting the feature selection techniques for the individual groups of predicate lemmas identified in Section \ref{pd-observe}. In our preliminary experiments on small data sets, we learned that using more than about 30 features does not improve the system performance, as for every individual lemma, many features are irrelevant. It also must be noted that with the filtering techniques applied before feature selection, it is possible that even smaller feature set remains and the rest is omitted, since it does not promise an asset to the system. Additionally, the binarization that is required before classification raises the total number of features that occupy the machine learning algorithm up to thousands\footnote{We chose to perform the binarization only after feature selection, since this reduces the computation time needed. Selecting the binarized features would probably improve the performance, but also retard the process on the other hand.}.
 
+We have decided to use feature ranking with the search for the appropriate number of features with the simple lemmas; however, we needed to select the most successful feature ranking algorithm from the ones listed in Section \ref{featsel}. Therefore, we designed another experiment on our PD subset from Section \ref{classifier-setting}, which compares the results of the same classifier coupled with the individual feature rankings. We used a logistic regression model with the settings described in Section \ref{classifier-setting} and measured its accuracy on the test set with feature rankings, each time with the best number of features possible within the range $4-30$\footnote{If less features remain as the filtering output, all of them are examined in the same fashion. This also applies to the following feature selection variants.} (obtained by consecutively adding features to the subset of used ones in the order given by the ranking), and estimated the confidence intervals using the bootstrap method. 
 
-\section{The Predicate Disambiguation System}
-% celkova organizace systemu, vc. nejakeho schematu
+\begin{table}[htpb]
+\caption{Results of the ranking test experiments on the PD Experimental Subset}\label{tab:ranker-test}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Ranking & \bf Acc. & \bf 5\% & \bf 95\% \\\hline
+$\chi^2$ & 92.8 & 91.1 & 94.4 \\
+MI/Information Gain & 92.8 & 91.1 & 94.2 \\
+MI (mRMR version) & 92.8 & 91.1 & 94.2 \\
+Symmetric Uncertainty & 93.3 & 91.7 & 94.9 \\
+ReliefF & 93.6 & 92.0 & 95.0 \\
+Significance & 92.8 & 91.3 & 94.5 \\
+mRMR & 93.4 & 91.9 & 94.7 \\
+Average (all) & 93.3 & 91.9 & 94.9 \\
+Average (mRMR + ReliefF) & 93.6 & 92.0 & 95.2 \\\hline
+\end{tabular}
+\end{center}
+Similarly to Tables \ref{tab:pd-classifiers} and \ref{tab:pd-allfeat}, the listed values are: accuracy percentage on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. 
+\end{table}
 
-\chapter{Argument Labelling}\label{ac}
+The results of this experiments are listed in Table \ref{tab:ranker-test}. We can see that all the results are comparable, with mRMR, ReliefF and their average on the top, but by a very narrow margin. However, the bootstrap estimates indicate that no ranking algorithm performs significantly better than the others. Nevertheless, we decided to use the mRMR-ReliefF average as feature-ranking algorithm for the simple predicate lemmas since its results appear slightly better than that of the other rankings. Similarly to the previous experiments with ranking, our system searches for the best feature subset by consecutively adding features in the order given by the ranking, thus selecting a subset of $4-30$ features that is saved for later use on evaluation data.
+
+With the harder predicate lemmas, more stress must be laid on the quality of the used feature subset. Therefore, we decided to use all our ranking algorithms in combination with the consecutive adding approach and select the ranking and feature subset that gives the best results on the development data set, thus exploring a greater number of feature subsets, but still processing the individual predicate lemmas much faster than with the use of greedy selection. This is the same technique that was used for our classifier parameter selection test in Section \ref{classifier-setting}. 
+
+We also apply this ranking to predicate lemmas with multiple senses, but no development data instances. Since it is not possible to select the best performing number of features with no data to test the differences, we always take the 30 top-ranked ones.
+
+We decided to use the greedy feature selection algorithm with the tough lemmas, since this process, albeit lengthy, promises the best results. With such a small number of lemmas as 17 and several machines computing in parallel, the computing time was not excessive. Our preliminary experiments showed an improvement if we first the following two different variants of the greedy selection and then selected the more successful one:
+\begin{enumerate}
+    \item The system starts with no features selected and selects one at a time. From several equally performing features, it always selects the one with the higher mRMR-ReliefF ranking average. It finishes if all not yet used features degrade the performance, or if the size of the feature set reaches 30.
+    \item The system starts examining all the possible groups of four features out of the top ten mRMR-ReliefF ranked ones. Then it continues adding one feature at a time in the same way as above.
+\end{enumerate}
+This gives us very plausible subsets for system training, which are saved for later use in PD evaluation.
+
+\section{The Predicate Disambiguation System}\label{pd-overview}
+
+\begin{figure}[p]
+\caption{A chart of our PD system, training phase}\label{fig:pd-schema}
+\noindent\footnotesize The computation steps are depicted as colored rectangles, the conversion and filtering subtasks are represented by ovals. Grey rhombi stand for selection tasks and finally, transparent rectangles with border contain the outputs of this phase.
+\begin{center}
+\includegraphics[height=\textwidth,angle=270]{pd-chart.eps}
+\end{center}
+\end{figure}
+
+We will now give an account of the whole organization of our PD system, which is split into the training phase and evaluation phase. The former serves for obtaining the best classifier settings, i.e. feature sets, which are then used as the input to the latter. The training part then consist of the following steps (for a detailed schema, please refer to Figure \ref{fig:pd-schema}):
+\begin{enumerate}
+    \item Conversion from the CoNLL 2009 corpus format to the ARFF data format (as described in Section \ref{conversion}), with the generation of new features (see Section \ref{features}).
+    \item Separation of files that do not have any development data instances (referred to as \emph{orphans}), selection of lemmas with multiple senses, then their filtering and ranking, which results in the list of best features
+    \item Filtering of the lemmas with development instances (for details on filtering, see Section \ref{featsel}). List of the attributes and attribute values that are to be filtered is saved for usage in the evaluation phase.
+    \item The predicate lemmas are divided into groups according to number of senses --- unary, simple, harder and tough. The first group is no longer needed for training.
+    \item The most favorable feature set is selected for each predicate lemma (refer to Section \ref{pd-training} for a thorough description):
+    \begin{enumerate}
+        \item Features for the simple lemmas are ranked using the mRMR and ReliefF average, the optimal number of top ranked features (between $4-30$) is then determined by subsequent addition trials.
+        \item The same technique applies to harder lemmas as well, except for the fact that multiple rankings and selections are performed, which yields several candidates for the best feature set. The system then picks the best-performing candidate.
+        \item The tough predicate lemmas have their features ranked by the mRMR-ReliefF averaging algorithm as well. The features list is then used as an input into two different setups of the greedy feature selection algorithm, which produce candidate feature sets. The better one is then chosen.
+    \end{enumerate}
+    \item All the resulting feature sets are saved, so that they may be applied in the evaluation phase.
+\end{enumerate}
+
+\begin{figure}[htb]
+\caption{A chart of our PD system, evaluation phase}\label{fig:pd-eval}
+\noindent\footnotesize This schema has the same form as the one in Figure \ref{fig:pd-schema}.
+\begin{center}
+\includegraphics[width=\textwidth]{pd-eval-chart.eps}
+\end{center}
+\end{figure}
+
+We thus have the best feature sets and the filtering settings as the input to the evaluation stage, which proceeds as follows:
+\begin{enumerate}
+    \item Data conversion, which is the same as in the training phase.
+    \item Separation of lemmas that do not have any training data instances (also denoted \emph{orphans}). We use a dummy classifier for these lemmas, which takes the lemma and appends ``.01'' to it, which creates the usual representation of the first and most common sense.
+    \item We select the predicate lemmas with multiple senses; the others are assigned the only sense observed on the training data.
+    \item The system now filters the predicates according to the settings saved from the training stage and classifies them using appropriate the sets of viable features.
+    \item The results of the classification, as well as the two kinds of pseudo-classification, are collected back to the original file format.
+\end{enumerate}
+A chart depicting the data flow in the evaluation stage is shown in Figure \ref{fig:pd-eval}. The PD results are then used as one of the inputs for the second part of our system, the argument labeling.
+
+%
+%
+\chapter{Argument Classification}\label{ac}
+%
+%
+
+In this chapter, we will explain the settings of our AC solution. Within the data conversion from the original corpus format, we conducted several experiments with selecting only the most viable argument candidates, including syntactical approaches by \citet{zha09} and \citet{asahara09} and our own POS-based method, which are all described in Section \ref{pruning}. We have also examined the merits of splitting the AC solution into the identification and labeling parts, which featured in many of the SRL systems from the CoNLL 2009 contest (see Section \ref{ai-ac}). In addition, based on our linguistic knowledge of English, we propose a different approach to adverbial modifiers and co-references in opposition to valency arguments. An account of our tests regarding this topic is given in Sections \ref{arg-types} and \ref{ac-am}. 
+
+Similarly to the PD approaches described in Sections \ref{classifier-setting} and \ref{pd-training}, we searched for the optimal classifier configuration and feature selection techniques, which we describe in Section \ref{ac-setting}. Since a greater part of the predicates occurs extremely rarely, we designed a new method of dividing the independent data instances while still maintaining enough training examples (cf. Section \ref{ac-merge}). Our system also includes a post-inference on the classifier output \citep{punyakanok04}, in order to adhere to global constraints for whole sentences (see Section \ref{post-inference}). The whole design of our AC system is then summarized in Section \ref{ac-overview}.
+
 \section{Argument Candidates}\label{pruning}
-% pruning, jen hodne kratce
-\citep{asahara09,zhao09} Only the words that depend syntactically on one of the nodes syntactically superordinate to the predicate (i.e. on the syntactic path from the predicate to syntactic root of the sentence; including the predicate itself) are selected.
+
+The first decision we needed to make in our PD system concerned the format of the data conversion output. As we described in Section \ref{conversion}, our conversion algorithm either separates data relating to different predicates (or lemmas) into individual files, or outputs the whole data set into one large file. We considered either feeding all the data to just one classifier, which adds different predicate frames together, or using a different classification model for each predicate, which selects only instances with the same predicate frames, but considerably thins the amount of training instances available. Separating predicate lemmas would only include both of the drawbacks mentioned, therefore we eliminated this choice.
+
+We created an experiment that would test the merits of both approaches. In order to reduce computation complexity, we created a smaller subset of the data (referred to as \emph{AC Experimental Subset}), which we used for our experiments. We selected 100 predicates at random from training and development data sets, thus including data relating to frequent predicate senses as well as that of the rare ones and maintaining representativity of the whole data. We then trained the same classifier with the same configuration:
+\begin{enumerate}
+    \item On the data split for different predicates, creating a separate model for each one of them.
+    \item As a single model on the whole AC Experimental Subset.
+\end{enumerate}
+We chose to use labeled F-measure as the means of comparing the different outputs (see Section \ref{metrics} for details). The results of this experiment are shown in Table \ref{tab:one-bag}. It is apparent that splitting the data for different predicates yields slightly better results, although the difference is not significant in terms of the bootstrap 90\% estimates (please refer also to Section \ref{metrics} for a description of bootstrap). Nevertheless, we decided to split the data for the individual predicates, since it offers much broader space for parallelization and the sparse data problem can be solved in a different way (an account of this problem will be given in Section \ref{ac-merge}).
+
+\begin{table}[htb]
+\caption{Splitting the predicates vs. using one classifier}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Setting & $F_1$ & \bf 5\% & \bf 95\% \\\hline
+Using one classifier on the whole subset & 70.1 & 65.8 & 74.5 \\
+Separate classifiers for each predicate &  71.4 & 67.2 & 75.3 \\\hline
+\end{tabular}
+\end{center}
+The first value shown is the labeled $F_1$ percentage, followed by 5\% and 95\% percentiles of the bootstrap estimate.
+\end{table}
+
+Since the amount of data to be processed is very large if the conversion system produces all the instances (see Sections \ref{data-format} and \ref{conversion}), we also implemented and tested two different pruning algorithms for argument candidates in a preliminary experiment. 
+
+The first one of them, described by \citet{asahara09} and \citet{zhao09}, is based on syntactic dependencies. It selects only the words that depend syntactically on one of the nodes syntactically superordinate to the predicate (i.e. on the syntactic path from the predicate to syntactic root of the sentence; including the predicate itself). \citeauthor{asahara09} state that this approach keeps $97.3\%$ of the arguments in the candidate set, while reducing the data amount by $63.1\%$ for English.
+
+Observing the PD Experimental training subset, we discovered that some of the POSs, mainly punctuation\footnote{The filtered POSs are: \texttt{'' ( ) , . : `` EX HYPH LS NIL POS}.}, occur only seldom as arguments. Therefore, we developed an algorithm that selects instances based on their POS. This is less a aggressive approach in comparison to the previous one, as it leads to much smaller data reduction, but still is valid. 
+
+In order to compare these approaches, we applied them to our set of predicates and compared their results using the CoNLL 2009 scorer and labeled $F_1$\footnote{As the scorer does not output confidence intervals estimation, we do not include it for this experiment.} (see Section \ref{metrics}). Our own implementation of the metrics depends on the total number of instances, which differs across the individual settings. We therefore wrote the classification results back to the original format, using only the part of development data where our selected predicates appear, preserving the golden values for predicate senses and other predicates' arguments. Although the values itself do not tell anything about the total system performance, yet, they can be used to see the merits of the particular methods.
+
+\begin{table}[htb]\label{tab:prune}
+\caption{Application of pruning algorithms}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|}\hline
+\bf Setting & $F_1$ \\\hline
+No pruning & 88.48 \\
+Syntactic pruning & 87.97 \\
+POS filtering & 88.39 \\
+Syntactic + POS pruning & 87.75 \\
+\end{tabular}
+\end{center}
+The value shown is the labeled $F_1$ percentage as computed by the CoNLL 2009 Scorer, using a set of development data sentences where the selected predicates appear, including golden predicate senses and arguments of other predicates.
+\end{table}
+
+As is apparent from Table \ref{tab:prune}, none of the pruning techniques improves the overall results. We also expected the differences to expand if classifier output for all predicates is used, therefore, we decided not to use any pruning technique in our final AC system, even if the computation speed is affected.
+
+\section{Argument Selection vs. Argument Labeling}\label{ai-ac}
+% oddeleni identifikace a klasifikace vs. klasifikace rovnou
+
 \section{Different Argument Types}\label{arg-types}
 % prisl. urceni a reference nezavisi na valencnim ramci, valencni argumenty ano
 % test s jednim klasifikatorem na vsechna data
 % oddeleni klasifikace prisl. urceni a valencnich argumentu
-\section{Argument Selection vs. Argument Labelling}\label{ai-ac}
-% oddeleni identifikace a klasifikace vs. klasifikace rovnou
-\section{Merging Rare Predicates}
+
+\section{Classifier Setting}\label{ac-setting}
+
+\section{Merging Rare Predicates}\label{ac-merge}
 % slucovani ridkych predikatu se shodnym valencnim ramcem <- nezapomenout na prohazování pos, když vypadalo chybne
 \section{Post-Inference on Valency Arguments}\label{post-inference}
 % omezeni na neopakovani se valencnich roli
 % pokusy s primitivnim klasifikatorem, s LPSolve 
-\section{Adverbial Modifiers Labelling}
+\section{Adverbial Modifiers Labelling}\label{ac-am}
 % problemy s pameti, rozdeleni dat a slucovani klasifikace
-\section{The Argument Selection System}
+\section{The Argument Selection System}\label{ac-overview}
 % celk. organizace
 
 \chapter{The Whole Deep Analysis System}\label{setup}
