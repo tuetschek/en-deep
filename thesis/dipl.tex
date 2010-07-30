@@ -61,7 +61,7 @@
 \noindent % podekovani
  
 \vspace{\fill}
-\noindent I certify that this diploma thesis is my own work, and that only I used the cited literature. The thesis is freely available for all who can use it.
+\noindent I certify that this diploma thesis is my own work, and that I only used the cited literature. The thesis is freely available for all who can use it.
 
  
 \bigskip
@@ -111,9 +111,9 @@ e-mail vedoucího: \texttt{hajic@ufal.mff.cuni.cz}\\
 
 \section{The Problem of Deep Language Analysis}\label{problem}
 
-Both in descriptive linguistic theories and in automatic natural language processing (NLP)\nomenclature{NLP}{Natural Language Processing} applications, the formalization of the language concept is usually split into several linguistic layers, which differ in the level of abstraction -- from the bare matter of spoken word or written text itself up to the cognitive content of the utterance. The number and extent of those layers may vary across different approaches and theories, but their hierarchical structure remains. Language descriptions include most usually phonetics or graphemics\footnote{In language processing, splitting the text to individual words or tokens is the first task.}, morphology, syntax, semantics and pragmatics. Our work is mainly concerned with semantics, i.e. with obtaining the meaning of language expressions. We consider the language analysis to be a sequence of analyses on the individual layers, successively climbing from the most concrete to more abstract layers. Therefore, the deep or semantic analysis comes after the phonetic, morphological and syntactic (i.e. shallower) analyses have taken place.
+Both in descriptive linguistic theories and in automatic natural language processing (NLP)\nomenclature{NLP}{Natural Language Processing} applications, the formalization of the language concept is usually split into several linguistic layers, which differ in the level of abstraction -- from the bare matter of spoken word or written text itself up to the cognitive content of the utterance. The number and extent of those layers may vary across different approaches and theories, but their hierarchical structure remains. Language descriptions include most usually phonetics or graphemics\footnote{In NLP, splitting the text to individual words or tokens is the first task.}, morphology, syntax, semantics and pragmatics. Our work is mainly concerned with semantics, i.e. with obtaining the linguistic meaning \citep[p. 35ff.]{sgall86} of utterances\footnote{Please note that linguistic meaning differs from the cognitive content, as it refers solely to the content expressed by the language, without taking pragmatics into account.}. We consider the language analysis to be a sequence of analyses on the individual layers, successively climbing from the most concrete to more abstract layers. Therefore, the deep or semantic analysis comes after the phonetic, morphological and syntactic (i.e. shallower) analyses have taken place.
 
-In some theoretical approaches, such as the Prague \emph{Functional Generative Description} (FGD)\nomenclature{FGD}{Functional Generative Description} \citep{sgall86}, the description of (linguistic) meaning\footnote{Please note that linguistic meaning differs from the cognitive content, as it refers solely to the content expressed by the language, without taking pragmatics into account.} is included in the deep syntax (\emph{tectogrammatical}) layer. On the other hand, the resources used in this thesis, such as the \emph{Proposition Bank} (PropBank)\nomenclature{PropBank}{The Proposition Bank} \linebreak[4] \citep{palmer05}, describe the analogical layer of annotation as semantic. However, both descriptions work with a labeled dependency structure, which is the main object of the following work. Other meaning representations, such as \emph{Frame\-Net} \citep{baker98}, operate with comparable constructs.
+In some theoretical approaches, such as the Prague \emph{Functional Generative Description} (FGD)\nomenclature{FGD}{Functional Generative Description} \citep{sgall86}, the description of linguistic meaning is included in the deep syntax (\emph{tectogrammatical}) layer. On the other hand, the resources used in this thesis, such as the \emph{Proposition Bank} (PropBank)\nomenclature{PropBank}{The Proposition Bank} \linebreak[4] \citep{palmer05}, denote the analogical layer of annotation as semantic. However, both descriptions work with a labeled dependency structure, which is the main object of the following work. Other representations of meaning, such as \emph{Frame\-Net} \citep{baker98}, operate with comparable constructs.
 
 While the FGD and the projects stemming from it, such as the \emph{Prague Dependency Treebank} (PDT)\nomenclature{PDT}{Prague Dependency Treebank} \citep{hajic06} or the \emph{Prague English Dependency Treebank} (PEDT)\nomenclature{PEDT}{Prague English Dependency Treebank} \citep{cinkova09} use dependency tree structure on the tectogrammatical level with semantic roles as dependency labels, the PropBank annotation \citep{kingsbury03} employs a predicate-argument structure --- \emph{semantic predicates}, i.e. words in a given sense that require or attract other words, their \emph{arguments}, to complete the meaning in various ways, thus representing different semantic roles. The underlying notion of \emph{valency} is visible in both structures, though. In this thesis, we focus on the predicate-argument description.
 
@@ -174,7 +174,6 @@ The CoNLL 2009 Shared Task contest has provided us with a variety of options to 
 
 There are also many other works in semantic analysis and particularly in automatic SRL systems using machine learning techniques. The CoNLL Shared Tasks of 2004, 2005 \citep{carreras04,carreras05} and 2008 \citep{surdeanu08} have all been dedicated to semantic analysis of English using the PropBank corpus\footnote{The 2008 contest included also syntactic parsing.}. The SRL solvers described in the proceedings of these contests stick mostly to the pipeline classification scheme described in Section \ref{conll2009}, with MaxEnt and SVM as the most widely used machine learning techniques. Some of the 2008 systems have been adapted for the 2009 competition, which provides us with more information about the versions of both years, as well as additional reports of gradual improvements \citep{che08,chen08}.
 
-% TODO dopsat cluster-based approach
 Further research concentrates on similar tasks: \citet{jiang06} provide an analysis of NomBank \citep{meyers04} semantic annotation and a description of a MaxEnt deep analysis system. \citet{punyakanok04} introduced the ILP technique into SRL and gave a detailed report. \citet{giuglea06} presented a system that retrieves its semantic annotation training data from three different resources --- PropBank, NomBank and FrameNet. \citet{loper07} are developing a project to link several annotated resources permanently, which has been a valuable tool for our preliminary analyses of predicate behavior. 
 
 %
@@ -197,7 +196,7 @@ Since dependency parsing algorithms have become more effective and can handle no
 
 \section{PropBank and NomBank Semantic Annotation}\label{propbank-nombank}
 
-The semantic information in the CoNLL English corpus incorporates annotations from PropBank and NomBank, both of which feature a predicate-argument structure (cf. Section \ref{problem}). Not only the structure itself is very similar, they also use the same approach to semantic argument labeling. They distinguish the following four kinds of semantic arguments\footnote{For more details on PropBank annotation, see the instructions at \url{http://verbs.colorado.edu/~mpalmer/projects/ace.html} or \citep{moreda06}.}~\footnote{The NomBank annotation is thoroughly described in the guidelines at: \\ \url{http://nlp.cs.nyu.edu/meyers/nombank/nombank-specs-2007.pdf}.}:
+The semantic information in the CoNLL English corpus incorporates annotations from PropBank and NomBank, both of which feature a predicate-argument structure \citep[cf. Section \ref{problem} and][]{kingsbury02}. Not only the structure itself is very similar, they also use the same approach to semantic argument labeling. They distinguish the following four kinds of semantic arguments\footnote{For more details on PropBank annotation, see the instructions at \url{http://verbs.colorado.edu/~mpalmer/projects/ace.html} or \citep{moreda06}.}~\footnote{The NomBank annotation is thoroughly described in the guidelines at: \\ \url{http://nlp.cs.nyu.edu/meyers/nombank/nombank-specs-2007.pdf}.}:
 \begin{itemize} 
     \item (Valency) \emph{arguments}, semantically required complements of the predicate, which are characteristic for a given predicate. Their semantic labels are numbered and although there are some common prototypes, their number assignment is specific for each predicate, thus creating predicate \emph{frames} (see below).
     \item \emph{Argument modifiers} are voluntary semantic modifier of the predicate, which are not specific to one predicate, but may occur virtually in any sentence. They include the indication of time, manner or other properties of the event or entity described by the predicate.
@@ -867,7 +866,7 @@ A chart depicting the data flow in the evaluation stage is shown in Figure \ref{
 %
 %
 
-In this chapter, we will explain the settings of our AC solution. Within the data conversion from the original corpus format, we conducted several experiments with selecting only the most viable argument candidates, including syntactical approaches by \citet{zha09} and \citet{asahara09} and our own POS-based method, which are all described in Section \ref{pruning}. We have also examined the merits of splitting the AC solution into the identification and labeling parts, which featured in many of the SRL systems from the CoNLL 2009 contest (see Section \ref{ai-ac}). In addition, based on our linguistic knowledge of English, we propose a different approach to adverbial modifiers and co-references in opposition to valency arguments. An account of our tests regarding this topic is given in Sections \ref{arg-types} and \ref{ac-am}. 
+In this chapter, we will explain the settings of our AC solution. Within the data conversion from the original corpus format, we conducted several experiments with selecting only the most viable argument candidates, including syntactical approaches by \citet{zha09} and \citet{asahara09} and our own POS-based method, which are all described in Section \ref{pruning}. We have also examined the merits of splitting the AC solution into the identification (AI) and labeling parts or taking the joint approach, both of which featured in the CoNLL 2009 contest SRL systems (see Section \ref{ai-ac}). In addition, based on our linguistic knowledge of English, we propose a different approach to adverbial modifiers and co-references in opposition to valency arguments. An account of our tests regarding this topic is given in Sections \ref{arg-types} and \ref{ac-am}. 
 
 Similarly to the PD approaches described in Sections \ref{classifier-setting} and \ref{pd-training}, we searched for the optimal classifier configuration and feature selection techniques, which we describe in Section \ref{ac-setting}. Since a greater part of the predicates occurs extremely rarely, we designed a new method of dividing the independent data instances while still maintaining enough training examples (cf. Section \ref{ac-merge}). Our system also includes a post-inference on the classifier output \citep{punyakanok04}, in order to adhere to global constraints for whole sentences (see Section \ref{post-inference}). The whole design of our AC system is then summarized in Section \ref{ac-overview}.
 
@@ -875,14 +874,14 @@ Similarly to the PD approaches described in Sections \ref{classifier-setting} an
 
 The first decision we needed to make in our PD system concerned the format of the data conversion output. As we described in Section \ref{conversion}, our conversion algorithm either separates data relating to different predicates (or lemmas) into individual files, or outputs the whole data set into one large file. We considered either feeding all the data to just one classifier, which adds different predicate frames together, or using a different classification model for each predicate, which selects only instances with the same predicate frames, but considerably thins the amount of training instances available. Separating predicate lemmas would only include both of the drawbacks mentioned, therefore we eliminated this choice.
 
-We created an experiment that would test the merits of both approaches. In order to reduce computation complexity, we created a smaller subset of the data (referred to as \emph{AC Experimental Subset}), which we used for our experiments. We selected 100 predicates at random from training and development data sets, thus including data relating to frequent predicate senses as well as that of the rare ones and maintaining representativity of the whole data. We then trained the same classifier with the same configuration:
+We created an experiment that would test the merits of both approaches. In order to reduce computation complexity, we created a smaller subset of the data (referred to as \emph{AC Experimental Subset}), which we used for our experiments. We selected 100 predicates at random from training and development data sets, thus including data relating to frequent predicate senses as well as that of the rare ones and maintaining representativity of the whole data. We then trained the same classifier with the same configuration ($L_2$ regularized logistic regression from the LibLINEAR package with the cost parameter set to $1$ and a termination criterion of $0.001$, using all features) to classify the following AC single multi-class problems\footnote{The decision to use a single AC task instead of splitting it into identification and labeling subproblems has been made for the sake of simplicity here, since the main goal was to compare the effects of splitting data in the same settings. We will review this option in Section \ref{ai-ac}.}:
 \begin{enumerate}
     \item On the data split for different predicates, creating a separate model for each one of them.
     \item As a single model on the whole AC Experimental Subset.
 \end{enumerate}
 We chose to use labeled F-measure as the means of comparing the different outputs (see Section \ref{metrics} for details). The results of this experiment are shown in Table \ref{tab:one-bag}. It is apparent that splitting the data for different predicates yields slightly better results, although the difference is not significant in terms of the bootstrap 90\% estimates (please refer also to Section \ref{metrics} for a description of bootstrap). Nevertheless, we decided to split the data for the individual predicates, since it offers much broader space for parallelization and the sparse data problem can be solved in a different way (an account of this problem will be given in Section \ref{ac-merge}).
 
-\begin{table}[htb]
+\begin{table}[htb]\label{tab:one-bag}
 \caption{Splitting the predicates vs. using one classifier}\footnotesize
 \begin{center}
 \begin{tabular}{|l|c|c|c|}\hline
@@ -900,7 +899,7 @@ The first one of them, described by \citet{asahara09} and \citet{zhao09}, is bas
 
 Observing the PD Experimental training subset, we discovered that some of the POSs, mainly punctuation\footnote{The filtered POSs are: \texttt{'' ( ) , . : `` EX HYPH LS NIL POS}.}, occur only seldom as arguments. Therefore, we developed an algorithm that selects instances based on their POS. This is less a aggressive approach in comparison to the previous one, as it leads to much smaller data reduction, but still is valid. 
 
-In order to compare these approaches, we applied them to our set of predicates and compared their results using the CoNLL 2009 scorer and labeled $F_1$\footnote{As the scorer does not output confidence intervals estimation, we do not include it for this experiment.} (see Section \ref{metrics}). Our own implementation of the metrics depends on the total number of instances, which differs across the individual settings. We therefore wrote the classification results back to the original format, using only the part of development data where our selected predicates appear, preserving the golden values for predicate senses and other predicates' arguments. Although the values itself do not tell anything about the total system performance, yet, they can be used to see the merits of the particular methods.
+In order to compare these approaches, we applied them to our set of predicates using the same classifier setting as above (with the data split for individual predicates) and compared their results using the CoNLL 2009 scorer and labeled $F_1$\footnote{As the scorer does not output confidence intervals estimation, we do not include it for this experiment.} (see Section \ref{metrics}). Our own implementation of the metrics depends on the total number of instances, which differs across the individual settings. We therefore wrote the classification results back to the original format, using only the part of development data where our selected predicates appear, preserving the golden values for predicate senses and other predicates' arguments. Although the values itself do not tell anything about the total system performance, yet, they can be used to see the merits of the particular methods.
 
 \begin{table}[htb]\label{tab:prune}
 \caption{Application of pruning algorithms}\footnotesize
@@ -916,21 +915,151 @@ Syntactic + POS pruning & 87.75 \\
 The value shown is the labeled $F_1$ percentage as computed by the CoNLL 2009 Scorer, using a set of development data sentences where the selected predicates appear, including golden predicate senses and arguments of other predicates.
 \end{table}
 
-As is apparent from Table \ref{tab:prune}, none of the pruning techniques improves the overall results. We also expected the differences to expand if classifier output for all predicates is used, therefore, we decided not to use any pruning technique in our final AC system, even if the computation speed is affected.
+As is apparent from Table \ref{tab:prune}, none of the pruning techniques improves the overall results. In addition to that, we expected the differences to expand if classifier output for all predicates is used, which would affect the performance even more negatively. Therefore, we decided not to use any pruning technique in our final AC system, even if the computation speed is affected.
 
-\section{Argument Selection vs. Argument Labeling}\label{ai-ac}
-% oddeleni identifikace a klasifikace vs. klasifikace rovnou
+\section{Separate and Joint Argument Identification}\label{ai-ac}
+
+Many of the SRL systems described in literature, including the CoNLL 2009 competing setups of \citet{chen09}, \citet{bohnet09} and others, divide the AC task into two subtask: first, the arguments are identified by a binary classifier and then a label is assigned to each of the identified candidates. Another possible option is to combine both subtasks into one, creating an ``empty'' label and adding it to the set of possible SRL labels in a single classification task. This approach has also been reported to render high quality results \citep{che09,asahara09}.
+
+\begin{table}[htb]\label{tab:ai-ac}
+\caption{A comparison of the joint AC and two-step AI-AC approaches}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Setting & $F_1$ & \bf 5\% & \bf 95\% \\\hline
+Separate AI and labelling & 68.6 & 64.7 & 72.5 \\
+Joint AC task & 71.4 & 67.2 & 75.3 \\\hline
+\end{tabular}
+\end{center}
+The values listed are in the same format as in Table \ref{tab:one-bag}, the labeled $F_1$ percentage and the 5\% and 95\% bootstrap percentiles.
+\end{table}
+
+We therefore conducted an experiment on our PD Experimental Subset, comparing the performance of the two system variants, so that we could decide for one of them. We used the same classifier configuration as for our experiments described in Section \ref{pruning}. The results listed in Table \ref{tab:ai-ac} show that in our setting, the joint AC task performed better than the two-step identification-classification solution in terms of labeled F-measure. Although the results difference is not significant with $90\%$ confidence according to the bootstrap test, it is considerably larger than in our previous experiments. We thus decided to use the joint AC approach, since it shows to be more efficient, but also due to its simplicity.
 
 \section{Different Argument Types}\label{arg-types}
-% prisl. urceni a reference nezavisi na valencnim ramci, valencni argumenty ano
-% test s jednim klasifikatorem na vsechna data
 % oddeleni klasifikace prisl. urceni a valencnich argumentu
+
+In many linguistic theories that describe semantic (or deep syntactic) dependencies among the words of a sentence, a distinction is made between the valency \emph{arguments} or actants and the \emph{adverbial modifiers} or circumstantials \citep[p. 100ff.]{sgal86}. While a specific set of the former is required by each predicate, each of its members being unique to the sentence, the latter are generally not limited to any certain group of predicates and can occur freely and repeatedly with most predicates. This distinction is, however, not absolutely clear, and thus some predicates may also require specific adverbial modifiers, whereas some of the arguments may be voluntary with certain predicates. It is also necessary to note that the situation is different for nouns and verbs and varies to some extent across different theories \citep{rambow03}, even if the fundamental idea is constant.
+
+The PropBank \citep{kinsbury02,palmer05} and NomBank \citep{meyers04} annotations used in the present thesis (cf. Chapter \ref{data}) also take this concept into account and specify a set of numbered arguments \texttt{A0\dots A5} for each nominal or verbal predicate (\emph{frames}), while the sets of possible arguments, as well as the meaning of the individual numbers change across different predicates. In addition to that, the semantic annotation contain labeled adverbial modifiers \texttt{AM-}, not limited to specific predicates and semantically constant. This applies also to reference labels \texttt{R-} and \texttt{C-}. Only a very small set of verbal frames contains adverbial modifiers as well\footnote{For the sake of simplicity, we decided to ignore these modifiers in our experiments for the present time.}.
+
+Considering such a setting, it becomes apparent that while an individual approach to classification of different predicates is favorable (as discussed in Section \ref{pruning}), only the valency arguments benefit from this division in principle, whereasa modifier and reference labels are largely independent of it division and therefore will profit more from a greater training data set. We thus designed an experiment on our PD Experimental Subset to support or disprove this hypothesis: using the same classifier settings as in Sections \ref{pruning} and \ref{ai-ac}, we trained a two-stage system that first assigns arguments labels for each predicate individually and then uses a single classifier trained on the whole training set to label the adverbial modifiers. A comparison of this setting to a system which assigns all semantic labels in a single step is given in Table \ref{tab:separate-ams}.
+
+\begin{table}[htb]\label{tab:separate-ams}
+\caption{A comparison of the joint AC and two-step AI-AC approaches}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Setting & $F_1$ & \bf 5\% & \bf 95\% \\\hline
+Single step for all labels & 71.4 & 67.2 & 75.3 \\
+Separate \texttt{AM-,C-,R-} labels & 75.5 & 71.7 & 79.1 \\\hline
+\end{tabular}
+\end{center}
+The format of this table is identical to Tables \ref{tab:one-bag} and \ref{tab:ai-ac}.
+\end{table}
+
+Although the results difference is not significant with 90\% confidence, the experiment has shown that assigning all the labels that do not depend on the nature of the particular predicate using a separate classifier tuned on the whole training data is capable of improving the performance of the whole system. Therefore, we decided to use this method in our PD system (for technical issues of this approach, see Section \ref{ac-am}). 
 
 \section{Classifier Setting}\label{ac-setting}
 
+In the same way as with our PD system (see Section \ref{classifier-setting}), we chose to use one classifier configuration for all the classification tasks of the AC system. Therefore, it was necessary to find the settings that would perform best in an average case. We thus conducted a series experiments with different classifiers and parameter settings, using one joint AC step and the PD Experiment Subset data split for individual predicates. The set of examined ML methods and individual parameter values is analogous to our PD experiment described in Section \ref{classifier-setting}, i.e. logistic regression and various SVM implementations from the LibLINEAR package and radial and linear kernel SVM from the LibSVM library have been tested, along with many different settings of the termination criterion $E\in\{1,0.1,0.01,0.001\}$ (LibLINEAR), regularization penalty cost (all methods) $C\in\{0.05,0.1,0.2,0.5,1,2,5\}$ and the second parameter for the radial kernel SVM $\gamma\in\{1,0.1,0.01,0.001,\frac{1}{\mbox{\# feats.}}\}$. 
+
+However, since the AC task proved to be much more computationally expensive than the PD task, we decided not to use every possible combination of the two classifier parameters, but, assuming their independence, gradually change one of the parameters while fixating the other one\footnote{We chose to fixate the parameters in the following way: $C = 2, \gamma = \frac{1}{\mbox{\#feats.}}, E = 0.001$.}, thus obtaining a possibly suboptimal (if the independence assumption is not valid), but still near-optimal parameter setting by examining the values separately. Due to performance issues, we also used a very simple feature selection algorithm --- for each feature ranking (please refer to Section \ref{featsel} for a complete description), a set of the top 10, 20 or 30 features was examined, and the best result was selected. This limits the computational requirements needed to a minimum.
+
+\begin{table}[htb]
+\caption{Classifier configuration test on the AC Experimental Subset}\label{tab:ac-classifiers}\footnotesize
+\begin{center}
+\begin{tabular}{|l|l|l|c|c|c|}\hline
+\bf Software & \bf Classifier & \bf Parameters & \bf $F_1$ & \bf 5\% & \bf 95\% \\\hline
+\multirow{20}{*}{LibLINEAR} & \multirow{4}{*}{$L_2$-Log. Regression} & C = 5 & \bf 84.5 & 81.4 & 87.6 \\
+ & & C = 2 & 84.1 & 81.1 & 87.1 \\\cline{3-6}
+ & & E = 0.01,0.001 & \bf 84.1 & 80.8 & 87.1 \\
+ & & E = 0.1 & 84.0 & 80.7 & 86.9 \\\cline{2-6}
+ & \multirow{4}{*}{Multiclass SVM} & C = 0.5 & \bf 83.7 & 80.8 & 86.8 \\ 
+ & & C = 0.1,0.2,5 & 83.6 & 80.2 & 86.7 \\\cline{3-6}
+ & & E = 1 & \bf 83.8 & 80.8 & 86.8 \\
+ & & E = 0.001,0.01,0.1 & 83.3 & 79.7 & 86.6 \\\cline{2-6}
+ & \multirow{4}{*}{$L_1$-SVM (Dual)} & C = 1 & \bf 84.2 & 81.2 & 87.4 \\
+ & & C = 0.5,5 & 83.8 & 80.7 & 86.8 \\\cline{3-6}
+ & & E = 0.001 & \bf 83.8 & 80.6 & 86.9 \\
+ & & E = 0.01 & 83.6 & 80.7 & 86.7 \\\cline{2-6}
+ & \multirow{4}{*}{$L_2$-SVM (Dual)} & C = 0.2,2 & \bf 84.2 & 81.0 & 87.3 \\
+ & & C = 1 & 84.0 & 80.9 & 86.9 \\\cline{3-6}
+ & & E = 0.001,0.01 & \bf 84.2 & 81.0 & 87.2 \\
+ & & E = 0.1 & 84.1 & 81.2 & 87.0 \\\cline{2-6}
+ & \multirow{4}{*}{$L_2$-SVM (Primal)} & C = 0.2,5 & \bf 84.3 & 81.2 & 87.2 \\
+ & & C = 2 & 84.2 & 81.0 & 87.0 \\\cline{3-6}
+ & & E = 0.01 & \bf 84.5 & 81.6 & 87.3 \\
+ & & E = 0.001 & 84.2 & 81.0 & 87.0 \\\hline
+ \multirow{5}{*}{LibSVM} & \multirow{2}{*}{Linear Kernel} & C = 5 & \bf 84.5 & 81.5 & 87.3 \\
+ & & C = 2 & 84.1 & 80.7 & 87.2 \\\cline{2-6}
+ & \multirow{3}{*}{Radial Kernel} & C = 5 & \bf 84.5 & 81.3 & 87.5 \\
+ & & C = 2 & 84.1 & 81.0 & 87.1 \\\cline{3-6}
+ & & $\gamma$ = * & \bf 84.1 & 80.7 & 87.2 \\\hline
+\end{tabular}
+\end{center}
+The listed values are: labeled $F_1$ percentage on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. Only two best values for each parameter are listed. An asterisk (``*'') in the parameters specifications signifies that any of the tested values is possible.
+\end{table}
+
+Table \ref{tab:ac-classifiers} shows the best observed values on our AC Experimental Subset. It shows that the logistic regression and both LibSVM methods outperformed the LibLINEAR SVMs, although not nearly by a significant margin. Therefore, performance is not the most important criterion of selection. Since LibLINEAR has reportedly smaller memory and CPU requirements \citep[our experiments were not designed to measure this, cf.][]{fan08}, we decided to use this library. The logistic regression was then the first choice, along with the best parameters found: $C = 5, E = 0.001$. An advantage of this choice is also the possibility to generate probability estimates (see Section \ref{post-inference} for application), which is not available for the other algorithms contained in this package.
+
 \section{Merging Rare Predicates}\label{ac-merge}
+
 % slucovani ridkych predikatu se shodnym valencnim ramcem <- nezapomenout na prohazování pos, když vypadalo chybne
+As we described in Section \ref{pruning}, splitting the input corpora into individual classification problems for different predicates causes extreme data sparsity in some cases. The distribution of predicate frequencies to Zipf's law \citep[p. 23ff.]{manning00}, which means that there are only very few training sentences for most predicates (see Table \ref{tab:pred-freq}). A classifier trained on such a small data set as the words of one or two sentences cannot solve the complex AC problem with high reliability. Therefore, a method must be found to prevent the extreme training data scattering.
+
+\begin{table}[htb]\footnotesize
+\caption{Predicate occurrence frequency on the whole training data set}\label{tab:pred-freq}
+\begin{center}
+\begin{tabular}{|r|r||r|r|}\hline
+\bf Occurrence count & \bf $N$ & \bf Occurrence count & \bf $N$ \\\hline
+101 and above & 333 & 10 & 155 \\\cline{1-2}
+51 - 100 & 412 & 9 & 167 \\
+31 - 50 & 393 & 8 & 208 \\\cline{1-2}
+21 - 30 & 387 & 7 & 240 \\
+11 - 20 & 852 & 6 & 333 \\\cline{1-2}
+\multicolumn{2}{c|}{}& 5 & 429 \\
+\multicolumn{2}{c|}{}& 4 & 556 \\
+\multicolumn{2}{c|}{}& 3 & 781 \\
+\multicolumn{2}{c|}{}& 2 & 1315 \\
+\multicolumn{2}{c|}{}& 1 & 2667 \\\cline{3-4}
+\end{tabular}
+\end{center}
+$N$ stands for number of predicates with the given occurrence count in the training data.
+\end{table}
+
+The ideal approach to this situation would be to merge the training data of semantically similar predicates, as they the arguments they bind often correspond. Even the PropBank annotation reflects this fact --- \citet{kingsbury02} state that the annotation strives to maintain the same valency argument numbering for synonymous predicates. However, no there is no data resource reliably linking the PropBank / NomBank predicate senses to any kind of semantic clustering, such as the verb classes by \citet{levin93}, VerbNet classes \citep{kipper-schuler05}, which are based on them, or the FrameNet frames \citep{baker98,baker02}. SemLink, a project linking PropBank with VerbNet \citep{loper07}\footnote{Available online at \url{http://verbs.colorado.edu/semlink/}.} is currently in development and provides a great resource for semantic research, but as of today, many PropBank predicates, mainly the rare ones, are not yet assigned to any of the semantic groups, which hinders automated usage of this database in the present work.
+
+Since there is no automated way of merging predicates based on their semantic similarity, we resorted to using simply the presence or non-presence of the individual arguments in the predicate frame. This also might suggest some degree of similarity or at least distinguish a subset of roles that the classifier should assign. In order to test the merits of this rather coarse approach, we performed a test on our AC Experimental Subset. We implemented a script that extracted the frames from PropBank and NomBank framesets and applied the same classifier configuration to the following variants of the data set:
+\begin{enumerate}
+    \item Data split for each individual predicate
+    \item Data merged for predicates which occur less than 10 times in the training data and have the same predicate frames
+    \item Same as previous, for predicate occurring less than 20 times in the training data 
+    \item Same as previous, for predicate occurring less than 30 times in the training set
+\end{enumerate}
+The classifier setup was the same as for the experiments described in Sections \ref{pruning} and \ref{arg-types} -- logistic regression with regularization cost set at $1$ and a termination criterion of $0.001$ with no feature selection.
+
+The results of our experiments are displayed in Table \ref{tab:merge}. It shows that merging rare predicates with identical sets of arguments in the frame helps improve the classification performance and further that the improvement is visible even in predicates with 20--30 occurrences in the training data. We decided not to merge larger more frequent predicates in order to prevent unifying too much semantically unrelated predicates and also due to performance reasons. It is, however, possible that merging even more common predicates with the same frames will yield even better results.
+
 \section{Post-Inference on Valency Arguments}\label{post-inference}
+
+As we mentioned in Section \ref{arg-types}, the valency arguments are not only distinct for each predicate, but also not repeatable in the same sentence. It, however, is obvious that an ML method that classifies the words individually is not capable of adhering to such global constraints as uniqueness of the arguments. Therefore, post-inference methods have been developed that modify the classifier output, so that it is compliant to the linguistic rules. \citet{punyakanok04} presented a post-inference solution using Integer Linear Programming (ILP), which is also employed in the CoNLL 2009 competition system by \citet{che09}. Given classifier probability estimates for each word and each semantic role, it tries to maximize the total probability under the constraints that each word is only assigned one semantic role and that the valency arguments may occur only once\footnote{The original system of \citet{punyakanok04} featured additional constraints on argument references, which we do not include in our system for the sake of simplicity.}. This transfers to an ILP task as follows:
+\begin{itemize}
+    \item Each semantic role of each word is a binary variable, whose coefficient is the probability estimate given by the classifier.
+    \item The total sum of variables pertaining to one semantic role must be 1.
+    \item The total sum of variables related to each valency argument must be lower or equal to 1 (i.e. 0 or 1)
+    \item The target is to maximize the total sum of all variables with the given coefficients.
+\end{itemize}
+An additional threshold parameter may be introduced: If the probability of a semantic role for a given word is lower than the threshold, it is set to zero.
+
+We also designed a much simpler post-inference algorithm, which proceeds in the following way:
+\begin{itemize}
+    \item For each valency argument role, it finds the word for which this role has the greatest probability in the whole sentence.
+    \item If the probability value found is above a given threshold, the particular role is assigned to the selected word and its probability is set to zero for all the other words.
+    \item If all the valency roles are selected, the most probable remaining role is assigned for each word that does not already have a label.
+\end{itemize}
+
+% TODO tabulka, doplnit vitezny threshold (ilp jen jako variantu ???)
+We have tested the benefits of both post-inference approaches on our AC Experimental Subset. We trained the same classifier as in Section \ref{ref} with the same settings, with data split for individual predicates and no feature selection. We then used either no post-inference, or one of the above algorithms with several different threshold values. The results of the experiment are shown in Table \ref{tab:post-inference}. We may see that keeping the valency arguments unique does not bring any greater improvements. The only setup that outperformed the base one, and that only by an insignificant margin, was the ILP algorithm with a threshold of . Nevertheless, we decided to apply this algorithm to the final system, since it is very fast and promises an improvement, albeit small.
+
 % omezeni na neopakovani se valencnich roli
 % pokusy s primitivnim klasifikatorem, s LPSolve 
 \section{Adverbial Modifiers Labelling}\label{ac-am}
