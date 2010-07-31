@@ -218,18 +218,25 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * @param forRemoval list of attribute names for removal
      * @condition reason of removal
      */
-    private void removeAttributes(Instances [] data, List<String> forRemoval, Condition condition){
+    private void removeAttributes(Instances [] data, List<String> forRemoval, Condition condition)
+            throws TaskException{
 
-        if (!forRemoval.isEmpty()){
+        if (forRemoval != null && !forRemoval.isEmpty() && 
+                !(forRemoval.size() == 1 && (forRemoval.get(0) == null || forRemoval.get(0).equals("")))){
             Logger.getInstance().message(this.id + " : removing " + condition.toString() + " "
                     + StringUtils.join(forRemoval, ", ") + ".", Logger.V_DEBUG);
         }
         else {
             Logger.getInstance().message(this.id + " : no " + condition.toString() + " features found.",
                     Logger.V_DEBUG);
+            return;
         }
         for (String attrName : forRemoval) {
             for (int i = 0; i < data.length; ++i) {
+                if (data[i].attribute(attrName) == null){
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attrName
+                            + " not found in " + data[i].relationName());
+                }
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
         }
