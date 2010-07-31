@@ -215,9 +215,9 @@ As we mentioned in Section \ref{problem}, the predicate-argument description is 
 \caption{A comparison of PEDT and CoNLL semantic annotation.}\label{fig:tree-comp}
 \noindent\footnotesize The top picture shows the CoNLL (both syntactic and semantic) annotation --- semantic edges between predicates and arguments are marked in color. The bottom picture is the PEDT analytical (left) and tectogrammatical (right) tree for the same sentence.
 \begin{center}
-\includegraphics[height=4in,width=4.5in]{temperature-conll.eps}
+\includegraphics[height=4in,width=4.5in]{temperature-conll}
 $\begin{array}{cc}
-\includegraphics[height=2in,angle=270]{temperature-pedt-a.eps} & \includegraphics[height=2.75in,angle=270]{temperature-pedt-t.eps}
+\includegraphics[height=2in,angle=270]{temperature-pedt-a} & \includegraphics[height=2.75in,angle=270]{temperature-pedt-t}
 \end{array}$
 \end{center}
 \end{figure}
@@ -401,7 +401,7 @@ There is a wide variety of freely available NLP tools, such as classifiers or da
 
 We have chosen to integrate the Waikato Environment for Knowledge Analysis \citep[WEKA][]{garner95}\footnote{Version 3.7.1, \url{http://www.cs.waikato.ac.nz/~ml/weka/}}\nomenclature{WEKA}{Waikato Environment for Knowledge Analysis} with most of the subtasks our system, since it offers a very wide collection of classifiers, feature selection algorithms and data filters with a unified API and a transparent default data format --- the Attribute-Relation File Format (ARFF)\nomenclature{ARFF}{Attribute-Relation File Format}, which thus became the default format for our classification tasks.
 
-As one of our classification subtasks uses the Integer Linear Programming technique (see \ref{post-inference}), we also included the LP\_Solve\footnote{Version 5.5, \url{http://lpsolve.sourceforge.net/}.} tool into our system. Although the program is written in the C++ programming language and called via a wrapper library using Java Native Interface (JNI)\nomenclature{JNI}{Java Native Interface}, which makes it less portable among different computer platforms, this problem is bound solely to the subtask that uses this utility.
+As one of our classification subtasks makes use of the Integer Linear Programming technique (see \ref{post-inference}), we also included the LP\_Solve\footnote{Version 5.5, \url{http://lpsolve.sourceforge.net/}.} tool into our system. Although the program is written in the C++ programming language and called via a wrapper library using Java Native Interface (JNI)\nomenclature{JNI}{Java Native Interface}, which makes it less portable among different computer platforms, this problem is bound solely to the subtask that uses this utility.
 
 %
 %
@@ -794,11 +794,11 @@ $\chi^2$ & 92.8 & 91.1 & 94.4 \\
 MI/Information Gain & 92.8 & 91.1 & 94.2 \\
 MI (mRMR version) & 92.8 & 91.1 & 94.2 \\
 Symmetric Uncertainty & 93.3 & 91.7 & 94.9 \\
-ReliefF & 93.6 & 92.0 & 95.0 \\
+ReliefF & \bf 93.6 & 92.0 & 95.0 \\
 Significance & 92.8 & 91.3 & 94.5 \\
 mRMR & 93.4 & 91.9 & 94.7 \\
 Average (all) & 93.3 & 91.9 & 94.9 \\
-Average (mRMR + ReliefF) & 93.6 & 92.0 & 95.2 \\\hline
+Average (mRMR + ReliefF) & \bf 93.6 & 92.0 & 95.2 \\\hline
 \end{tabular}
 \end{center}
 Similarly to Tables \ref{tab:pd-classifiers} and \ref{tab:pd-allfeat}, the listed values are: accuracy percentage on the whole experiment set, bootstrap 5\%-percentile and bootstrap 95\%-percentile. 
@@ -823,7 +823,7 @@ This gives us very plausible subsets for system training, which are saved for la
 \caption{A chart of our PD system, training phase}\label{fig:pd-schema}
 \noindent\footnotesize The computation steps are depicted as colored rectangles, the conversion and filtering subtasks are represented by ovals. Grey rhombi stand for selection tasks and finally, transparent rectangles with border contain the outputs of this phase.
 \begin{center}
-\includegraphics[height=\textwidth,angle=270]{pd-chart.eps}
+\includegraphics[height=\textwidth,angle=270]{pd-chart}
 \end{center}
 \end{figure}
 
@@ -846,7 +846,7 @@ We will now give an account of the whole organization of our PD system, which is
 \caption{A chart of our PD system, evaluation phase}\label{fig:pd-eval}
 \noindent\footnotesize This schema has the same form as the one in Figure \ref{fig:pd-schema}.
 \begin{center}
-\includegraphics[width=\textwidth]{pd-eval-chart.eps}
+\includegraphics[width=\textwidth]{pd-eval-chart}
 \end{center}
 \end{figure}
 
@@ -909,7 +909,7 @@ In order to compare these approaches, we applied them to our set of predicates u
 No pruning & 88.48 \\
 Syntactic pruning & 87.97 \\
 POS filtering & 88.39 \\
-Syntactic + POS pruning & 87.75 \\
+Syntactic + POS pruning & 87.75 \\\hline
 \end{tabular}
 \end{center}
 The value shown is the labeled $F_1$ percentage as computed by the CoNLL 2009 Scorer, using a set of development data sentences where the selected predicates appear, including golden predicate senses and arguments of other predicates.
@@ -1001,6 +1001,27 @@ The listed values are: labeled $F_1$ percentage on the whole experiment set, boo
 
 Table \ref{tab:ac-classifiers} shows the best observed values on our AC Experimental Subset. It shows that the logistic regression and both LibSVM methods outperformed the LibLINEAR SVMs, although not nearly by a significant margin. Therefore, performance is not the most important criterion of selection. Since LibLINEAR has reportedly smaller memory and CPU requirements \citep[our experiments were not designed to measure this, cf.][]{fan08}, we decided to use this library. The logistic regression was then the first choice, along with the best parameters found: $C = 5, E = 0.001$. An advantage of this choice is also the possibility to generate probability estimates (see Section \ref{post-inference} for application), which is not available for the other algorithms contained in this package.
 
+\begin{table}[htb]
+\caption{Results of the ranking test experiment on the AC Experimental Subset}\label{tab:ranker-pc}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Ranking & \bf Acc. & \bf 5\% & \bf 95\% \\\hline
+$\chi^2$ & 79.9 & 76.3 & 83.4 \\
+MI/Information Gain & \bf 80.2 & 76.6 & 83.4 \\
+MI (mRMR version) & 79.9 & 76.5 & 83.1 \\
+Symmetric Uncertainty & 78.7 & 75.0 & 82.0 \\
+ReliefF & 79.5 & 75.8 & 82.8 \\
+Significance & 79.3 & 75.7 & 82.4 \\
+mRMR & 78.6 & 74.6 & 81.9 \\
+Average (all) & 78.6 & 75.2 & 82.2 \\
+Average (mRMR + ReliefF) & 78.2 & 74.5 & 81.9 \\\hline
+\end{tabular}
+\end{center}
+Similarly to Table \ref{tab:ac-classifiers}, the listed values are the labeled $F_1$ percentage on the whole experiment set, followed by the bootstrap percentiles.
+\end{table}
+
+In order to select the default feature ranking, we performed an experiment analogous to the one described in Section \ref{pd-training}. We applied the classifier configuration we selected in the previous experiment to our PD Experimental Subset, selecting the best set of the top 10, 20 or 30 features for each ranking and then comparing the results, which are shown in Table \ref{tab:ranker-pc}. Although the differences are rather minor, it is apparent that the mRMR method and both the averages do not perform well in this setting, while MI/Information Gain turns out to be slightly better than the average. We thus selected this method as the default ranking for our PD experiments.
+
 \section{Merging Rare Predicates}\label{ac-merge}
 
 % slucovani ridkych predikatu se shodnym valencnim ramcem <- nezapomenout na prohazování pos, když vypadalo chybne
@@ -1037,11 +1058,27 @@ Since there is no automated way of merging predicates based on their semantic si
 \end{enumerate}
 The classifier setup was the same as for the experiments described in Sections \ref{pruning} and \ref{arg-types} -- logistic regression with regularization cost set at $1$ and a termination criterion of $0.001$ with no feature selection.
 
-The results of our experiments are displayed in Table \ref{tab:merge}. It shows that merging rare predicates with identical sets of arguments in the frame helps improve the classification performance and further that the improvement is visible even in predicates with 20--30 occurrences in the training data. We decided not to merge larger more frequent predicates in order to prevent unifying too much semantically unrelated predicates and also due to performance reasons. It is, however, possible that merging even more common predicates with the same frames will yield even better results.
+\begin{table}[htb]\label{tab:merge}
+\caption{Results of the predicate merging experiment}\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|}\hline
+\bf Setting & $F_1$ & \bf 5\% & \bf 95\% \\\hline
+Individual predicates & 71.4 & 67.2 & 75.3 \\
+Identical frames merged for $N <= 10$ & 72.4 & 68.3 & 76.4 \\
+Identical frames merged for $N <= 20$ & 73.3 & 69.2 & 77.1 \\
+Identical frames merged for $N <= 30$ & 74.3 & 70.4 & 77.9 \\\hline
+\end{tabular}
+\end{center}
+The figures listed are in the same format as in Tables \ref{tab:one-bag} and \ref{tab:ai-ac}, $N$ stands for number of occurrences of the individual predicates in the training data.
+\end{table}
+
+The results of our experiments are displayed in Table \ref{tab:merge}. It shows that merging rare predicates with identical sets of arguments in the frame helps improve the classification performance, albeit not with 90\% confidence, and further that the improvement is visible even in predicates with 20--30 occurrences in the training data. We decided not to merge larger more frequent predicates in order to prevent unifying too much semantically unrelated predicates and also due to performance reasons. It is, however, possible that merging even more common predicates with the same frames will yield even better results.
 
 \section{Post-Inference on Valency Arguments}\label{post-inference}
 
-As we mentioned in Section \ref{arg-types}, the valency arguments are not only distinct for each predicate, but also not repeatable in the same sentence. It, however, is obvious that an ML method that classifies the words individually is not capable of adhering to such global constraints as uniqueness of the arguments. Therefore, post-inference methods have been developed that modify the classifier output, so that it is compliant to the linguistic rules. \citet{punyakanok04} presented a post-inference solution using Integer Linear Programming (ILP), which is also employed in the CoNLL 2009 competition system by \citet{che09}. Given classifier probability estimates for each word and each semantic role, it tries to maximize the total probability under the constraints that each word is only assigned one semantic role and that the valency arguments may occur only once\footnote{The original system of \citet{punyakanok04} featured additional constraints on argument references, which we do not include in our system for the sake of simplicity.}. This transfers to an ILP task as follows:
+As we mentioned in Section \ref{arg-types}, the valency arguments are not only distinct for each predicate, but also not repeatable in the same sentence. It, however, is obvious that an ML method that classifies the words individually is not capable of adhering to such global constraints as uniqueness of the arguments. Therefore, post-inference methods have been developed that modify the classifier output, so that it is compliant to the linguistic rules. 
+
+\citet{punyakanok04} presented a post-inference solution using Integer Linear Programming (ILP), which is also employed in the CoNLL 2009 competition system by \citet{che09}. Given classifier probability estimates for each word and each semantic role, it tries to maximize the total probability under the constraints that each word is only assigned one semantic role and that the valency arguments may occur only once\footnote{The original system of \citet{punyakanok04} featured additional constraints on argument references, which we do not include in our system for the sake of simplicity.}. This transfers to an ILP task as follows:
 \begin{itemize}
     \item Each semantic role of each word is a binary variable, whose coefficient is the probability estimate given by the classifier.
     \item The total sum of variables pertaining to one semantic role must be 1.
@@ -1057,22 +1094,101 @@ We also designed a much simpler post-inference algorithm, which proceeds in the 
     \item If all the valency roles are selected, the most probable remaining role is assigned for each word that does not already have a label.
 \end{itemize}
 
-% TODO tabulka, doplnit vitezny threshold (ilp jen jako variantu ???)
-We have tested the benefits of both post-inference approaches on our AC Experimental Subset. We trained the same classifier as in Section \ref{ref} with the same settings, with data split for individual predicates and no feature selection. We then used either no post-inference, or one of the above algorithms with several different threshold values. The results of the experiment are shown in Table \ref{tab:post-inference}. We may see that keeping the valency arguments unique does not bring any greater improvements. The only setup that outperformed the base one, and that only by an insignificant margin, was the ILP algorithm with a threshold of . Nevertheless, we decided to apply this algorithm to the final system, since it is very fast and promises an improvement, albeit small.
+\begin{table}[htb]\label{tab:post-inference}
+\caption{Post-inference experiment results}\footnotesize
+\begin{center}
+\begin{tabular}{|lr|c|c|c|}\hline
+\multicolumn{2}{|l|}{\bf Setting} & $F_1$ & \bf 5\% & \bf 95\% \\\hline
+\multicolumn{2}{|l|}{No post-inference} & & & \\\hline
+\multirow{5}{*}{Simple post-inference} & $T = 0.3$ & \bf 72.7 & 68.8 & 76.6 \\
+& $T = 0.2$ & 72.3 & 68.4 & 76.3 \\
+& $T = 0.1$ & 72.0 & 68.1 & 75.9 \\
+& $T = 0.05$ & 70.2 & 66.2 & 74.3 \\
+& $T = 0.01$ & 66.8 & 62.5 & 70.7 \\\hline
+\multirow{6}{*}{ILP post-inference} & $T = 0.3$ & 71.7 & 67.7 & 75.9 \\
+& $T = 0.2$ & 71.9 & 68.0 & 75.7 \\
+& $T = 0.1$ & \bf 72.1 & 68.3 & 76.1 \\
+& $T = 0.05$ & 71.8 & 67.1 & 75.7 \\
+& $T = 0.01$ & 71.8 & 67.8 & 75.7 \\
+& $T = 0$ & 71.8 & 67.8 & 75.9 \\\hline
+\end{tabular}
+\end{center}
+The figures listed are in the same format as in Tables \ref{tab:one-bag} and \ref{tab:ai-ac}, $T$ stands for the threshold parameter.
+\end{table}
 
-% omezeni na neopakovani se valencnich roli
-% pokusy s primitivnim klasifikatorem, s LPSolve 
+We have tested the benefits of both post-inference approaches on our AC Experimental Subset. We used the LP\_Solve library (see Section \ref{weka} for technical details) to solve the ILP problem and our own implementation of the simple algorithm. We trained the same classifier as in Section \ref{ref} with the same settings, with data split for individual predicates and no feature selection. We then used either no post-inference, or one of the above algorithms with several different threshold values. The results of the experiment are shown in Table \ref{tab:post-inference}. We can see that keeping the valency arguments unique can bring improvements to our AC system, although only modest (and not significant in terms of the bootstrap test), whereas the simple inference algorithm reached slightly better results. The most viable threshold settings are $0.3$ for the simple algorithm and $0.1$ for ILP. We decided to employ post-inference in the final system, since it is very fast and promises an improvement, albeit small.
+
 \section{Adverbial Modifiers Labelling}\label{ac-am}
-% problemy s pameti, rozdeleni dat a slucovani klasifikace
-\section{The Argument Selection System}\label{ac-overview}
-% celk. organizace
+
+We have explained the reasons for our intention to split the AC task into argument and adverbial modifier classification subtasks in Section \ref{arg-types}. The latter subtask, retrieving free adverbial adjuncts and argument co-references, should then use the whole training set to tune the ML model. We discovered that even using up to 16 GB of RAM, which is the maximum for some of the machines in the computer cluster used, it is impossible to train the classifier on such a large data set. Therefore, instead of selecting machines with greater RAM capacity, we decided to make use of the concepts of \emph{ensemble learning} \citep[p. 605ff.]{opitz99,hastie09}, or \emph{boosting} \citep[p. 321ff.]{witten05} in particular, even if in a simplified version, which also allows for more parallelization. 
+
+The method itself is analogous to bootstrap and is usually applied to increase classification performance on smaller training data sets -- several training sets are sampled from the original one at random, thus fitting a group of models, the outputs of which are then unified by \emph{voting}: Each model votes for one of the classes for each evaluation instance and the class that gets the majority of all votes is selected as the final decision. 
+
+We implemented a somewhat different variant of the boosting method. In our setting, a very large input data set is available, which gave us the opportunity not to create random samples where some instances may repeat and others may not be chosen at all, but rather split the whole training set into subsets sequentially and use each one of them to train a different model, which is also technically simpler. Our own version of classifier output unification also added a minor improvement in case that there is a tie among several classes: In that case, our algorithm decides in favor of the classifier that performed best on the development data set.
+
+\section{The Argument Classification System}\label{ac-overview}
+
+\begin{figure}[tbp]
+\caption{An overall schema of our AC system, training phase}\footnotesize
+\noindent The meaning of the individual shapes and colors is the same as in Figures \ref{fig:pd-schema} and \ref{fig:pd-eval}.
+\begin{center}
+\includegraphics[height=0.92\textwidth,angle=270]{ac-chart}
+\end{center}
+\end{figure}
+
+Bearing all of the above results in mind, we will now present an overview of our AC setup. Similarly to the PD system (see Section \ref{pd-overview}) and any machine learning method in general, it consists of two phases --- training and evaluation. The first phase is depicted in Figure \ref{fig:ac-schema} and consists of the following steps:
+\begin{enumerate}
+    \item The input corpora are converted to the ARFF with no pruning applied (see Section \ref{pruning}). Separate ARFF files for the classification of valency arguments and adverbial modifiers are created (as described in Section \ref{arg-types}), while in the first case, the data are split into different files for the individual predicates, while the adverbial modifiers classification consists of a single file. The target class (the semantic label) is split accordingly.
+    \item Valency argument classification:
+    \begin{enumerate}
+        \item The adverbial and reference semantic labels are removed from the training data set, as they will not be present for evaluation.
+        \item The individual predicate data with the same frame are merged, if their number of training sentences is 30 or less (cf. Section \ref{ac-merge}).
+        \item The predicates with no development data\footnote{There are 212 predicates that have 31 or more training sentences, but no development senteces.} (denoted as ``orphans'', similarly to the PD system described in Section \ref{pd-overview}) are separated and their features first filtered and then evaluated using the MI/Information Gain method (cf. Section \ref{ac-setting}). First 30 of them are selected as the best attributes set and saved for later use, along with the filtering settings.
+        \item All other (possibly merged) predicate data are filtered and the filtering settings stored. All feature ranking algorithms (see Section \ref{featsel}) are applied and the top $10,15,20,25$ or $30$ according to each ranking are tested, the best result of which is saved as the selected feature set. Due to the high computational complexity of the task, only such limited feature selection algorithm is employed (cf. also Section \ref{ac-setting}).
+    \end{enumerate}
+    \item Adverbial modifiers and references classification:
+    \begin{enumerate}
+        \item The training data is split into 22 parts, 250'000 instances each (the reasons are given in Section \ref{ac-am}).
+        \item Each part is then filtered (with the filtering settings saved for later use) and undergoes all feature rankings described in Section \ref{featsel}.
+        \item The same simple feature selection technique as for the valency arguments is applied; its results are then stored for the evaluation phase.
+    \end{enumerate}
+\end{enumerate}
+
+\begin{figure}[tb]
+\caption{A chart of our AC system, evaluation phase}\label{fig:ac-eval}
+\noindent\footnotesize This schema has the same form as the ones in Figures \ref{fig:pd-schema} and \ref{fig:ac-schema}.
+\begin{center}
+\includegraphics[width=\textwidth]{ac-eval-chart}
+\end{center}
+\end{figure}
+
+The setting is analogous to the PD setup insofar as the filtering settings and feature sets are the inputs from the training stage into the evaluation stage. The latter then proceeds as follows (see also Figure \ref{fig:ac-eval} for the detailed data flow):
+\begin{enumerate}
+    \item The data are converted to the ARFF format, in the same two variants as in the training phase.
+    \item Valency argument classification:
+    \begin{enumerate}
+        \item All the rare predicates are merged. Since the merging criterion is the number of occurrences in the training set, this also guarantees that there are no unknown separate predicates.
+        \item The data are filtered according to the settings from the training stage.
+        \item The data are classified, using the best feature sets saved, creating probability estimates for each one of the roles.
+        \item The post-inference algorithm is applied.
+    \end{enumerate}
+    \item The results of the valency argument classification are written into the adverbial modifiers evaluation file, so that they can be used by the classifier in this stage.
+    \item Adverbial modifiers and references classification:
+    \begin{enumerate}
+        \item The evaluation set is copied 22 times and filtered each time according to the different settings.
+        \item The classification proceeds using the individual feature sets selected in the training stage.
+        \item The classification results are unified, using voting.
+    \end{enumerate}
+    \item All the semantic roles are merged to a single feature. The results are written back into the original CoNLL corpus format.
+\end{enumerate}
+The output of our system is thus the original evaluation data file, with all the predicates and semantic arguments filled.
 
 \chapter{The Whole Deep Analysis System}\label{setup}
 \section{Overall Organization}
 % napojeni pred. disambiguation a argument labelling
 \section{The Performance}
 % vysledky, analyza (vhodne featury apod., problemy)
-
+% nekazi to ILP ?
 \chapter{Conclusions}\label{conclusions}
 \section{Comparison to CoNLL 2009 Shared Task Systems}
 \section{Further Possibilities of Improvement}
