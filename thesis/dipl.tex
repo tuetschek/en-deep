@@ -482,7 +482,7 @@ Since WEKA in the combination of LibLINEAR and LibSVM libraries provides the des
 
 \section{Data Conversion}\label{conversion}
 
-In Section \ref{data-format}, we described the advantages and drawbacks of the input corpus data format. Since it is unsuitable for use with ML classifiers such as SVM or MaxEnt in its original form, we needed to convert the sentences into the required layout with one instance, i.e. one token relating to one predicate, per line and a constant number of columns. We have used directly the ARFF file format as the target of our conversion in order to easily use the generated files with WEKA classifiers.
+In Section \ref{data-format}, we described the advantages and drawbacks of the input corpus data format. Since it is unsuitable for use with ML classifiers such as SVM or MaxEnt in its original form, we needed to convert the sentences into the required layout with one instance, i.e. one token relating to one predicate, per line and a constant number of columns. We have used directly the ARFF file format as the target of our conversion in order to easily use the generated files with WEKA classifiers (cf. Section \ref{weka}).
 
 The conversion of each sentence looks as follows:
 \begin{enumerate}
@@ -780,8 +780,7 @@ As a result of this experiment, we have chosen to perform the PD task classifica
 
 \section{Feature Selection Approaches}\label{pd-training}
 
-% TODO hodit uz do pd-observe ?
-Having selected the classifier settings, we focused on perfecting the feature selection techniques for the individual groups of predicate lemmas identified in Section \ref{pd-observe}. In our preliminary experiments on small data sets, we learned that using more than about 30 features does not improve the system performance, as for every individual lemma, many features are irrelevant. It also must be noted that with the filtering techniques applied before feature selection, it is possible that even smaller feature set remains and the rest is omitted, since it does not promise an asset to the system. Additionally, the binarization that is required before classification raises the total number of features that occupy the machine learning algorithm up to thousands\footnote{We chose to perform the binarization only after feature selection, since this reduces the computation time needed. Selecting the binarized features would probably improve the performance, but also retard the process on the other hand.}.
+Having selected the classifier settings, we focused on perfecting the feature selection techniques for the individual groups of predicate lemmas identified in Section \ref{pd-observe}. In our preliminary experiments on small data sets, we found it profitable to filter out all feature values that occur in less than 1\% of training instances and less than three times. We therefore use the filtering methods as described in Section \ref{featsel} with this particular configuration. We also learned that using more than about 30 features is not likely to improve the classifier performance, as for every individual lemma, many features are irrelevant. It also must be noted that with the filtering techniques applied before feature selection, it is possible that even smaller feature set remains and the rest is omitted, since it does not promise an asset to the system. Additionally, the binarization that is required before classification raises the total number of features that occupy the machine learning algorithm up to thousands\footnote{We chose to perform the binarization only after feature selection, since this reduces the computation time needed. Selecting the binarized features would probably improve the performance, but also retard the process on the other hand.}.
 
 We have decided to use feature ranking with the search for the appropriate number of features with the simple lemmas; however, we needed to select the most successful feature ranking algorithm from the ones listed in Section \ref{featsel}. Therefore, we designed another experiment on our PD subset from Section \ref{classifier-setting}, which compares the results of the same classifier coupled with the individual feature rankings. We used a logistic regression model with the settings described in Section \ref{classifier-setting} and measured its accuracy on the test set with feature rankings, each time with the best number of features possible within the range $4-30$\footnote{If less features remain as the filtering output, all of them are examined in the same fashion. This also applies to the following feature selection variants.} (obtained by consecutively adding features to the subset of used ones in the order given by the ranking), and estimated the confidence intervals using the bootstrap method. 
 
@@ -850,7 +849,7 @@ We will now give an account of the whole organization of our PD system, which is
 \end{center}
 \end{figure}
 
-We thus have the best feature sets and the filtering settings as the input to the evaluation stage, which proceeds as follows:
+The models examined in the training stage are not stored in order to reduce disk usage --- we train the classifiers anew in the evaluation phase, but only one model per subproblem, with the all settings given in advance. We thus have the best feature sets and the filtering settings as the input to the evaluation stage, which proceeds as follows:
 \begin{enumerate}
     \item Data conversion, which is the same as in the training phase.
     \item Separation of lemmas that do not have any training data instances (also denoted \emph{orphans}). We use a dummy classifier for these lemmas, which takes the lemma and appends ``.01'' to it, which creates the usual representation of the first and most common sense.
@@ -858,7 +857,7 @@ We thus have the best feature sets and the filtering settings as the input to th
     \item The system now filters the predicates according to the settings saved from the training stage and classifies them using appropriate the sets of viable features.
     \item The results of the classification, as well as the two kinds of pseudo-classification, are collected back to the original file format.
 \end{enumerate}
-A chart depicting the data flow in the evaluation stage is shown in Figure \ref{fig:pd-eval}. The PD results are then used as one of the inputs for the second part of our system, the argument labeling.
+A chart depicting the data flow in the evaluation stage is shown in Figure \ref{fig:pd-eval}. The PD results are then used as one of the inputs for the second part of our system, the argument classification.
 
 %
 %
@@ -866,7 +865,7 @@ A chart depicting the data flow in the evaluation stage is shown in Figure \ref{
 %
 %
 
-In this chapter, we will explain the settings of our AC solution. Within the data conversion from the original corpus format, we conducted several experiments with selecting only the most viable argument candidates, including syntactical approaches by \citet{zha09} and \citet{asahara09} and our own POS-based method, which are all described in Section \ref{pruning}. We have also examined the merits of splitting the AC solution into the identification (AI) and labeling parts or taking the joint approach, both of which featured in the CoNLL 2009 contest SRL systems (see Section \ref{ai-ac}). In addition, based on our linguistic knowledge of English, we propose a different approach to adverbial modifiers and co-references in opposition to valency arguments. An account of our tests regarding this topic is given in Sections \ref{arg-types} and \ref{ac-am}. 
+We will explain the technical properties of our AC solution in this chapter. Within the data conversion from the original corpus format, we conducted several experiments with selecting only the most viable argument candidates, including syntactical approaches by \citet{zha09} and \citet{asahara09} and our own POS-based method, which are all described in Section \ref{pruning}. We have also examined the merits of splitting the AC solution into the identification (AI) and labeling parts or taking the joint approach, both of which featured in the CoNLL 2009 contest SRL systems (see Section \ref{ai-ac}). In addition, based on our linguistic knowledge of English, we propose a different approach to adverbial modifiers and co-references in opposition to valency arguments. An account of our tests regarding this topic is given in Sections \ref{arg-types} and \ref{ac-am}. 
 
 Similarly to the PD approaches described in Sections \ref{classifier-setting} and \ref{pd-training}, we searched for the optimal classifier configuration and feature selection techniques, which we describe in Section \ref{ac-setting}. Since a greater part of the predicates occurs extremely rarely, we designed a new method of dividing the independent data instances while still maintaining enough training examples (cf. Section \ref{ac-merge}). Our system also includes a post-inference on the classifier output \citep{punyakanok04}, in order to adhere to global constraints for whole sentences (see Section \ref{post-inference}). The whole design of our AC system is then summarized in Section \ref{ac-overview}.
 
@@ -874,7 +873,7 @@ Similarly to the PD approaches described in Sections \ref{classifier-setting} an
 
 The first decision we needed to make in our PD system concerned the format of the data conversion output. As we described in Section \ref{conversion}, our conversion algorithm either separates data relating to different predicates (or lemmas) into individual files, or outputs the whole data set into one large file. We considered either feeding all the data to just one classifier, which adds different predicate frames together, or using a different classification model for each predicate, which selects only instances with the same predicate frames, but considerably thins the amount of training instances available. Separating predicate lemmas would only include both of the drawbacks mentioned, therefore we eliminated this choice.
 
-We created an experiment that would test the merits of both approaches. In order to reduce computation complexity, we created a smaller subset of the data (referred to as \emph{AC Experimental Subset}), which we used for our experiments. We selected 100 predicates at random from training and development data sets, thus including data relating to frequent predicate senses as well as that of the rare ones and maintaining representativity of the whole data. We then trained the same classifier with the same configuration ($L_2$ regularized logistic regression from the LibLINEAR package with the cost parameter set to $1$ and a termination criterion of $0.001$, using all features) to classify the following AC single multi-class problems\footnote{The decision to use a single AC task instead of splitting it into identification and labeling subproblems has been made for the sake of simplicity here, since the main goal was to compare the effects of splitting data in the same settings. We will review this option in Section \ref{ai-ac}.}:
+We created an experiment that would test the merits of both approaches. In order to reduce computation complexity, we created a smaller subset of the data (referred to as \emph{AC Experimental Subset}), which we used for our experiments. We selected 100 predicates at random from training and development data sets, thus including data relating to frequent predicate senses as well as that of the rare ones and maintaining representativity of the whole data. We then trained the same classifier with the same configuration ($L_2$ regularized logistic regression from the LibLINEAR package with the cost parameter set to $1$ and a termination criterion of $0.001$, using all features filtered in the same way as in the PD task, which is described in Section \ref{pd-training}) to classify the following AC single multi-class problems\footnote{The decision to use a single AC task instead of splitting it into identification and labeling subproblems has been made for the sake of simplicity here, since the main goal was to compare the effects of splitting data in the same settings. We will review this option in Section \ref{ai-ac}.}:
 \begin{enumerate}
     \item On the data split for different predicates, creating a separate model for each one of them.
     \item As a single model on the whole AC Experimental Subset.
@@ -936,13 +935,12 @@ The values listed are in the same format as in Table \ref{tab:one-bag}, the labe
 We therefore conducted an experiment on our PD Experimental Subset, comparing the performance of the two system variants, so that we could decide for one of them. We used the same classifier configuration as for our experiments described in Section \ref{pruning}. The results listed in Table \ref{tab:ai-ac} show that in our setting, the joint AC task performed better than the two-step identification-classification solution in terms of labeled F-measure. Although the results difference is not significant with $90\%$ confidence according to the bootstrap test, it is considerably larger than in our previous experiments. We thus decided to use the joint AC approach, since it shows to be more efficient, but also due to its simplicity.
 
 \section{Different Argument Types}\label{arg-types}
-% oddeleni klasifikace prisl. urceni a valencnich argumentu
 
 In many linguistic theories that describe semantic (or deep syntactic) dependencies among the words of a sentence, a distinction is made between the valency \emph{arguments} or actants and the \emph{adverbial modifiers} or circumstantials \citep[p. 100ff.]{sgal86}. While a specific set of the former is required by each predicate, each of its members being unique to the sentence, the latter are generally not limited to any certain group of predicates and can occur freely and repeatedly with most predicates. This distinction is, however, not absolutely clear, and thus some predicates may also require specific adverbial modifiers, whereas some of the arguments may be voluntary with certain predicates. It is also necessary to note that the situation is different for nouns and verbs and varies to some extent across different theories \citep{rambow03}, even if the fundamental idea is constant.
 
 The PropBank \citep{kinsbury02,palmer05} and NomBank \citep{meyers04} annotations used in the present thesis (cf. Chapter \ref{data}) also take this concept into account and specify a set of numbered arguments \texttt{A0\dots A5} for each nominal or verbal predicate (\emph{frames}), while the sets of possible arguments, as well as the meaning of the individual numbers change across different predicates. In addition to that, the semantic annotation contain labeled adverbial modifiers \texttt{AM-}, not limited to specific predicates and semantically constant. This applies also to reference labels \texttt{R-} and \texttt{C-}. Only a very small set of verbal frames contains adverbial modifiers as well\footnote{For the sake of simplicity, we decided to ignore these modifiers in our experiments for the present time.}.
 
-Considering such a setting, it becomes apparent that while an individual approach to classification of different predicates is favorable (as discussed in Section \ref{pruning}), only the valency arguments benefit from this division in principle, whereasa modifier and reference labels are largely independent of it division and therefore will profit more from a greater training data set. We thus designed an experiment on our PD Experimental Subset to support or disprove this hypothesis: using the same classifier settings as in Sections \ref{pruning} and \ref{ai-ac}, we trained a two-stage system that first assigns arguments labels for each predicate individually and then uses a single classifier trained on the whole training set to label the adverbial modifiers. A comparison of this setting to a system which assigns all semantic labels in a single step is given in Table \ref{tab:separate-ams}.
+Considering such a setting, it becomes apparent that while an individual approach to classification of different predicates is favorable (as discussed in Section \ref{pruning}), only the valency arguments benefit from this division in principle, whereas modifier and reference labels are largely independent of it division and therefore will profit more from a greater training data set. We thus designed an experiment on our PD Experimental Subset to support or disprove this hypothesis: using the same classifier settings as in Sections \ref{pruning} and \ref{ai-ac}, we trained a two-stage system that first assigns arguments labels for each predicate individually and then uses a single classifier trained on the whole training set to label the adverbial modifiers. A comparison of this setting to a system which assigns all semantic labels in a single step is given in Table \ref{tab:separate-ams}.
 
 \begin{table}[htb]\label{tab:separate-ams}
 \caption{A comparison of the joint AC and two-step AI-AC approaches}\footnotesize
@@ -962,7 +960,7 @@ Although the results difference is not significant with 90\% confidence, the exp
 
 In the same way as with our PD system (see Section \ref{classifier-setting}), we chose to use one classifier configuration for all the classification tasks of the AC system. Therefore, it was necessary to find the settings that would perform best in an average case. We thus conducted a series experiments with different classifiers and parameter settings, using one joint AC step and the PD Experiment Subset data split for individual predicates. The set of examined ML methods and individual parameter values is analogous to our PD experiment described in Section \ref{classifier-setting}, i.e. logistic regression and various SVM implementations from the LibLINEAR package and radial and linear kernel SVM from the LibSVM library have been tested, along with many different settings of the termination criterion $E\in\{1,0.1,0.01,0.001\}$ (LibLINEAR), regularization penalty cost (all methods) $C\in\{0.05,0.1,0.2,0.5,1,2,5\}$ and the second parameter for the radial kernel SVM $\gamma\in\{1,0.1,0.01,0.001,\frac{1}{\mbox{\# feats.}}\}$. 
 
-However, since the AC task proved to be much more computationally expensive than the PD task, we decided not to use every possible combination of the two classifier parameters, but, assuming their independence, gradually change one of the parameters while fixating the other one\footnote{We chose to fixate the parameters in the following way: $C = 2, \gamma = \frac{1}{\mbox{\#feats.}}, E = 0.001$.}, thus obtaining a possibly suboptimal (if the independence assumption is not valid), but still near-optimal parameter setting by examining the values separately. Due to performance issues, we also used a very simple feature selection algorithm --- for each feature ranking (please refer to Section \ref{featsel} for a complete description), a set of the top 10, 20 or 30 features was examined, and the best result was selected. This limits the computational requirements needed to a minimum.
+However, since the AC task proved to be much more computationally expensive than the PD task, we decided not to use every possible combination of the two classifier parameters, but, assuming their independence, gradually change one of the parameters while fixating the other one\footnote{We chose to fixate the parameters in the following way: $C = 2, \gamma = \frac{1}{\mbox{\#feats.}}, E = 0.001$.}, thus obtaining a possibly suboptimal (if the independence assumption is not valid), but still near-optimal parameter setting by examining the values separately. Due to performance issues, we also used a very simple feature selection algorithm --- for each feature ranking (please refer to Section \ref{featsel} for a complete description), a set of the top 10, 20 or 30 features was examined, and the best result was selected\footnote{We apply the same feature selection technique in the final system, but examine more candidate feature sets.}. This limits the computational requirements needed to a minimum.
 
 \begin{table}[htb]
 \caption{Classifier configuration test on the AC Experimental Subset}\label{tab:ac-classifiers}\footnotesize
@@ -1021,6 +1019,8 @@ Similarly to Table \ref{tab:ac-classifiers}, the listed values are the labeled $
 \end{table}
 
 In order to select the default feature ranking, we performed an experiment analogous to the one described in Section \ref{pd-training}. We applied the classifier configuration we selected in the previous experiment to our PD Experimental Subset, selecting the best set of the top 10, 20 or 30 features for each ranking and then comparing the results, which are shown in Table \ref{tab:ranker-pc}. Although the differences are rather minor, it is apparent that the mRMR method and both the averages do not perform well in this setting, while MI/Information Gain turns out to be slightly better than the average. We thus selected this method as the default ranking for our PD experiments.
+
+Following the above experiments and the subsequent manual output analysis, we discovered that the previously used feature filtering techniques (keeping only the values that occur in more than 1\% of the cases) are rather coarse. We therefore resorted to filtering out the top 100 most frequent values for each feature, acknowledging the need for a broader analysis of this problem.
 
 \section{Merging Rare Predicates}\label{ac-merge}
 
@@ -1116,7 +1116,7 @@ We also designed a much simpler post-inference algorithm, which proceeds in the 
 The figures listed are in the same format as in Tables \ref{tab:one-bag} and \ref{tab:ai-ac}, $T$ stands for the threshold parameter.
 \end{table}
 
-We have tested the benefits of both post-inference approaches on our AC Experimental Subset. We used the LP\_Solve library (see Section \ref{weka} for technical details) to solve the ILP problem and our own implementation of the simple algorithm. We trained the same classifier as in Section \ref{ref} with the same settings, with data split for individual predicates and no feature selection. We then used either no post-inference, or one of the above algorithms with several different threshold values. The results of the experiment are shown in Table \ref{tab:post-inference}. We can see that keeping the valency arguments unique can bring improvements to our AC system, although only modest (and not significant in terms of the bootstrap test), whereas the simple inference algorithm reached slightly better results. The most viable threshold settings are $0.3$ for the simple algorithm and $0.1$ for ILP. We decided to employ post-inference in the final system, since it is very fast and promises an improvement, albeit small.
+We have tested the benefits of both post-inference approaches on our AC Experimental Subset. We used the LP\_Solve library (see Section \ref{weka} for technical details) to solve the ILP problem and our own implementation of the simple algorithm. We trained the same classifier as in Section \ref{ref} with the same settings, with data split for individual predicates and no feature selection. We then used either no post-inference, or one of the above algorithms with several different threshold values. The results of the experiment are shown in Table \ref{tab:post-inference}. We can see that keeping the valency arguments unique can bring improvements to our AC system, although only modest (and not significant in terms of the bootstrap test), whereas the simple inference algorithm reached slightly better results. The most viable threshold settings are $0.3$ for the simple algorithm and $0.1$ for ILP. We decided to employ both variants of post-inference in the final system and compare them to the baseline, since the it does not require a separate training process and promises an improvement, albeit small.
 
 \section{Adverbial Modifiers Labelling}\label{ac-am}
 
@@ -1183,19 +1183,150 @@ The setting is analogous to the PD setup insofar as the filtering settings and f
 \end{enumerate}
 The output of our system is thus the original evaluation data file, with all the predicates and semantic arguments filled.
 
+%
+%
 \chapter{The Whole Deep Analysis System}\label{setup}
-\section{Overall Organization}
-% napojeni pred. disambiguation a argument labelling
-\section{The Performance}
+%
+%
+
+After we discussed the two main parts of our SRL system in particular in Chapters \ref{pd} and \ref{ac}, we will now provide a brief summary of its overall implementation, connecting the PD and AC subtasks together (in Section \ref{overall}). We include an analysis of the results of our system on the CoNLL 2009 evaluation data set (see Section \ref{performance}) and attach a short comparison to the other systems competing in the last year's contest (as Section \ref{comparison}).
+
+\section{Overall Organization}\label{overall}
+
+The two main units of our setup, the PD and AC systems, are completely independent of each other in their respective training stages, which allows for parallel computation. They both use the training and development data sets of the CoNLL 2009 corpus, each converting them to the ARFF data format (see Section \ref{weka}) with different settings. The results of the both training stages are the feature filtering settings, along with a set of selected features (see also Section \ref{featsel} for basic details). These are the only inputs to the evaluation stage in our implementation. Ready trained models could certainly be stored and used for evaluation as well, but since the training of a single model is not very time-demanding given the already preselected set of features, we decided not to save all the models examined during the training stage in order to save disk space. The evaluation phase thus uses the training data as one of its inputs as well.
+
+\begin{figure}{htb}\footnotesize
+\caption{The overall organization of our SRL system}\label{fig:overall}
+\noindent The data in CoNLL format are displayed in rectangles with round borders. The system output is marked grey.
+\begin{center}
+\includegraphics[width=0.9\textwidth]{global-chart}
+\end{center}
+\end{figure}
+
+On the other hand, the evaluation stages of both subtasks depend directly on each other, forming a pipeline. The CoNLL corpus data without \texttt{PRED} and \texttt{APRED$i$} columns (predicates and arguments specification, see Section \ref{data-format}) is first input to the PD system, along with the best features and filtering settings from the PD training stage. The output of the PD evaluation is then the same file in the original data format, but with all the \texttt{PRED} values filled in. We use the conversion into the original format at this point, since it is easier to implement adding the predicates back to the single original file, than add the predicate information into the scattered results of the AC input format conversion. Since the AC task uses conversion settings different to the PD solution, it is also not possible to use the PD output data directly. The AC evaluation stage then outputs the full data including the predicate arguments in the original format.
+
+The whole configuration is depicted in Figure \ref{fig:overall}, including the final system evaluation, which is done using the original CoNLL 2009 Scorer, so that the result is comparable to other systems enrolled to this contest (see Section \ref{comparison}). We will concentrate on the labeled variants of all metrics, since they reflect the performance more accurately, as they also indicate problems with incorrect labeling. We include the non-labeled measure outputs only for comparison.
+
+\section{The Performance}\label{performance}
+
+\begin{table}[tb]\footnotesize
+\caption{The results of our SRL solution on the CoNLL evaluation data}\label{tab:results}
+\begin{center}
+\begin{tabular}{|l|ccc|ccc|}\hline
+\multirow{2}{*}{\bf System variant} & \multicolumn{3}{c|}{\bf Labeled} & \multicolumn{3}{c|}{\bf Unlabeled} \\
+  & $P$ & $R$ & $F_1$ & $P$ & $R$ & $F_1$ \\\hline
+No post-inference (base) & 82.91 & 66.31 & 73.73 & 91.61 & 73.34 & 81.47 \\
+ILP post-inference & \bf 85.19 & 65.90 & 74.32 & \bf 93.30 & 72.18 & 81.40 \\
+Simple post-inference & 84.46 & \bf 67.46 & \bf 75.00 & 92.47 & \bf 73.85 & \bf 82.12 \\\hline
+\end{tabular}
+\end{center}
+The listed values are: labeled and unlabelled precision, recall and $F_1$ percentage, respectively.
+\end{table}
+
+The final results of our SRL system on the CoNLL evaluation data set are displayed in Table \ref{tab:results}. The numbers indicate only a limited success of our solution, with our simple post-inference algorithm ranking best. It shows that the ILP post-inference technique strongly improves precision, while lowering recall, but still increasing $F_1$ in total. The simple post-inference method on the other hand brings smaller gains in both precision and recall, which add up to a better overall $F$-measure score. 
+
+As the figures include the performance in both predicate disambiguation and argument classification, we have created several scripts for further automatic analysis, both a direct one of the system output and an indirect one of the results given by the CoNLL scorer. We present the relevant figures in Tables \ref{tab:pd-output} and \ref{tab:ac-output}.
+
+\begin{table}[htb]\footnotesize
+\caption{Detailed performance of the PD subtask}\label{tab:pd-output}
+\begin{center}
+\begin{tabular}{|l|c|}\hline
+\bf Predicate lemmas & $A$ \\\hline
+All lemmas & 95.06 \\
+Multiple senses & 86.86 \\
+``Simple'' (2-3 senses) & 89.67 \\
+``Harder'' (4-8 senses) & 85.37 \\
+``Tough'' (more than 8 senses) & 75.63 \\\hline 
+Nominal lemmas with multiple senses & 86.98 \\
+Verbal lemmas with multiple senses & 86.78 \\\hline
+\end{tabular}
+\end{center}
+The listed value is accuracy (see Section \ref{classifier-setting} for explanation).
+\end{table}
+
+It is now apparent that the PD subtask is able to achieve relatively high accuracy, but also due to the fact that many lemmas are not ambiguous. There is still a broad margin for further improvement (see Table \ref{tab:pd-output} for details). With highly ambiguous lemmas, the performance is considerably weaker than for the simpler problems, even if much broader range of possible feature subsets has been explored. The classification of nominal and verbal predicate lemmas is almost equally successful.
+ 
+\begin{table}[p]\footnotesize
+\caption{Detailed performance of the AC subtask}\label{tab:ac-output}
+The values listed are: the total numbers of instances of the given type (in the gold standard data) and labeled precision, recall and $F$-measure, respectively. Other POSs as predicates and very rare kinds of adverbial modifiers are omitted in particular, but included in the total numbers.
+\begin{center}
+\begin{tabular}{|l|r|c|c|c|}\hline
+\bf Subset & \bf Size & $P$ & $R$ & $F_1$ \\\hline\hline
+All predicates & 23286 & 77.71 & 55.01 & 64.42 \\\hline
+Nominal predicates & 9191 & 77.09 & 47.56 & 58.83 \\
+Verbal predicates & 14024 & 78.05 & 60.13 & 67.93 \\\hline
+Valency arguments & 17760 & 79.65 & 59.30 & 67.98 \\
+Adverbial modifiers & 4838 & 70.79 & 42.97 & 53.48 \\
+References & 205 & 100.00 & 1.95 & 3.83 \\
+Co-references & 483 & 60.75 & 40.37 & 48.51 \\\hline\hline
+Nominal pred. + A0 & 2339 & 79.20 & 50.79 & 61.89 \\
+Nominal pred. + A1 & 3757 & 79.38 & 55.74 & 65.49 \\
+Nominal pred. + A2 & 1537 & 72.93 & 53.29 & 61.58 \\
+Nominal pred. + A3 & 349 & 67.10 & 59.03 & 62.81 \\
+Nominal pred. + A4 & 18 & 62.50 & 55.56 & 58.83 \\
+Nominal pred. + A5 & 1 & - & 0.00 & - \\
+Nominal pred. + AM* & 1186 & 62.79 & 4.55 & 8.49 \\
+Nominal pred. + C-* & 2 & - & 0.00 & - \\
+Nominal pred. + R-* & 2 & - & 0.00 & - \\
+Verbal pred. + A0 & 3509 & 81.02 & 61.44 & 69.88 \\
+Verbal pred. + A1 & 4844 & 86.40 & 66.78 & 75.33 \\
+Verbal pred. + A2 & 1085 & 68.55 & 59.26 & 63.57 \\
+Verbal pred. + A3 & 169 & 54.14 & 57.99 & 56.00 \\
+Verbal pred. + A4 & 99 & 72.28 & 73.74 & 73.00 \\
+Verbal pred. + A5 & 5 & 100.00 & 80.00 & 88.89 \\
+Verbal pred. + AA & 0 & 0.00 & - & - \\
+Verbal pred. + AM* & 3630 & 71.07 & 55.76 & 62.49 \\
+Verbal pred. + C-* & 202 & 100.00 & 1.98 & 3.88 \\
+Verbal pred. + R-* & 481 & 60.75 & 40.54 & 48.63 \\\hline\hline
+Nominal pred. + AM-ADV & 32 & 100.00 & 3.12 & 6.05 \\
+Nominal pred. + AM-CAU & 2 & 100.00 & 50.00 & 66.67 \\
+Nominal pred. + AM-EXT & 33 & - & 0.00 & - \\
+Nominal pred. + AM-LOC & 232 & 40.00 & 0.86 & 1.68 \\
+Nominal pred. + AM-MNR & 344 & - & 0.00 & - \\
+Nominal pred. + AM-MOD & 7 & 100.00 & 28.57 & 44.44 \\
+Nominal pred. + AM-NEG & 35 & 100.00 & 22.86 & 37.21 \\
+Nominal pred. + AM-TMP & 492 & 57.97 & 8.13 & 14.26 \\\hline
+Verbal pred. + AM-ADV & 488 & 43.34 & 34.02 & 38.12 \\
+Verbal pred. + AM-CAU & 70 & 67.50 & 38.57 & 49.09 \\
+Verbal pred. + AM-DIR & 81 & 66.67 & 2.47 & 4.76 \\
+Verbal pred. + AM-DIS & 315 & 63.35 & 44.44 & 52.24 \\
+Verbal pred. + AM-EXT & 32 & 54.55 & 18.75 & 27.91 \\
+Verbal pred. + AM-LOC & 355 & 53.70 & 49.01 & 51.25 \\
+Verbal pred. + AM-MNR & 335 & 60.65 & 28.06 & 38.37 \\
+Verbal pred. + AM-MOD & 539 & 94.15 & 89.61 & 91.82 \\
+Verbal pred. + AM-NEG & 227 & 93.56 & 96.04 & 94.78 \\
+Verbal pred. + AM-PNC & 113 & 52.24 & 30.97 & 38.89 \\
+Verbal pred. + AM-TMP & 1068 & 75.61 & 63.58 & 69.08 \\\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+The output of the AC solution is much more problematic. The semantic labeling precision still remains relatively high in all variant, but the recall figures shows the major difficulty --- the system does not recognize a considerably large portion of the arguments at all. If we observe the more detailed figures in Table \ref{tab:ac-output}, we can see that this problem pertains to all types of labels: valency arguments as well as adverbial modifiers and references. However, the arguments (\texttt{A0\dots A5}) feature considerably better results than the rest of the labels, with verbal predicates standing slightly higher. The lower figures for adverbial modifiers are caused mainly by an inferior performance in nominal predicates --- most of their modifiers aren't identified at all. The classification of verb modifiers is significantly more successful, while still not as accurate as with valency arguments. The performance in negation particles and modal verbs as arguments of the verbal predicates exceeds 90\% $F$-measure, which is probably thanks to the fact that these modifier types are mostly identified by the word form itself.
+
 % vysledky, analyza (vhodne featury apod., problemy)
 % nekazi to ILP ?
+
+\section{Comparison to CoNLL 2009 Shared Task Systems}\label{comparison}
+
+%
+%
 \chapter{Conclusions}\label{conclusions}
-\section{Comparison to CoNLL 2009 Shared Task Systems}
+
+\section{Discussion of the System Results}
+
+We believe that applying a more exhaustive feature search, e.g. applying the greedy algorithm to a wider set of predicates, could contribute to the rectification of the classification errors. % + horsi techniky, treba 2-3 featury najednou + lepsi flirtovani
+
+% beam search
+ The reason lies most probably in the applied feature filtering and selection technique --- finer filtering and possibly more features describing the syntactic relations independent of POS should most probably improve the system performance. Another option is to classify nominal and verbal adverbial modifiers and references separately. 
+
 \section{Further Possibilities of Improvement}
 % lepis feat-sel ,nejaky algoritmus co porovna casto vyplivovane subsety z rankingu
-% pripadne feat-sel na jednotlivych binarizovany featurach, ale to by bylo strasne drahe
+% pripadne feat-sel na jednotlivych binarizovany featurach, ale to by bylo strasne drahe -> 2-fazovy feat-sel
+% urcite lepsi featury
 % mozna tuning parametru, to by treba slo, s malym poctem moznosti
 % nebo inteligentnejsi tuning nez vyzkouseni predem zadanych moznosti
+% nevyhazovat word-id
+
 \section{Application to Prague English Dependency Treebank}
 % kratky teoreticky navrh
 
