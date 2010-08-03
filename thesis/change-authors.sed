@@ -2,6 +2,7 @@
 s/haji\([0-9]\)/hajic\1/
 s/cinkov\([0-9]\)/cinkova\1/
 s/bjrkelund\([0-9]\)/nugues\1/
+s/morante\([0-9]\)/vallejo\1/
 s/gesmundo\([0-9]\)/merlo\1/
 s/semeck\([0-9]\)/semecky\1/
 s/tckstrm\([0-9]\)/tackstrom\1/
