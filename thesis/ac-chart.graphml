@@ -280,7 +280,6 @@ ReliefF</y:NodeLabel>
       </data>
     </node>
     <node id="n23">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="104.03960813492063" y="500.29229290674607"/>
@@ -293,7 +292,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n24">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="168.53960813492063" y="554.0422929067461"/>
@@ -306,7 +304,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n25">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="233.03960813492063" y="500.29229290674607"/>
@@ -319,7 +316,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n26">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="363.0396081349206" y="500.29229290674607"/>
@@ -332,7 +328,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n27">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="424.2499255952381" y="554.0422929067461"/>
@@ -345,7 +340,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n28">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="298.0396081349206" y="500.29229290674607"/>
@@ -358,7 +352,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n29">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="485.46024305555557" y="500.29229290674607"/>
@@ -371,7 +364,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n30">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="550.4602430555556" y="500.29229290674607"/>
@@ -384,7 +376,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n31">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="615.4602430555556" y="500.29229290674607"/>
@@ -544,7 +535,6 @@ ReliefF</y:NodeLabel>
       </data>
     </node>
     <node id="n45">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="1224.5241319444444" y="500.29229290674607"/>
@@ -557,7 +547,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n46">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="1160.0241319444444" y="554.0422929067461"/>
@@ -570,7 +559,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n47">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="1095.5241319444444" y="500.29229290674607"/>
@@ -583,7 +571,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n48">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="908.1034970238095" y="500.29229290674607"/>
@@ -596,7 +583,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n49">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="969.313814484127" y="554.0422929067461"/>
@@ -609,7 +595,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n50">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="778.1034970238095" y="500.29229290674607"/>
@@ -622,7 +607,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n51">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="704.4884176587302" y="500.29229290674607"/>
@@ -635,7 +619,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n52">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="1030.5241319444444" y="500.29229290674607"/>
@@ -648,7 +631,6 @@ top 5-30</y:NodeLabel>
       </data>
     </node>
     <node id="n53">
-      <data key="d2"/>
       <data key="d3">
         <y:ShapeNode>
           <y:Geometry height="37.5" width="60.0" x="843.1034970238095" y="500.29229290674607"/>
