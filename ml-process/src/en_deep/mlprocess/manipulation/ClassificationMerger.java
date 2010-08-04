@@ -153,7 +153,8 @@ public class ClassificationMerger extends Task {
      * This loads the headers all data files and checks if they contain the class
      * argument and on which position (this is saved to {@link #classArgIndexes}. It also checks the number
      * of instances in the data.
-     * 
+     *
+     * @todo store only the class attribute to save memory !!!
      * @param classifications
      */
     private void loadData(List<String> classifications) throws Exception {
@@ -240,7 +241,10 @@ public class ClassificationMerger extends Task {
                 out.get(i).setValue(this.classArgIndexes[0], bestLabels.get(0));
             }
         }
-
+        for (int i = 0; i < data.length; ++i){
+            data[i] = null;
+        }
+        System.gc();
         FileUtils.writeArff(fileName, out);
     }
 
