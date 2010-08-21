@@ -27,13 +27,14 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.Process;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
+import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.Vector;
 
 /**
@@ -109,7 +110,7 @@ public class StReader {
     /** Semrel pattern for adverbials and references in the ST file */
     public String amsPat;
     /** The current input file */
-    private RandomAccessFile inputFile;
+    private Scanner inputFile;
     /** The name of the current input file */
     private String inputFileName;
     /** Use predicted POS and DEPREL values ? */
@@ -166,17 +167,18 @@ public class StReader {
         }
 
         // read the config file
-        RandomAccessFile config = new RandomAccessFile(this.task.getParameterVal(StToArff.LANG_CONF), "r");
+        Scanner config = new Scanner(new File(this.task.getParameterVal(StToArff.LANG_CONF)),
+                Process.getInstance().getCharset());
 
-        this.posFeat = config.readLine(); // name of the feature-handling class or empty line
+        this.posFeat = config.nextLine(); // name of the feature-handling class or empty line
         if (this.posFeat.matches("\\s*")){ // no features handled
             this.posFeat = null;
         }
-        this.nounPat = config.readLine();
-        this.verbPat = config.readLine();
+        this.nounPat = config.nextLine();
+        this.verbPat = config.nextLine();
 
-        String semRolesStr = config.readLine();
-        this.amsPat = config.readLine();
+        String semRolesStr = config.nextLine();
+        this.amsPat = config.nextLine();
 
         config.close();
         config = null;
@@ -195,7 +197,7 @@ public class StReader {
     void setInputFile(String fileName) throws IOException {
 
         this.inputFileName = fileName;
-        this.inputFile = new RandomAccessFile(fileName, "r");
+        this.inputFile = new Scanner(new File(fileName), Process.getInstance().getCharset());
     }
 
     /**
@@ -265,12 +267,12 @@ public class StReader {
         String word;
 
         this.words = new Vector<String []>();
-        word = this.inputFile.readLine();
+        word = this.inputFile.hasNextLine() ? this.inputFile.nextLine() : null;
 
         while (word != null && !word.matches("^\\s*$")){
 
             words.add(word.split("\\t"));
-            word = this.inputFile.readLine();
+            word = this.inputFile.hasNextLine() ? this.inputFile.nextLine() : null;
         }
 
         if (this.words.isEmpty()){ // close the file if at the end

@@ -27,8 +27,10 @@
 
 package en_deep.mlprocess.utils;
 
+import en_deep.mlprocess.Process;
 import java.io.*;
 import java.nio.channels.*;
+import java.util.Scanner;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
@@ -244,11 +246,11 @@ public class FileUtils{
      */
     public static String readString(String fileName, boolean firstLineOnly) throws IOException {
     
-        RandomAccessFile in = new RandomAccessFile(fileName, "r");
+        Scanner in = new Scanner(new File(fileName), Process.getInstance().getCharset());
         StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = in.readLine()) != null){
-            sb.append(line);
+
+        while (in.hasNextLine()){
+            sb.append(in.nextLine());
             if (firstLineOnly){
                 break;
             }

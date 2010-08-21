@@ -28,18 +28,18 @@
 package en_deep.mlprocess.manipulation;
 
 import com.google.common.collect.HashMultimap;
-import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.Scanner;
 import java.util.TreeSet;
 import java.util.Vector;
 
@@ -155,11 +155,13 @@ public class PredicateMerger extends GroupInputsTask {
      */
     private void loadPredInfos() throws IOException {
 
-        RandomAccessFile in = new RandomAccessFile(this.predInfoFile, "r");
+        Scanner in = new Scanner(new File(this.predInfoFile), Process.getInstance().getCharset());
         String line;
 
         Logger.getInstance().message("Loading predicate information ...", Logger.V_INFO);
-        while ((line = in.readLine()) != null){
+        
+        while (in.hasNextLine()){
+            line = in.nextLine();
             if (line.isEmpty()){
                 continue;
             }

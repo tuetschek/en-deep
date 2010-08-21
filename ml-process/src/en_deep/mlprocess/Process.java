@@ -32,6 +32,8 @@ import gnu.getopt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 
 /**
  * The main executable class, responsible for the whole process.
@@ -90,6 +92,8 @@ public class Process {
     private static final String OPTL_RETRIEVE_COUNT = "retrieve_count";
     /** The --parse_only option long name */
     private static final String OPTL_PARSE_ONLY = "parse_only";
+    /** The --charset option long name */
+    private static final String OPTL_CHARSET = "charset";
 
     /** The --threads option short name */
     private static final char OPTS_THREADS = 't';
@@ -105,11 +109,13 @@ public class Process {
     private static final char OPTS_RETRIEVE_COUNT = 'c';
     /** The --parse_only option short name */
     private static final char OPTS_PARSE_ONLY = 'p';
+    /** The --charset option short name */
+    private static final char OPTS_CHARSET = 's';
 
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process";
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "i:t:v:d:r:c:p";
+    private static final String OPTSTRING = "i:t:v:d:r:c:s:p";
 
     /* DATA */
 
@@ -143,10 +149,11 @@ public class Process {
         opts.workDir = null;
         opts.inputFile = null;
         opts.resetTasks = null;
+        opts.charsetName = null;
 
         try {
             // parsing the options
-            LongOpt[] possibleOpts = new LongOpt[7];
+            LongOpt[] possibleOpts = new LongOpt[8];
             possibleOpts[0] = new LongOpt(OPTL_THREADS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_THREADS);
             possibleOpts[1] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
             possibleOpts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.REQUIRED_ARGUMENT, null, OPTS_VERBOSITY);
@@ -154,6 +161,7 @@ public class Process {
             possibleOpts[4] = new LongOpt(OPTL_RESET_TASKS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_RESET_TASKS);
             possibleOpts[5] = new LongOpt(OPTL_RETRIEVE_COUNT, LongOpt.REQUIRED_ARGUMENT, null, OPTS_RETRIEVE_COUNT);
             possibleOpts[6] = new LongOpt(OPTL_PARSE_ONLY, LongOpt.NO_ARGUMENT, null, OPTS_PARSE_ONLY);
+            possibleOpts[7] = new LongOpt(OPTL_CHARSET, LongOpt.REQUIRED_ARGUMENT, null, OPTS_CHARSET);
 
             Getopt getter = new Getopt(PROGNAME, args, OPTSTRING, possibleOpts);
             int c;
@@ -181,6 +189,9 @@ public class Process {
                         break;
                     case OPTS_PARSE_ONLY:
                         opts.parseOnly = true;
+                        break;
+                    case OPTS_CHARSET:
+                        opts.charsetName = getter.getOptarg();
                         break;
                     case ':':
                         throw new ParamException(ParamException.ERR_MISSING, "" + (char) getter.getOptopt());
@@ -266,13 +277,9 @@ public class Process {
      * 
      * Just initializes the values, all the actual work is done in {@link run()}.
      *
-     * @param threads the number of threads this instance should launch
-     * @param instances the number of instances that are to be run in total
-     * @param workDir the working directory (if different from where the input file is)
-     * @param inputFile the input process scenario file
-     * @param resetTasks the tasks whose status is to be reset befor the running (may be null)
-     * @param retrieveCount number of tasks retrieved at one time
-     * @throws IOException if the reset task list could not be created
+     * @param opts all the process options selected on the command line
+     * 
+     * @throws IOException if the reset task list could not be created, or if the selected charset is not supported.
      */
     private Process(ProcessOptions opts)
             throws IOException {
@@ -287,6 +294,12 @@ public class Process {
 
         if (this.opts.resetTasks != null){
             this.createResetList(this.opts.resetTasks);
+        }
+        if (this.opts.charsetName == null){
+            this.opts.charsetName = Charset.defaultCharset().name();
+        }
+        if (!Charset.isSupported(this.opts.charsetName)){
+            throw new UnsupportedEncodingException("Charset not supported:" + this.opts.charsetName);
         }
     }
 
@@ -326,6 +339,15 @@ public class Process {
      */
     public int getRetrieveCount(){
         return this.opts.retrieveCount;
+    }
+
+    /**
+     * This returns the name of the Charset that all the I/O routines should use on the text files
+     * that may contain national characters.
+     * @return the name of the default character set for the whole process
+     */
+    public String getCharset(){
+        return this.opts.charsetName;
     }
 
     /**
@@ -392,5 +414,7 @@ public class Process {
         int retrieveCount;
         /** Should we only parse the plan, output any errors and exit ? */
         boolean parseOnly;
+        /** Name of the desired charset to be used by all routines of this program */
+        String charsetName;
     }
 }

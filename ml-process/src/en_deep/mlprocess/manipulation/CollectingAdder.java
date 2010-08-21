@@ -27,18 +27,15 @@
 
 package en_deep.mlprocess.manipulation;
 
-import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.RandomAccessFile;
 import java.io.StreamTokenizer;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -47,7 +44,6 @@ import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.converters.ArffLoader.ArffReader;
 
 /**
  * This is a special attribute adder version for enormously large data sets. It collects data that are

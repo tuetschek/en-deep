@@ -33,9 +33,10 @@ import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.StReader.Direction;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.utils.StringUtils;
+import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Hashtable;
+import java.util.Scanner;
 
 /**
  * This class adds the number(s) of the clusters for the individual words to the list of
@@ -257,8 +258,8 @@ public class Clusters extends Feature {
 
         for (int i = 0; i < this.clusterFileNames.length; ++i){
             
-            RandomAccessFile in = new RandomAccessFile(this.clusterFileNames[i], "r");
-            String [] usedCols = in.readLine().trim().split("\\s+");
+            Scanner in = new Scanner(new File(this.clusterFileNames[i]), Process.getInstance().getCharset());
+            String [] usedCols = in.nextLine().trim().split("\\s+");
 
             this.clusterDataTypes[i] = new int [usedCols.length];
             this.featNames[i] = FEAT_NAME_PREFIX;
@@ -284,15 +285,15 @@ public class Clusters extends Feature {
      * @param name the name of the opened input file
      * @return the clusterType assoctiations.
      */
-    private Hashtable<String, Integer> readClusters(RandomAccessFile in, String name) throws IOException, TaskException {
+    private Hashtable<String, Integer> readClusters(Scanner in, String name) throws IOException, TaskException {
 
         Hashtable<String, Integer> data = new Hashtable<String, Integer>();
-        String line;
         int lineNo = 2; // first line already read
 
         // read all the next lines
-        while ((line = in.readLine()) != null){
+        while (in.hasNextLine()){
 
+            String line = in.nextLine();
             String [] lineParts = line.split(":", 2); // cluster_number: words (which may contain a colon themselves)
             int clusterId;
             
