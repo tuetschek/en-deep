@@ -293,13 +293,9 @@ public class Clusters extends Feature {
         // read all the next lines
         while ((line = in.readLine()) != null){
 
-            String [] lineParts = line.split(":"); // cluster_number: words
+            String [] lineParts = line.split(":", 2); // cluster_number: words (which may contain a colon themselves)
             int clusterId;
             
-            if (lineParts.length != 2){
-                throw new TaskException(TaskException.ERR_INVALID_DATA, reader.getTaskId(), "Clustering file error in "
-                        + name + " at line " + lineNo);
-            }
             try {
                 clusterId = Integer.parseInt(lineParts[0].trim());
             }

@@ -95,8 +95,11 @@ public class StReader {
     /** Sentence ID generation -- last used value */
     private static int lastSentenceId = 0;
 
-    /** Will be FEAT values used for this language? */
-    public boolean posFeat;
+    /** 
+     * Name of the {@link en_deep.mlprocess.manipulation.genfeat.Feature} subclass that should handle the
+     * POS features of this language, or null.
+     */
+    public String posFeat;
     /** Possible semantic roles */
     public String[] semRoles;
     /** Tag pattern for verbs in the ST file */
@@ -110,12 +113,12 @@ public class StReader {
     /** The name of the current input file */
     private String inputFileName;
     /** Use predicted POS and DEPREL values ? */
-    private final boolean usePredicted;
+    public final boolean usePredicted;
     /**
      * Always -1, if usePredicted is true, 1 otherwise -- in order to cover the second
      * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
      */
-    final int predictedNon;
+    public final int predictedNon;
     /** The {@link StManipulation} task this reader works for. */
     private final StManipulation task;
     
@@ -129,8 +132,8 @@ public class StReader {
 
     /**
      * This initializes an StReader -- reads the language configuration from a file,
-     * i.e\. all SEMREL values, noun and verb POS tag pattern and usage of FEAT for the
-     * current ST file language.
+     * i.e\. all SEMREL values, noun and verb POS tag pattern and handling of FEAT for the
+     * current ST file language (for a detailed description, see the {@link StToArff} constructor).
      *
      * @param task the StToArff task for this conversion
      */
@@ -150,7 +153,8 @@ public class StReader {
             this.predictedNon = -1;
             LEMMA = "p-lemma";
             POS = "p-pos";
-        } else {
+        }
+        else {
             IDXI_POS = 4;
             IDXI_LEMMA = 2;
             IDXI_HEAD = 8;
@@ -164,7 +168,10 @@ public class StReader {
         // read the config file
         RandomAccessFile config = new RandomAccessFile(this.task.getParameterVal(StToArff.LANG_CONF), "r");
 
-        this.posFeat = config.readLine().matches("\\s*") ? false : true;
+        this.posFeat = config.readLine(); // name of the feature-handling class or empty line
+        if (this.posFeat.matches("\\s*")){ // no features handled
+            this.posFeat = null;
+        }
         this.nounPat = config.readLine();
         this.verbPat = config.readLine();
 
@@ -456,10 +463,16 @@ public class StReader {
     }
 
     /**
-     * This is for debugging purposes, it returns the full text of the currently loaded sentence.
+     * This is for debugging purposes (exceptions etc.), it returns the full text of the currently
+     * loaded sentence.
+     * 
      * @return the text of the currently loaded sentence
      */
     public String getSentenceText(){
+
+        if (this.words == null){
+            return "[NULL-No sentence currently loaded]";
+        }
 
         StringBuilder sb = new StringBuilder();
 

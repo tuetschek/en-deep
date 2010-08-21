@@ -40,7 +40,7 @@ import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 
 /**
- * This class splits the data into equal pieces by lines.
+ * This class filters out some features from the data set.
  * @author Ondrej Dusek
  */
 public class AttributeSelector extends Task {

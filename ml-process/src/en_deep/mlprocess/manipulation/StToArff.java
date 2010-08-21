@@ -104,8 +104,8 @@ public class StToArff extends StManipulation {
         "@ATTRIBUTE p-lemma STRING",
         "@ATTRIBUTE pos STRING",
         "@ATTRIBUTE p-pos STRING",
-        "@ATTRIBUTE feat STRING",
-        "@ATTRIBUTE p-feat STRING",
+        "", // dummy field for generated features -- they are handled by a special class
+        "",
         "@ATTRIBUTE head INTEGER",
         "@ATTRIBUTE p-head INTEGER",
         "@ATTRIBUTE deprel STRING",
@@ -140,6 +140,8 @@ public class StToArff extends StManipulation {
 
     /** Features to be generated */
     private Vector<Feature> genFeats;
+    /** Feature that handles POS for the current language (name set-up in the configuration file) */
+    private Feature posFeat;
 
     /** Used output files (for reprocessing) */
     private HashMultimap<String, String> usedFiles;
@@ -160,8 +162,13 @@ public class StToArff extends StManipulation {
      * <strong>Parameters:</strong>
      * </p>
      * <ul>
-     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains a FEAT usage indication ("1"/isEmpty line), followed
-     * by noun and verb tag regexp patterns (each on separate line) and a list of semantic roles (one line, space-separated).</li>
+     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains:
+     * <ul>
+     *   <li>a FEAT usage indication (name of the handling class derived from {@link Feature}, or empty line)</li>
+     *   <li>noun and verb tag regexp patterns (each on separate line)</li>
+     *   <li>list of all possible semantic roles (one line, space-separated)</li>
+     *   <li>a regexp that catches all adverbial modifier semantic roles</li>
+     * </ul></li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
      * valency arguments and for adverbials &amp; references.</li>
@@ -205,6 +212,9 @@ public class StToArff extends StManipulation {
 
         // initialize features to be generated
         this.initGenFeats();
+
+        // initialize POS features handling class, if applicable
+        this.initPOSFeats();
 
         // initialize the used output files lists
         this.usedFiles = HashMultimap.create();
@@ -336,11 +346,15 @@ public class StToArff extends StManipulation {
                             out.print(",?");
                             continue;
                         }
-                        if (this.reader.posFeat == false &&
-                                (k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon)){
-                            continue; // skip FEAT if we're not using them
+                        if (this.reader.posFeat != null && k == this.reader.IDXI_FEAT){
+                            // create the POS features values (for both predicted and golden!)
+                            out.print("," + this.posFeat.generate(j, predNums[i]));
+                            continue;
                         }
-                        if (k == this.reader.IDXI_WORDID || k == this.reader.IDXI_HEAD
+                        else if(k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon){
+                            continue; // skip FEAT if we're not using them (or have already printed both versions)
+                        }
+                        if(k == this.reader.IDXI_WORDID || k == this.reader.IDXI_HEAD
                                 || k == this.reader.IDXI_HEAD + this.reader.predictedNon){
                             out.print("," + word[k]);
                         }
@@ -440,11 +454,13 @@ public class StToArff extends StManipulation {
 
         // print the constant fields that are always present
         for (int i = 0; i < HEADER.length; ++i) {
-            if (this.reader.posFeat && (i == IDXO_FEAT || i == IDXO_FEAT + 1)) {
-                out.println(HEADER[i]);
+            
+            if (this.posFeat != null && (i == IDXO_FEAT)) {
+                // prints the header for generated features (both predicted and golden!)
+                out.println(this.posFeat.getHeader());
             }
             else if (i == IDXO_FEAT || i == IDXO_FEAT + 1) {
-                // do not print FEAT headers if we're not using them
+                // do not print FEAT headers if we're not using them (or we already printed both headers)
                 continue;
             }
             else {
@@ -648,6 +664,23 @@ public class StToArff extends StManipulation {
             }
         }
         return false;
+    }
+
+    /**
+     * If there is a name of the POS handling class in the configuration file, this will try to initialize
+     * it. If the class is not found in the {@link en_deep.mlprocess.manipulation.genfeat} package, the process
+     * will fail.
+     */
+    private void initPOSFeats() throws TaskException {
+
+        if (this.reader.posFeat != null){
+            this.posFeat = Feature.createFeature(this.reader.posFeat, reader);
+
+            if (this.posFeat == null){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "POS feature handling "
+                        + "class `" + this.reader.posFeat + "' creation failed.");
+            }
+        }
     }
     
 }
