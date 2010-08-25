@@ -25,17 +25,16 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.genfeat;
+package en_deep.mlprocess.manipulation.posfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.StToArff;
 import java.util.HashMap;
 
 /**
- * This feature handles the FEAT and PFEAT fields for the Czech language.
+ * This feature handles the ST file FEAT and PFEAT fields for the Czech language.
  * @author Ondrej Dusek
  */
-public class POSFeatsCs extends Feature {
+public class POSFeatsCs extends POSFeatures {
 
     /* CONSTANTS */
 
@@ -47,19 +46,7 @@ public class POSFeatsCs extends Feature {
     private static final String [] FEATS_LIST = {"SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
             "Gra", "Neg", "Voi", "Var", "Sem"};
 
-    /** Feature name prefix for golden feature values */
-    private static final String PREFIX_GOLD = "feat_";
-    /** Feature name prefix for predicted feature values */
-    private static final String PREFIX_PRED = "pfeat_";
-    /** Empty feature value (any string that is never used in the features values themselves) */
-    private static final String EMPTY = "-";
-
     /* DATA */
-
-    /** Position of the golden FEAT values in the ST file */
-    private final int FEAT_GOLD;
-    /** Position of the predicted FEAT values in the ST file */
-    private final int FEAT_PRED;
 
     /** This maps the names in the {@link #FEATS_LIST} variable into their positions in that field */
     private final HashMap<String, Integer> FEAT_POS;
@@ -67,47 +54,19 @@ public class POSFeatsCs extends Feature {
     /* METHODS */
 
     /**
-     * This just initializes the {@link #reader} and sets-up the predicted/non-predicted
-     * FEAT field positions.
-     * @param reader
+     * This just initializes the table of possible feature values.
      */
-    public POSFeatsCs(StReader reader){
+    public POSFeatsCs(){
 
-        super(reader);
-
-        if (reader.usePredicted){
-            FEAT_PRED = reader.IDXI_FEAT;
-            FEAT_GOLD = reader.IDXI_FEAT + reader.predictedNon;
-        }
-        else {
-            FEAT_GOLD = reader.IDXI_FEAT;
-            FEAT_PRED = reader.IDXI_FEAT + reader.predictedNon;
-        }
         FEAT_POS = new HashMap<String, Integer>();
         for (int i = 0; i < FEATS_LIST.length; ++i){
             FEAT_POS.put(FEATS_LIST[i], i);
         }
     }
 
-    @Override
-    public String getHeader() {
-        return this.getHeader(PREFIX_GOLD) + LF + this.getHeader(PREFIX_PRED);
-    }
-
-
 
     @Override
-    public String generate(int wordNo, int predNo) {
-        return this.listFeats(this.reader.getWordInfo(wordNo, FEAT_GOLD)) + ","
-                + this.listFeats(this.reader.getWordInfo(wordNo, FEAT_PRED));
-    }
-
-    /**
-     * Generates the header and gives each feature the desired prefix (used to separate golden
-     * and predicted versions).
-     * @param prefix the desired prefix to prepend each feature name with
-     */
-    private String getHeader(String prefix) {
+    protected String getHeader(String prefix) {
 
         StringBuilder sb = new StringBuilder();
         boolean first = true;
@@ -123,14 +82,10 @@ public class POSFeatsCs extends Feature {
         return sb.toString();
     }
 
-    /**
-     * This lists the values of all possible morphological features, given their compact string representation.
-     * @param featString the string representation of the features.
-     * @return the array representation of the features.
-     */
-    private String listFeats(String featString) {
+    @Override
+    protected String listFeats(String value) {
 
-        String [] feats = featString.split("\\|");
+        String [] feats = value.split("\\|");
         String [] featArr = new String [FEATS_LIST.length];
         
         for (String feat : feats){  // split into individual features listed
@@ -149,5 +104,23 @@ public class POSFeatsCs extends Feature {
         return sb.toString();
     }
 
+
+    /**
+     * This returns the POS + SubPOS as the new POS to be used in the ARFF generated features.
+     */
+    @Override
+    public String getFullPOS(String posVal, String featVal) {
+
+        if (featVal.indexOf("SubPOS=") == -1){
+            featVal = "";
+        }
+        else {
+            featVal = featVal.substring(featVal.indexOf("SubPOS=") + "SubPOS=".length());
+            if (featVal.indexOf("|") != -1){
+                featVal = featVal.substring(0, featVal.indexOf("|"));
+            }
+        }
+        return posVal + featVal;
+    }
 
 }

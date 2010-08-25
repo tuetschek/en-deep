@@ -59,7 +59,7 @@ public class StToArff extends StManipulation {
     /* CONSTANTS */
 
     /** The divide_ams parameter name */
-    private static final String DIVIDE_AMS = "divide_ams";
+    static final String DIVIDE_AMS = "divide_ams";
     /** The pred_only parameter name */
     private static final String PRED_ONLY = "pred_only";
     /** The prune parameter name */
@@ -84,47 +84,18 @@ public class StToArff extends StManipulation {
     /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
     public static final String STRING = "STRING";
 
-    /** Semantic relation (all/valency args) attribute name in ARFF files */
-    private static final String SEM_REL = "semrel";
-    /** Semantic relation (adveribials/references) name */
-    private static final String SEM_REL_AMS = "semrel-ams";
 
     /** Start of the data section in ARFF files */
     private static final String DATA = "@DATA";
 
     /** Caption of ARFF files */
     private static final String RELATION = "@RELATION";
-
-    /** List of attributes in ARFF files */
-    private static final String [] HEADER = {
-        "@ATTRIBUTE sent-id INTEGER",
-        "@ATTRIBUTE word-id INTEGER",
-        "@ATTRIBUTE form STRING",
-        "@ATTRIBUTE lemma STRING",
-        "@ATTRIBUTE p-lemma STRING",
-        "@ATTRIBUTE pos STRING",
-        "@ATTRIBUTE p-pos STRING",
-        "", // dummy field for generated features -- they are handled by a special class
-        "",
-        "@ATTRIBUTE head INTEGER",
-        "@ATTRIBUTE p-head INTEGER",
-        "@ATTRIBUTE deprel STRING",
-        "@ATTRIBUTE p-deprel STRING",
-        "@ATTRIBUTE fillpred {Y,_}",
-        "@ATTRIBUTE pred STRING"
-    };
-
+   
     /** The header for the "file attribute */
     private static final String FILE_ATTR_HEADER = "@ATTRIBUTE file STRING";
-
-    
-    /** Index of the FEAT attribute in the output ARFF file */
-    private static final int IDXO_FEAT = 7;
-
+   
     /* DATA */
 
-    /** Divide AM-s and references ? */
-    private boolean divideAMs;
     /** Output predicates only ? */
     private boolean predOnly;
     /** Omit semantic class in the ouptut ? */
@@ -140,8 +111,6 @@ public class StToArff extends StManipulation {
 
     /** Features to be generated */
     private Vector<Feature> genFeats;
-    /** Feature that handles POS for the current language (name set-up in the configuration file) */
-    private Feature posFeat;
 
     /** Used output files (for reprocessing) */
     private HashMultimap<String, String> usedFiles;
@@ -197,8 +166,7 @@ public class StToArff extends StManipulation {
         
         super(id, parameters, input, output);
 
-        // initialize boolean parameters
-        this.divideAMs = this.getBooleanParameterVal(DIVIDE_AMS);
+        // initialize boolean parameters (some of them are handled by the reader)
         this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
@@ -212,9 +180,6 @@ public class StToArff extends StManipulation {
 
         // initialize features to be generated
         this.initGenFeats();
-
-        // initialize POS features handling class, if applicable
-        this.initPOSFeats();
 
         // initialize the used output files lists
         this.usedFiles = HashMultimap.create();
@@ -325,12 +290,10 @@ public class StToArff extends StManipulation {
 
                 for (int j = 0; j < this.reader.length(); ++j){
 
-                    String [] word = this.reader.getWord(j);
-
                     // skip non-predicate or pruned lines or filtered PsOS if such setting is imposed
                     if (this.predOnly && j != predNums[i]
                             || this.prune && !this.reader.isInNeighborhood(predNums[i], j)
-                            || this.isFiltered(word[this.reader.IDXI_POS])){
+                            || this.isFiltered(this.reader.getWordInfo(j, this.reader.IDXI_POS))){
                         continue;
                     }
 
@@ -340,28 +303,7 @@ public class StToArff extends StManipulation {
                     }
                     out.print(this.reader.getSentenceId());
 
-                    for (int k = 0; k < this.reader.COMPULSORY_FIELDS; ++k){
-
-                        if (k >= word.length){ // treat missing values as missing values (evaluation file)
-                            out.print(",?");
-                            continue;
-                        }
-                        if (this.reader.posFeat != null && k == this.reader.IDXI_FEAT){
-                            // create the POS features values (for both predicted and golden!)
-                            out.print("," + this.posFeat.generate(j, predNums[i]));
-                            continue;
-                        }
-                        else if(k == this.reader.IDXI_FEAT || k == this.reader.IDXI_FEAT + this.reader.predictedNon){
-                            continue; // skip FEAT if we're not using them (or have already printed both versions)
-                        }
-                        if(k == this.reader.IDXI_WORDID || k == this.reader.IDXI_HEAD
-                                || k == this.reader.IDXI_HEAD + this.reader.predictedNon){
-                            out.print("," + word[k]);
-                        }
-                        else { // quote non-numeric fields
-                            out.print(",\"" + word[k] + "\"");
-                        }
-                    }
+                    out.print(this.reader.getCompulsoryFields(j));
                     
                     // add generated features
                     for (Feature f : this.genFeats){
@@ -370,21 +312,7 @@ public class StToArff extends StManipulation {
 
                     // print the resulting semantic relation to the given predicate
                     if (!this.omitSemClass){
-                        
-                        if (word.length < this.reader.IDXI_SEMROLE + 1){ // evaluation file -> missing value(s)
-                            out.print(this.divideAMs ? ",?,?" : ",?");
-                        }
-                        else if (this.divideAMs){
-                            if (word[this.reader.IDXI_SEMROLE + i].matches(this.reader.amsPat)){
-                                out.print(",_,\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");
-                            }
-                            else {
-                                out.print(",\"" + word[this.reader.IDXI_SEMROLE + i] + "\",_");
-                            }
-                        }
-                        else {
-                            out.print(",\"" + word[this.reader.IDXI_SEMROLE + i] + "\"");
-                        }
+                        out.print("," + this.reader.getSemRole(j, i));
                     }
 
                     out.println();
@@ -453,40 +381,15 @@ public class StToArff extends StManipulation {
         }
 
         // print the constant fields that are always present
-        for (int i = 0; i < HEADER.length; ++i) {
-            
-            if (this.posFeat != null && (i == IDXO_FEAT)) {
-                // prints the header for generated features (both predicted and golden!)
-                out.println(this.posFeat.getHeader());
-            }
-            else if (i == IDXO_FEAT || i == IDXO_FEAT + 1) {
-                // do not print FEAT headers if we're not using them (or we already printed both headers)
-                continue;
-            }
-            else {
-                out.println(HEADER[i]);
-            }
-        }
+        out.println(this.reader.getArffHeaders());
+
         // print generated features' headers
         for (Feature f : this.genFeats) {
             out.println(f.getHeader());
         }
-        // print the target class / classes header(s) (according to the "multiclass" parameter),
-        // if supposed to do so at all (heed the "omit_semclass" parameter)
+        // print semrel headers (if supposed to)
         if (!this.omitSemClass) {
-            if (this.divideAMs) {
-                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
-                out.print(this.reader.getSemRoles(false));
-                out.println("}");
-                out.print(ATTRIBUTE + " " + SEM_REL_AMS + " " + CLASS + " {_,");
-                out.print(this.reader.getSemRoles(true));
-                out.println("}");
-            }
-            else {
-                out.print(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
-                out.print(this.reader.getSemRoles());
-                out.println("}");
-            }
+            out.println(this.reader.getSemRolesHeader());
         }
         out.println(DATA);
     }
@@ -664,23 +567,6 @@ public class StToArff extends StManipulation {
             }
         }
         return false;
-    }
-
-    /**
-     * If there is a name of the POS handling class in the configuration file, this will try to initialize
-     * it. If the class is not found in the {@link en_deep.mlprocess.manipulation.genfeat} package, the process
-     * will fail.
-     */
-    private void initPOSFeats() throws TaskException {
-
-        if (this.reader.posFeat != null){
-            this.posFeat = Feature.createFeature(this.reader.posFeat, reader);
-
-            if (this.posFeat == null){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "POS feature handling "
-                        + "class `" + this.reader.posFeat + "' creation failed.");
-            }
-        }
     }
     
 }

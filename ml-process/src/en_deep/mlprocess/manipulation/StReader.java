@@ -28,6 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Process;
+import en_deep.mlprocess.manipulation.posfeat.POSFeatures;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -78,6 +79,9 @@ public class StReader {
     /** Index of the PRED attribute in the ST file */
     public final int IDXI_PRED = 13;
 
+    /** Index of the FEAT attribute in the output ARFF file */
+    private static final int IDXO_FEAT = 7;
+
     /** Number of compulsory fields that are in each sentence in the ST file */
     final int COMPULSORY_FIELDS = 14;
 
@@ -91,16 +95,46 @@ public class StReader {
     /** Output file suffix for erroneously tagged predicates */
     private static final String TAG_ERR = ".e";
 
+    /** Semantic relation (all/valency args) attribute name in ARFF files */
+    private static final String SEM_REL = "semrel";
+    /** Semantic relation (adveribials/references) name */
+    private static final String SEM_REL_AMS = "semrel-ams";
+
+    /** List of compulsory fields in the output ARFF file */
+    private static final String [] HEADER = {
+        "@ATTRIBUTE sent-id INTEGER",
+        "@ATTRIBUTE word-id INTEGER",
+        "@ATTRIBUTE form STRING",
+        "@ATTRIBUTE lemma STRING",
+        "@ATTRIBUTE p-lemma STRING",
+        "@ATTRIBUTE pos STRING",
+        "@ATTRIBUTE p-pos STRING",
+        "", // dummy field for generated features -- they are handled by a special class
+        "",
+        "@ATTRIBUTE head INTEGER",
+        "@ATTRIBUTE p-head INTEGER",
+        "@ATTRIBUTE deprel STRING",
+        "@ATTRIBUTE p-deprel STRING",
+        "@ATTRIBUTE fillpred {Y,_}",
+        "@ATTRIBUTE pred STRING"
+    };
+
+    private static final String LF = System.getProperty("line.separator");
+
     /* VARIABLES */
 
     /** Sentence ID generation -- last used value */
     private static int lastSentenceId = 0;
 
     /** 
-     * Name of the {@link en_deep.mlprocess.manipulation.genfeat.Feature} subclass that should handle the
+     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.POSFeatures} subclass that should handle the
      * POS features of this language, or null.
      */
-    public String posFeat;
+    public String posFeatName;
+    /**
+     * The POS features handling class for this language, or null if not necessary.
+     */
+    public POSFeatures posFeatHandler;
     /** Possible semantic roles */
     public String[] semRoles;
     /** Tag pattern for verbs in the ST file */
@@ -113,8 +147,11 @@ public class StReader {
     private Scanner inputFile;
     /** The name of the current input file */
     private String inputFileName;
+
     /** Use predicted POS and DEPREL values ? */
     public final boolean usePredicted;
+    /** Divide AM-s and references ? */
+    private boolean divideAMs;
     /**
      * Always -1, if usePredicted is true, 1 otherwise -- in order to cover the second
      * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
@@ -142,7 +179,8 @@ public class StReader {
 
         // set main parameters
         this.task = task;
-        this.usePredicted = this.task.getBooleanParameterVal(StToArff.PREDICTED);
+        this.usePredicted = this.task.getBooleanParameterVal(StManipulation.PREDICTED);
+        this.divideAMs = this.task.getBooleanParameterVal(StToArff.DIVIDE_AMS);
 
         // set the constant values
         if (this.usePredicted) {
@@ -170,10 +208,11 @@ public class StReader {
         Scanner config = new Scanner(new File(this.task.getParameterVal(StToArff.LANG_CONF)),
                 Process.getInstance().getCharset());
 
-        this.posFeat = config.nextLine(); // name of the feature-handling class or empty line
-        if (this.posFeat.matches("\\s*")){ // no features handled
-            this.posFeat = null;
+        this.posFeatName = config.nextLine(); // name of the feature-handling class or empty line
+        if (this.posFeatName.matches("\\s*")){ // no features handled
+            this.posFeatName = null;
         }
+
         this.nounPat = config.nextLine();
         this.verbPat = config.nextLine();
 
@@ -186,7 +225,26 @@ public class StReader {
             throw new IOException();
         }
 
+        // initialize POS features handler, if applicable
+        this.initPOSFeats();
+
         this.semRoles = semRolesStr.split("\\s+");
+    }
+
+    /**
+     * If there is a name of the POS handling class in the configuration file, this will try to initialize
+     * it. If the class is not found in the {@link en_deep.mlprocess.manipulation.genfeat} package, the process
+     * will fail.
+     */
+    private void initPOSFeats() throws IOException {
+
+        if (this.posFeatName != null){
+            this.posFeatHandler = POSFeatures.createHandler(this.posFeatName);
+
+            if (this.posFeatName == null){
+                throw new IOException("POS feature handling " + "class `" + this.posFeatName + "' creation failed.");
+            }
+        }
     }
 
     /**
@@ -204,7 +262,7 @@ public class StReader {
      * Return a comma-separated list of possible semantic roles
      * @return list of semantic roles
      */
-    String getSemRoles() {
+    private String getSemRoles() {
         return this.listMembers(this.semRoles);
     }
 
@@ -215,7 +273,7 @@ public class StReader {
      * @param adverbials if true, return adverbials and references
      * @return list of valency arguments semantic roles or a list of adverbial and reference roles
      */
-    String getSemRoles(boolean adverbials){
+    private String getSemRoles(boolean adverbials){
 
         String [] matchingRoles = StringUtils.getMatching(this.semRoles, this.amsPat, !adverbials);
         return this.listMembers(matchingRoles);
@@ -326,14 +384,6 @@ public class StReader {
         return this.words.get(0).length;
     }
 
-    /**
-     * Returns all the information about the given word.
-     * @param wordNo the number of the word in the sentence
-     * @return the whole information about the word
-     */
-    String[] getWord(int wordNo) {
-        return this.words.get(wordNo);
-    }
 
     /**
      * Returns the given piece of information about the given word, as it appears in the ST file.
@@ -346,10 +396,52 @@ public class StReader {
      */
     public String getWordInfo(int wordNo, int fieldNo){
 
-        if (wordNo < 0 || wordNo >= this.words.size()){
+        if (wordNo < 0 || wordNo >= this.words.size() || fieldNo < 0 || fieldNo >= this.words.get(wordNo).length){
             return "";
         }
+        if (fieldNo == this.IDXI_POS || fieldNo == this.IDXI_POS + this.predictedNon){
+            int move = (fieldNo == this.IDXI_POS) ? 0 : this.predictedNon;
+            return this.posFeatHandler.getFullPOS(this.words.get(wordNo)[this.IDXI_POS + move],
+                    this.words.get(wordNo)[this.IDXI_FEAT + move]);
+        }
         return this.words.get(wordNo)[fieldNo];
+    }
+
+    /**
+     * This returns all the compulsory information about the given words (starting with a comma,
+     * fields enclosed in quotes if necessary). It returns all the features values if applicable
+     * the missing values as ARFF unquoted '?'.
+     * @param wordNo the number of the word in the current sentence
+     * @param fieldNo the number of the desired information field
+     * @return the given information field for the given word, in quotes
+     */
+    public String getCompulsoryFields(int wordNo){
+
+        int goldFeatPos = this.usePredicted ? this.IDXI_FEAT + this.predictedNon : this.IDXI_FEAT;
+        int predFeatPos = this.usePredicted ? this.IDXI_FEAT : this.IDXI_FEAT + this.predictedNon;
+        StringBuilder sb = new StringBuilder();
+        String [] word = this.words.get(wordNo);
+
+        for (int fieldNo = 0; fieldNo < this.COMPULSORY_FIELDS; ++fieldNo){
+
+            if (fieldNo >= word.length){ // treat ST missing values as ARFF missing values (evaluation file)
+                sb.append(",?");
+            }
+            else if(fieldNo == goldFeatPos && this.posFeatHandler != null){ // print POS features
+                sb.append(",").append(this.posFeatHandler.listFeats(word[goldFeatPos], word[predFeatPos]));
+            }
+            else if (fieldNo == goldFeatPos || fieldNo == predFeatPos){ // no feature handler/already printed
+                continue;
+            }
+            else if (fieldNo == this.IDXI_WORDID || fieldNo == this.IDXI_HEAD
+                    || fieldNo == this.IDXI_HEAD + this.predictedNon){
+                sb.append(",").append(this.getWordInfo(wordNo, fieldNo));
+            }
+            else {
+                sb.append(",\"").append(StringUtils.escape(this.getWordInfo(wordNo, fieldNo))).append("\"");
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -364,7 +456,7 @@ public class StReader {
         String [] ret = new String [wordNos.length];
 
         for (int i = 0; i < wordNos.length; ++i){
-            ret[i] = this.words.get(wordNos[i])[fieldNo];
+            ret[i] = this.getWordInfo(wordNos[i], fieldNo);
         }
         return ret;
     }
@@ -566,6 +658,83 @@ public class StReader {
             curNode = this.getHeadPos(curNode);
         }
         return false;
+    }
+
+    /**
+     * This returns the semantic role for the given word as should be output in the ARFF file (heeds the
+     * {@link #divideAMs} setting.
+     * @param wordNo the number of the desired word
+     * @return the semantic role information, as should be output in the ARFF file
+     */
+    String getSemRole(int wordNo, int predNo) {
+
+        if (this.width() < this.IDXI_SEMROLE + 1){ // evaluation file -> missing value(s)
+            return (this.divideAMs ? "?,?" : "?");
+        }
+        else if (this.divideAMs){
+            if (this.getWordInfo(wordNo, this.IDXI_SEMROLE + predNo).matches(this.amsPat)){
+                return EMPTY_VALUE + ",\"" + this.getWordInfo(wordNo, this.IDXI_SEMROLE + predNo) + "\"";
+            }
+            else {
+                return "\"" + this.getWordInfo(wordNo, this.IDXI_SEMROLE + predNo) + "\"," + EMPTY_VALUE;
+            }
+        }
+        else {
+            return "\"" + this.getWordInfo(wordNo, this.IDXI_SEMROLE + predNo) + "\"";
+        }
+    }
+
+    /**
+     * Returns the headers for the compulsory ST file fields that are always written to the ARFF output.
+     * @return the ARFF header compulsory fields
+     */
+    String getArffHeaders(){
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int fieldNo = 0; fieldNo < HEADER.length; ++fieldNo) {
+
+            if (this.posFeatHandler != null && (fieldNo == IDXO_FEAT)) {
+                // prints the header for generated features (both predicted and golden!)
+                sb.append(this.posFeatHandler.getHeaders());
+            }
+            else if (fieldNo == IDXO_FEAT || fieldNo == IDXO_FEAT + 1) {
+                // do not print FEAT headers if we're not using them (or we already printed both headers)
+                continue;
+            }
+            else {
+                sb.append(HEADER[fieldNo]);
+            }
+            if (fieldNo < HEADER.length - 1){
+                sb.append(LF);
+            }
+        }
+        return sb.toString();
+    }
+
+
+    /**
+     * Returns the headers for semantic roles, according to the {@link #divideAMs} settings.
+     * @return the semantic class headers
+     */
+    String getSemRolesHeader(){
+
+        StringBuilder sb = new StringBuilder();
+
+        if (this.divideAMs) {
+            sb.append(StToArff.ATTRIBUTE).append(" " + SEM_REL + " ").append(StToArff.CLASS).append(" {_,");
+            sb.append(this.getSemRoles(false));
+            sb.append("}").append(LF);
+            sb.append(StToArff.ATTRIBUTE + " " + SEM_REL_AMS + " " + StToArff.CLASS + " {_,");
+            sb.append(this.getSemRoles(true));
+            sb.append("}");
+        }
+        else {
+            sb.append(StToArff.ATTRIBUTE + " " + SEM_REL + " " + StToArff.CLASS + " {_,");
+            sb.append(this.getSemRoles());
+            sb.append("}");
+        }
+        return sb.toString();
     }
 
 }
