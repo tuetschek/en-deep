@@ -154,7 +154,7 @@ public class MergedDataSplitter extends Task {
                 outFile = new FileOutputStream(StringUtils.replace(outputPattern, file),
                         this.written.contains(file));
                 if (!this.written.contains(file)){
-                    header.setRelationName(file);
+                    header.setRelationName(FileUtils.fileNameDecode(file));
                     outFile.write(header.toString().getBytes());
                 }
                 this.written.add(file);

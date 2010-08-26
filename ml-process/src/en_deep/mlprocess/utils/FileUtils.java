@@ -43,6 +43,14 @@ import weka.filters.unsupervised.attribute.StringToNominal;
  */
 public class FileUtils{
 
+    /* CONSTANTS */
+
+    /** List of characters that are forbidden in file names (including "[]" used
+     * for encoding) */
+    private static final String BAD_CHARS = "[]<>|&#!:/\\*?$^@%={}`~\"'";
+
+    /* METHODS */
+
     /**
      * This copies the given file to the given location (both names must be valid).
      * It just casts the Strings to {@link File}s and calls {@link #copyFile(String, String)}.
@@ -287,6 +295,48 @@ public class FileUtils{
         }
         file.close();
         return val;
+    }
+
+    /**
+     * This encodes a string so that it may be used as a file name, converting the illegal
+     * characters to their Unicode HEX values.
+     * @param str the string to be encoded
+     * @return the encoded resulting filename-safe string
+     */
+    public static String fileNameEncode(String str){
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < str.length(); ++i){
+            char c = str.charAt(i);
+            if (c < 32 || c > 126 || BAD_CHARS.indexOf(c) != -1){
+                sb.append("[").append(Integer.toHexString(c)).append("]");
+            }
+            else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Decode a string from the encoding used by {@link #fileNameEncode(String)}.
+     * @param str the string previously encoded by {@link #fileNameEncode(String)}
+     * @return the original contents of the string
+     */
+    public static String fileNameDecode(String str){
+
+        StringBuilder sb = new StringBuilder();
+        int encCharStart, encCharEnd;
+
+        while ((encCharStart = str.indexOf('[')) != -1 && (encCharEnd = str.indexOf(']')) != -1){
+
+            sb.append(str.substring(0,encCharStart));
+            sb.append((char) Integer.parseInt(str.substring(encCharStart+1, encCharEnd), 16));
+            str = encCharEnd == str.length() -1 ? "" : str.substring(encCharEnd + 1);
+        }
+        sb.append(str);
+        return sb.toString();
     }
 
 }
