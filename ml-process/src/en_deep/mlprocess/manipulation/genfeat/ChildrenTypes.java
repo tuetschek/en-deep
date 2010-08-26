@@ -27,44 +27,62 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
+import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This provides several features for the different POS-types of children (nominal, verbal,
- * preposition, particle) + features for their total number.
+ * preposition, particle -- according to the configuration) + features for their total number.
  * @author Ondrej Dusek
  */
-public class ChildrenTypesCs extends Feature {
+public class ChildrenTypes extends Feature {
 
     /* CONSTANTS */
 
     /** The separator for the individual children */
     private static final String SEP = "|";
 
-    /** Children patterns */
-    private static final String [] PATTERNS = {
-        "^[NJPF].*", "^[VM].*", "^[MNJPFV].*", "^[IT].*", "^RP"
-    };
+    /** The children_types parameter name */
+    private static final String CHILDREN_TYPES = "children_types";
 
     /* DATA */
 
-    /** Names for all possible features (depend on {@link #PATTERNS}) */
+    /** Children patterns */
+    private final String [] patterns;
+    /** Names for all possible features (depend on {@link #patterns}) */
     private final String [] names;
     
     /* METHODS */
     
     /**
-     * This just initializes the feature, setting the names for all features.
+     * This initializes the feature using the following {@link StToArff} (necessary!) parameter:
+     * <ul>
+     * <li><tt>children_types</tt> -- space-separated patterns matching morphological tags
+     * for the individual features to be generated</li>
+     * <ul>
+     * Examples:
+     * <ul>
+     * <li>English: <tt>^[NJPF].* ^[VM].* ^[MNJPFV].* ^[IT].* ^RP</tt></li>
+     * <li>Czech: <tt>^[ACNPD].* ^V.* ^[ACNPDV].* ^R.* ^J.*</tt></li>
+     * </ul>
      * @param reader
      */
-    public ChildrenTypesCs(StReader reader){
+    public ChildrenTypes(StReader reader) throws TaskException {
+
         super(reader);
 
-        names = new String [PATTERNS.length];
-        for (int i = 0; i < PATTERNS.length; i++) {
-            names[i] = PATTERNS[i].replaceAll("[^A-Z]", "");
+        if (reader.getTaskParameter(CHILDREN_TYPES) == null){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, reader.getTaskId(),
+                    "ChildrenTypes patterns specification is missing.");
+        }
+
+        patterns = reader.getTaskParameter(CHILDREN_TYPES).split("\\s+");
+
+        names = new String [patterns.length];
+        for (int i = 0; i < patterns.length; i++) {
+            names[i] = patterns[i].replaceAll("[^A-Z]", "");
         }
     }
 
@@ -100,7 +118,7 @@ public class ChildrenTypesCs extends Feature {
         String [] words = this.reader.getWordsInfo(children, this.reader.IDXI_FORM);
         StringBuilder out = new StringBuilder();
 
-        for (int j = 0; j < PATTERNS.length; j++) {
+        for (int j = 0; j < patterns.length; j++) {
 
             int num = 0;
 
@@ -110,7 +128,7 @@ public class ChildrenTypesCs extends Feature {
             out.append("\"");
             for (int i = 0; i < pos.length; i++) {
 
-                if (pos[i].matches(PATTERNS[j])){
+                if (pos[i].matches(patterns[j])){
                     if (num > 0){
                         out.append(SEP);
                     }

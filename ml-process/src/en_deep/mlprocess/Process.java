@@ -301,6 +301,8 @@ public class Process {
         if (!Charset.isSupported(this.opts.charsetName)){
             throw new UnsupportedEncodingException("Charset not supported:" + this.opts.charsetName);
         }
+
+        Logger.getInstance().message("Using " + this.opts.charsetName + " as default charset.", Logger.V_DEBUG);
     }
 
     /**
