@@ -56,13 +56,20 @@ public class ConcatClassifier extends Task {
     private static final String CONCAT = "concat";
     /** The name of the 'append' parameter */
     private static final String APPEND = "append";
+    /** The 'sep' parameter name */
+    private static final String SEP = "sep";
 
     /**
      * This creates a new ConcatClassifier task. Basically it just checks the numbers of inputs and outputs
      * (must be both 1) and the compulsory parameters:
      * <ul>
      * <li><tt>class_arg</tt> -- the name of the class argument</li>
-     * <li><tt>concat</tt> -- space-separated list of attributes whose values should concatenate to create the target value</li>
+     * <li><tt>concat</tt> -- space-separated list of attributes whose values should concatenate to create the target
+     * value</li>
+     * </ul>
+     * There are voluntary parameters:
+     * <ul>
+     * <li><tt>sep</tt> -- separator for the concatenated values (empty if not set)</li>
      * <li><tt>append</tt> -- a suffix to be appended to the concatenation of attribute values</li>
      * </ul>
      * 
@@ -85,7 +92,7 @@ public class ConcatClassifier extends Task {
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have 1 output.");
         }
         // check the parameters
-        if (this.getParameterVal(CLASS_ARG) == null || this.getParameterVal(CONCAT) == null || this.getParameterVal(APPEND) == null){
+        if (!this.hasParameter(CONCAT) || !this.hasParameter(CLASS_ARG)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
     }
@@ -164,6 +171,8 @@ public class ConcatClassifier extends Task {
         StringBuilder sb = new StringBuilder();
         String [] vals = new String [data.numInstances()];
         int instNo = 0;
+        String appendStr = this.hasParameter(APPEND) ? this.getParameterVal(APPEND) : "";
+        String sep = this.hasParameter(SEP) ? this.getParameterVal(SEP) : "";
 
         while (insts.hasMoreElements()){
 
@@ -171,9 +180,12 @@ public class ConcatClassifier extends Task {
             sb.setLength(0);
 
             for (int i = 0; i < indexes.length; i++) {
+                if (i > 0){
+                    sb.append(sep);
+                }
                 sb.append(inst.stringValue(indexes[i]));
             }
-            sb.append(this.getParameterVal(APPEND));
+            sb.append(appendStr);
             vals[instNo] = sb.toString();
             instNo++;
         }
