@@ -399,7 +399,7 @@ public class StReader {
         if (wordNo < 0 || wordNo >= this.words.size() || fieldNo < 0 || fieldNo >= this.words.get(wordNo).length){
             return "";
         }
-        if (fieldNo == this.IDXI_POS || fieldNo == this.IDXI_POS + this.predictedNon){
+        if (this.posFeatHandler != null && fieldNo == this.IDXI_POS || fieldNo == this.IDXI_POS + this.predictedNon){
             int move = (fieldNo == this.IDXI_POS) ? 0 : this.predictedNon;
             return this.posFeatHandler.getFullPOS(this.words.get(wordNo)[this.IDXI_POS + move],
                     this.words.get(wordNo)[this.IDXI_FEAT + move]);

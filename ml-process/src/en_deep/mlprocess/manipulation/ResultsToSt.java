@@ -261,11 +261,11 @@ public class ResultsToSt extends StManipulation {
 
         /* DATA */
         
-        /** The predicate name (to be prepended before the senses) */
-        private String predPrefix;
         /** The current instance index */
         private int current = 0;
-        /** List of all the predicate senses */
+        /** List of all possible predicate sense labels */
+        private String [] senseLabels;
+        /** List of all the predicate senses (indexes to {@link #senseLabels}) */
         private int [] senses;
 
         /* METHODS */
@@ -275,25 +275,20 @@ public class ResultsToSt extends StManipulation {
          * @param data
          */
         public PredicatePrediction(Instances data) {
-            
-            this.predPrefix = data.attribute(ATTR_NAME).value(0);
-            this.predPrefix = this.predPrefix.substring(0, this.predPrefix.indexOf("."));
+
+            // copy the possible values
+            senseLabels = new String [data.attribute(ATTR_NAME).numValues()];
+            for (int i = 0; i < senseLabels.length; ++i){
+                senseLabels[i] = data.attribute(ATTR_NAME).value(i);
+            }
 
             this.senses = new int [data.numInstances()];
 
-            int [] valOrder = new int [data.attribute(ATTR_NAME).numValues()];
-            Enumeration<String> vals = data.attribute(ATTR_NAME).enumerateValues();
-            int j = 0;
-            while (vals.hasMoreElements()){
-                String val = vals.nextElement();
-                valOrder[j] = Integer.parseInt(val.substring(val.indexOf(".") + 1));
-                j++;
-            }
-
+            // copy the data
             double [] instVals = data.attributeToDoubleArray(data.attribute(ATTR_NAME).index());
-            this.senses  = new int [instVals.length];
+            this.senses = new int [instVals.length];
             for (int i = 0; i < instVals.length; ++i){
-                this.senses[i] = valOrder[(int) instVals[i]];
+                this.senses[i] = (int) instVals[i];
             }
         }
 
@@ -303,8 +298,7 @@ public class ResultsToSt extends StManipulation {
          */
         public String getNext(){
 
-            String ret = this.predPrefix + "." + (this.senses[this.current] < 10 ? "0" : "")
-                    + Integer.toString(this.senses[this.current]);
+            String ret = this.senseLabels[this.senses[this.current]];
             this.current++;
             return ret;
         }
