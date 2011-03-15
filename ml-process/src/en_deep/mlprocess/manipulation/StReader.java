@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.manipulation.posfeat.POSFeatures;
 import en_deep.mlprocess.utils.MathUtils;
@@ -50,6 +51,14 @@ public class StReader {
     public enum Direction {
         LEFT, RIGHT
     }
+    /** Attribute definition start in ARFF files */
+    public static final String ATTRIBUTE = "@ATTRIBUTE";
+    /** Specification of an attribute as CLASS in ARFF files @todo move to StReader */
+    public static final String CLASS = "";
+    /** Specification of an attribute as INTEGER in ARFF files @todo move to StReader */
+    public static final String INTEGER = "INTEGER";
+    /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
+    public static final String STRING = "STRING";
 
     /** Name of the ARFF lemma attribute */
     public final String LEMMA;
@@ -83,10 +92,10 @@ public class StReader {
     private static final int IDXO_FEAT = 7;
 
     /** Number of compulsory fields that are in each sentence in the ST file */
-    final int COMPULSORY_FIELDS = 14;
+    final int COMPULSORY_FIELDS;
 
     /** The default value for ST file fields. */
-    public final String EMPTY_VALUE = "_";
+    public static final String EMPTY_VALUE = "_";
 
     /** Output file suffix for noun predicates */
     private static final String NOUN = ".n";
@@ -165,13 +174,16 @@ public class StReader {
     /** The id of the current sentence */
     private int sentenceId;
 
+    /** List of additional columns (possibly) included with the ST data (before any APREDs) */
+    private final String[] additionalColumns;
 
     /* METHODS */
 
     /**
      * This initializes an StReader -- reads the language configuration from a file,
-     * i.e\. all SEMREL values, noun and verb POS tag pattern and handling of FEAT for the
-     * current ST file language (for a detailed description, see the {@link StToArff} constructor).
+     * i.e\. all SEMREL values, noun and verb POS tag pattern, handling of FEAT for the
+     * current ST file language and a list of additional columns (for a detailed description,
+     * see the {@link StToArff} constructor).
      *
      * @param task the StToArff task for this conversion
      */
@@ -218,6 +230,7 @@ public class StReader {
 
         String semRolesStr = config.nextLine();
         this.amsPat = config.nextLine();
+        String addColsSpecs = config.nextLine();
 
         config.close();
         config = null;
@@ -229,6 +242,15 @@ public class StReader {
         this.initPOSFeats();
 
         this.semRoles = semRolesStr.split("\\s+");
+
+        // initialize additional ST file column names, if applicable
+        if (addColsSpecs != null){
+            this.additionalColumns = addColsSpecs.split("\\s+");
+        }
+        else {
+            this.additionalColumns = new String[0];
+        }
+        this.COMPULSORY_FIELDS = 14 + this.additionalColumns.length;
     }
 
     /**
@@ -241,7 +263,7 @@ public class StReader {
         if (this.posFeatName != null){
             this.posFeatHandler = POSFeatures.createHandler(this.posFeatName);
 
-            if (this.posFeatName == null){
+            if (this.posFeatHandler == null){
                 throw new IOException("POS feature handling " + "class `" + this.posFeatName + "' creation failed.");
             }
         }
@@ -685,7 +707,9 @@ public class StReader {
     }
 
     /**
-     * Returns the headers for the compulsory ST file fields that are always written to the ARFF output.
+     * Returns the headers for the compulsory ST file fields that are always written to the ARFF output,
+     * including the (possible) extended ST file fields, which are always assumed to be strings.
+     *
      * @return the ARFF header compulsory fields
      */
     String getArffHeaders(){
@@ -695,7 +719,7 @@ public class StReader {
         for (int fieldNo = 0; fieldNo < HEADER.length; ++fieldNo) {
 
             if (this.posFeatHandler != null && (fieldNo == IDXO_FEAT)) {
-                // prints the header for generated features (both predicted and golden!)
+                // prints the header for POS features (both predicted and golden!)
                 sb.append(this.posFeatHandler.getHeaders());
             }
             else if (fieldNo == IDXO_FEAT || fieldNo == IDXO_FEAT + 1) {
@@ -707,6 +731,12 @@ public class StReader {
             }
             if (fieldNo < HEADER.length - 1){
                 sb.append(LF);
+            }
+        }
+        // additional ST file fields, if applicable
+        if (this.additionalColumns != null){
+            for (int i = 0; i < this.additionalColumns.length; ++i){
+                sb.append(LF).append(ATTRIBUTE + " ").append(this.additionalColumns[i]).append(" " + STRING);
             }
         }
         return sb.toString();
@@ -722,15 +752,15 @@ public class StReader {
         StringBuilder sb = new StringBuilder();
 
         if (this.divideAMs) {
-            sb.append(StToArff.ATTRIBUTE).append(" " + SEM_REL + " ").append(StToArff.CLASS).append(" {_,");
+            sb.append(ATTRIBUTE).append(" " + SEM_REL + " ").append(CLASS).append(" {_,");
             sb.append(this.getSemRoles(false));
             sb.append("}").append(LF);
-            sb.append(StToArff.ATTRIBUTE + " " + SEM_REL_AMS + " " + StToArff.CLASS + " {_,");
+            sb.append(ATTRIBUTE + " " + SEM_REL_AMS + " " + CLASS + " {_,");
             sb.append(this.getSemRoles(true));
             sb.append("}");
         }
         else {
-            sb.append(StToArff.ATTRIBUTE + " " + SEM_REL + " " + StToArff.CLASS + " {_,");
+            sb.append(ATTRIBUTE + " " + SEM_REL + " " + CLASS + " {_,");
             sb.append(this.getSemRoles());
             sb.append("}");
         }

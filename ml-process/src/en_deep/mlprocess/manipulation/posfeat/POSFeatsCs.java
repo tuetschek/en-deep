@@ -27,6 +27,8 @@
 
 package en_deep.mlprocess.manipulation.posfeat;
 
+import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.StToArff;
 import java.util.HashMap;
 
@@ -77,7 +79,7 @@ public class POSFeatsCs extends POSFeatures {
             else {
                 sb.append(LF);
             }
-            sb.append(StToArff.ATTRIBUTE + " ").append(prefix).append(featType).append(" " + StToArff.STRING);
+            sb.append(StReader.ATTRIBUTE + " ").append(prefix).append(featType).append(" " + StReader.STRING);
         }
         return sb.toString();
     }
@@ -87,12 +89,15 @@ public class POSFeatsCs extends POSFeatures {
 
         String [] feats = value.split("\\|");
         String [] featArr = new String [FEATS_LIST.length];
-        
-        for (String feat : feats){  // split into individual features listed
-            String [] nameVal = feat.split("=", 2); // extract the name and value
-            int pos = FEAT_POS.get(nameVal[0]); // find the position of each feature in the array
 
-            featArr[pos] = nameVal[1]; // set it at the right position in the array
+        if (!value.equals(StReader.EMPTY_VALUE)){
+            for (String feat : feats){  // split into individual features listed
+
+                String [] nameVal = feat.split("=", 2); // extract the name and value
+                int pos = FEAT_POS.get(nameVal[0]); // find the position of each feature in the array
+
+                featArr[pos] = nameVal[1]; // set it at the right position in the array
+            }
         }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < featArr.length; ++i){

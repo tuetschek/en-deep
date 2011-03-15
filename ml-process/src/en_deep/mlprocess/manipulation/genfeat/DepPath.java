@@ -48,11 +48,11 @@ public class DepPath extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " DepPathRel " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " DepPathPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " DepPathCPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " DepPathDir " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " DepPathLength " + StToArff.INTEGER;
+        return StReader.ATTRIBUTE + " DepPathRel " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " DepPathPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " DepPathCPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " DepPathDir " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " DepPathLength " + StReader.INTEGER;
     }
 
     @Override

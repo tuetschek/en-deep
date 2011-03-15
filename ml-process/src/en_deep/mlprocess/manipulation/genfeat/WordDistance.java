@@ -42,7 +42,7 @@ public class WordDistance extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " WordDistance " + StToArff.INTEGER;
+        return StReader.ATTRIBUTE + " WordDistance " + StReader.INTEGER;
     }
 
     @Override

@@ -49,8 +49,8 @@ public class SiblingForm extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingForm " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " RightSiblingForm " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " LeftSiblingForm " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " RightSiblingForm " + StReader.STRING;
     }
 
     @Override

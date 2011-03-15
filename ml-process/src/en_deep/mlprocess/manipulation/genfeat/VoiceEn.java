@@ -46,7 +46,7 @@ public class VoiceEn extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " Voice " + StToArff.CLASS + "{Infinite,Active,Passive,_}";
+        return StReader.ATTRIBUTE + " Voice " + StReader.CLASS + "{Infinite,Active,Passive,_}";
     }
 
     @Override

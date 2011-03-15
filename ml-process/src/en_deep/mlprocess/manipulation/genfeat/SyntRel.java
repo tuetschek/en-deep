@@ -44,8 +44,8 @@ public class SyntRel extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " SiblChild " + StToArff.INTEGER + LF
-                + StToArff.ATTRIBUTE + " SyntDep " + StToArff.INTEGER;
+        return StReader.ATTRIBUTE + " SiblChild " + StReader.INTEGER + LF
+                + StReader.ATTRIBUTE + " SyntDep " + StReader.INTEGER;
     }
 
     @Override

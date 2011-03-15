@@ -45,7 +45,7 @@ public class RelPos extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " RelPos " + StToArff.CLASS + "{Before,On,After}";
+        return StReader.ATTRIBUTE + " RelPos " + StReader.CLASS + "{Before,On,After}";
     }
 
     @Override

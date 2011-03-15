@@ -119,19 +119,19 @@ public class Clusters extends Feature {
 
         for (int i = 0; i < this.featNames.length; ++i){
 
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append(" " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left3 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left2 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left1 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left12 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right12 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right1 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right2 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right3 " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Parent " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_Children " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_LeftSibling " + StToArff.STRING).append(LF);
-            text.append(StToArff.ATTRIBUTE + " ").append(this.featNames[i]).append("_RightSibling " + StToArff.STRING);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append(" " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left3 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left2 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left1 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left12 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right12 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right1 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right2 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right3 " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Parent " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Children " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_LeftSibling " + StReader.STRING).append(LF);
+            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_RightSibling " + StReader.STRING);
 
             if (i < this.featNames.length - 1){
                 text.append(LF);

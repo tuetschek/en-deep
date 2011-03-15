@@ -92,8 +92,8 @@ public class ChildrenTypes extends Feature {
      * @param suffix
      */
     private String getHeaderText(String suffix){
-        return StToArff.ATTRIBUTE + " ChildrenType_" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenTypeNum_" + suffix + " " + StToArff.INTEGER;
+        return StReader.ATTRIBUTE + " ChildrenType_" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ChildrenTypeNum_" + suffix + " " + StReader.INTEGER;
     }
 
     @Override

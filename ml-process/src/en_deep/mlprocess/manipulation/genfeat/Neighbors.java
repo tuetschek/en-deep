@@ -62,14 +62,14 @@ public class Neighbors extends Feature {
      * @return the text of one type of headers
      */
     private String getHeaderText(String suffix){
-        return StToArff.ATTRIBUTE + " Left3" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left2" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left1" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Left12" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right12" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right1" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right2" + suffix + " " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " Right3" + suffix + " " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " Left3" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Left2" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Left1" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Left12" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Right12" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Right1" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Right2" + suffix + " " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " Right3" + suffix + " " + StReader.STRING;
     }
 
 

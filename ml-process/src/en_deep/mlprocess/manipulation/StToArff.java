@@ -54,7 +54,7 @@ import weka.core.converters.ConverterUtils;
  *
  * @author Ondrej Dusek
  */
-public class StToArff extends StManipulation {
+public class StToArff extends StLikeConvertor {
 
     /* CONSTANTS */
 
@@ -64,42 +64,21 @@ public class StToArff extends StManipulation {
     private static final String PRED_ONLY = "pred_only";
     /** The prune parameter name */
     private static final String PRUNE = "prune";
-    /** The generate parameter name */
-    private static final String GENERATE = "generate";
-    /** The omit_semclass parameter name */
-    private static final String OMIT_SEMCLASS = "omit_semclass";
     /** The divide_senses parameter name */
     private static final String DIVIDE_SENSES = "divide_senses";
     /** The 'filt_pos' parameter name */
     private static final String FILTER_POS = "filt_pos";
     /** The 'one_file' parameter name */
-    private static final String ONE_FILE_MODE = "one_file";
-
-    /** Attribute definition start in ARFF files */
-    public static final String ATTRIBUTE = "@ATTRIBUTE";
-    /** Specification of an attribute as CLASS in ARFF files @todo move to StReader */
-    public static final String CLASS = "";
-    /** Specification of an attribute as INTEGER in ARFF files @todo move to StReader */
-    public static final String INTEGER = "INTEGER";
-    /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
-    public static final String STRING = "STRING";
-
-
-    /** Start of the data section in ARFF files */
-    private static final String DATA = "@DATA";
-
-    /** Caption of ARFF files */
-    private static final String RELATION = "@RELATION";
-   
-    /** The header for the "file attribute */
-    private static final String FILE_ATTR_HEADER = "@ATTRIBUTE file STRING";
+    private static final String ONE_FILE_MODE = "one_file";   
+    /** The omit_semclass parameter name */
+    private static final String OMIT_SEMCLASS = "omit_semclass";
    
     /* DATA */
 
     /** Output predicates only ? */
     private boolean predOnly;
-    /** Omit semantic class in the ouptut ? */
-    private boolean omitSemClass;
+    /** Omit semantic class in the output ? */
+    protected boolean omitSemClass;
     /** Divide the data according to pred, not lemma ? */
     private boolean divideSenses;
     /** Prune the argument candidates to the syntactical neighborhood of the predicate ? */
@@ -109,10 +88,8 @@ public class StToArff extends StManipulation {
     /** List of POS which should be filtered on the output (or null if none) */
     private String [] filteredPOS;
 
-    /** Features to be generated */
-    private Vector<Feature> genFeats;
-
-    /** Used output files (for reprocessing) */
+ 
+    /** Used output files (for re-processing) */
     private HashMultimap<String, String> usedFiles;
     /** File names with already written headers */
     private HashSet<String> writtenHeaders;
@@ -137,13 +114,12 @@ public class StToArff extends StManipulation {
      *   <li>noun and verb tag regexp patterns (each on separate line)</li>
      *   <li>list of all possible semantic roles (one line, space-separated)</li>
      *   <li>a regexp that catches all adverbial modifier semantic roles</li>
+     *   <li>a space-separated list of additional columns in the ST file, if any</li>
      * </ul></li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
      * valency arguments and for adverbials &amp; references.</li>
-     * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
-     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are outputted, omitting all other words in a sentence</li>
-     * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not outputted at all</li>
+     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are output, omitting all other words in the sentence</li>
      * <li><tt>divide_senses</tt> -- if set to non-false, the data are divided according to the sense of predicates, too</li>
      * <li><tt>prune</tt> -- if set, the argument candidates are pruned (syntactical neighborhood of the predicate only)</li>
      * <li><tt>filt_pos</tt> -- (optional) provide a space-separated list of POS which should be filtered at the output,
@@ -152,7 +128,8 @@ public class StToArff extends StManipulation {
      * will go into one file only</li>
      * </ul>
      * <p>
-     * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s.
+     * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s,
+     * or by the super-classes.
      * </p>
      *
      * @todo no need for possible list of POS, FEAT and DEPREL in the lang_conf file, exclude it
@@ -167,8 +144,8 @@ public class StToArff extends StManipulation {
         super(id, parameters, input, output);
 
         // initialize boolean parameters (some of them are handled by the reader)
-        this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.omitSemClass = this.getBooleanParameterVal(OMIT_SEMCLASS);
+        this.predOnly = this.getBooleanParameterVal(PRED_ONLY);
         this.divideSenses = this.getBooleanParameterVal(DIVIDE_SENSES);
         this.prune = this.getBooleanParameterVal(PRUNE);
         this.oneFileMode = this.getBooleanParameterVal(ONE_FILE_MODE);
@@ -178,15 +155,11 @@ public class StToArff extends StManipulation {
             this.filteredPOS = this.getParameterVal(FILTER_POS).split("\\s+");
         }
 
-        // initialize features to be generated
-        this.initGenFeats();
-
         // initialize the used output files lists
         this.usedFiles = HashMultimap.create();
         if (!this.oneFileMode){
             this.writtenHeaders = new HashSet<String>();
         }
-
 
         // check outputs
         if (input.size() != output.size()){
@@ -269,7 +242,7 @@ public class StToArff extends StManipulation {
         if (this.oneFileMode){
             os = new FileOutputStream(arff);
             out = new PrintStream(os);
-            this.writeHeader(out, StringUtils.truncateFileName(arff));
+            this.writeHeader(out, StringUtils.truncateFileName(arff), true, !this.omitSemClass);
         }
 
         while (this.reader.loadNextSentence()){
@@ -329,6 +302,11 @@ public class StToArff extends StManipulation {
                         Logger.V_DEBUG);
             }
         }
+
+        if (this.oneFileMode){
+            out.close();
+            out = null;
+        }
     }
 
 
@@ -356,7 +334,7 @@ public class StToArff extends StManipulation {
             FileOutputStream os = new FileOutputStream(fileName);
             PrintStream out = new PrintStream(os);
 
-            this.writeHeader(out, predName);
+            this.writeHeader(out, predName, false, !this.omitSemClass);
 
             out.close();
             out = null;
@@ -364,34 +342,6 @@ public class StToArff extends StManipulation {
             // store the filename so that we don't write the headers again
             this.writtenHeaders.add(fileName);
         }
-    }
-
-    /**
-     * This writes one ARFF file header with STRING fields into the given output stream.
-     * @param out the output stream to write to
-     * @param relationName the new ARFF relation name
-     */
-    private void writeHeader(PrintStream out, String relationName) {
-
-        out.println(RELATION + " \"" + StringUtils.escape(relationName) + "\"");
-
-        // print the "file" parameter, if in one-file mode
-        if (this.oneFileMode){
-            out.println(FILE_ATTR_HEADER);
-        }
-
-        // print the constant fields that are always present
-        out.println(this.reader.getArffHeaders());
-
-        // print generated features' headers
-        for (Feature f : this.genFeats) {
-            out.println(f.getHeader());
-        }
-        // print semrel headers (if supposed to)
-        if (!this.omitSemClass) {
-            out.println(this.reader.getSemRolesHeader());
-        }
-        out.println(DATA);
     }
 
     /**
@@ -420,35 +370,6 @@ public class StToArff extends StManipulation {
         }
 
         return outputs;
-    }
-
-    /**
-     * Parse the parameter with generated features setting and initialize all needed.
-     */
-    private void initGenFeats() {
-
-        String [] featList;
-
-        this.genFeats = new Vector<Feature>();
-
-        if (this.parameters.get(GENERATE) == null){
-            return;
-        }
-        
-        featList = this.parameters.get(GENERATE).split(",");
-
-        for (String featName : featList){
-
-            Feature feat = Feature.createFeature(featName.trim(), this.reader);
-
-            if (feat == null){
-                Logger.getInstance().message(this.id + ": Feature " + featName + " has not been found, skipping.",
-                        Logger.V_WARNING);
-            }
-            else {
-                this.genFeats.add(feat);
-            }
-        }
     }
 
 

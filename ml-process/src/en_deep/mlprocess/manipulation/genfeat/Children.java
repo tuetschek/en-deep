@@ -47,10 +47,10 @@ public class Children extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " ChildrenPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenLemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenForm " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ChildrenCPOS " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " ChildrenPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ChildrenLemma " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ChildrenForm " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ChildrenCPOS " + StReader.STRING;
     }
 
     @Override

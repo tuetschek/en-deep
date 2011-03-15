@@ -43,10 +43,10 @@ public class Head extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " ParentPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ParentCPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ParentLemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " ParentForm " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " ParentPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ParentCPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ParentLemma " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " ParentForm " + StReader.STRING;
     }
 
     @Override

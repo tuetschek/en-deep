@@ -49,10 +49,10 @@ public class SiblingPOS extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " RightSiblingPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " LeftSiblingCPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " RightSiblingCPOS " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " LeftSiblingPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " RightSiblingPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " LeftSiblingCPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " RightSiblingCPOS " + StReader.STRING;
     }
 
     @Override

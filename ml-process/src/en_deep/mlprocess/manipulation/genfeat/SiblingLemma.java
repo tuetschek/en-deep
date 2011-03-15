@@ -49,8 +49,8 @@ public class SiblingLemma extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " LeftSiblingLemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " RightSiblingLemma " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " LeftSiblingLemma " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " RightSiblingLemma " + StReader.STRING;
     }
 
     @Override

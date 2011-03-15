@@ -45,7 +45,7 @@ public class HeadPos extends Feature {
 
     @Override
     public String getHeader() {
-        return StToArff.ATTRIBUTE + " HeadPos " + StToArff.CLASS + "{Before,After,_}";
+        return StReader.ATTRIBUTE + " HeadPos " + StReader.CLASS + "{Before,After,_}";
     }
 
     @Override

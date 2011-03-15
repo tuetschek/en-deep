@@ -76,11 +76,11 @@ public class PredArg extends Feature {
      */
     private String getHeaderText(String prefix) {
 
-        return StToArff.ATTRIBUTE + " " + prefix + "Form " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " " + prefix + "Lemma " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " " + prefix + "POS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " " + prefix + "CPOS " + StToArff.STRING + LF
-                + StToArff.ATTRIBUTE + " " + prefix + "DepRel " + StToArff.STRING;
+        return StReader.ATTRIBUTE + " " + prefix + "Form " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " " + prefix + "Lemma " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " " + prefix + "POS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " " + prefix + "CPOS " + StReader.STRING + LF
+                + StReader.ATTRIBUTE + " " + prefix + "DepRel " + StReader.STRING;
     }
 
     /**
