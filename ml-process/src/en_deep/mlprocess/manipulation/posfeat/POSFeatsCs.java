@@ -111,21 +111,13 @@ public class POSFeatsCs extends POSFeatures {
 
 
     /**
-     * This returns the POS + SubPOS as the new POS to be used in the ARFF generated features.
+     * This returns just the POS to be used in the ARFF generated features (SubPOS not needed,
+     * since SubPOS & POS works the same as SubPOS alone).
      */
     @Override
     public String getFullPOS(String posVal, String featVal) {
 
-        if (featVal.indexOf("SubPOS=") == -1){
-            featVal = "";
-        }
-        else {
-            featVal = featVal.substring(featVal.indexOf("SubPOS=") + "SubPOS=".length());
-            if (featVal.indexOf("|") != -1){
-                featVal = featVal.substring(0, featVal.indexOf("|"));
-            }
-        }
-        return posVal + featVal;
+        return posVal;
     }
 
 }

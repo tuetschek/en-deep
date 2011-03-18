@@ -114,7 +114,7 @@ public class StLikeToArff extends StLikeConvertor {
 
         os = new FileOutputStream(arff);
         out = new PrintStream(os);
-        this.writeHeader(out, StringUtils.truncateFileName(arff), false, true);
+        this.writeHeader(out, StringUtils.truncateFileName(arff), false, false);
 
         while (this.reader.loadNextSentence()){
 

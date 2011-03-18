@@ -111,7 +111,7 @@ public class AttributeFilter extends MergedHeadersOutput {
      * <ul>
      * <li><tt>del_orig</tt> -- delete the original attributePrefixes and keep only the filtered</li>
      * <li><tt>merge_inputs</tt> -- merge all the inputs before processing (inputs are assumed to have the same format,
-     *      including the possible values</li>
+     *      including the possible values)</li>
      * <li><tt>info_file</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last input(s) are considered to be saved information about the filtering process. This will
      * then ignore all other parameters (except <tt>del_orig</tt> and <tt>merge_inputs</tt>) and perform the process

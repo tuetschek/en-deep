@@ -27,7 +27,6 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.manipulation.StReader;
 
 /**

@@ -84,7 +84,7 @@ public class BigDataSplitter extends Task {
      * <li><tt>equal_chunks</tt> -- if set, the data will be split into as many chunks as the preset
      * length would cause, but in equal amounts (the last chunk won't be shorter than the previous ones).
      * </ul>
-     * The input must be one file, the output must be one pattern.
+     * The number of input files must be equal to the number of output patterns.
      *
      */
     public BigDataSplitter(String id, Hashtable<String, String> parameters,
@@ -103,11 +103,16 @@ public class BigDataSplitter extends Task {
             this.chunkLength = this.getIntParameterVal(CHUNK_LENGTH);
         }
 
-        if (this.input.size() != 1){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_INPUTS, this.id, "Must have 1 input.");
+        if (this.input.size() != this.output.size()){
+            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Number of output patterns must"
+                    + "be equal to the number of inputs.");
         }
-        if (this.output.size() != 1 || (this.chunksNo != 1 && !this.output.get(0).contains("**"))){
-            throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "Must have 1 output pattern.");
+        if (this.chunksNo != 1){
+            for (String pattern : this.output){
+                if (!pattern.contains("**")){
+                    throw new TaskException(TaskException.ERR_OUTPUT_PATTERNS, this.id, "All outputs must be patterns.");
+                }
+            }
         }
     }
 
@@ -117,11 +122,15 @@ public class BigDataSplitter extends Task {
     public void perform() throws TaskException {
         
         try {
-            this.loadHeader();
-            if (this.chunkLength == -1 || this.getBooleanParameterVal(EQUAL_CHUNKS)){
-                this.determineChunkLength();
+            for (int fileNo = 0; fileNo < this.input.size(); ++fileNo){
+
+                this.loadHeader(fileNo);
+                if (this.chunkLength == -1 || this.getBooleanParameterVal(EQUAL_CHUNKS)){
+                    this.determineChunkLength(fileNo);
+                }
+                this.processData(fileNo);
+                this.header = null;
             }
-            this.processData();
         }
         catch (TaskException e){
             throw e;
@@ -134,20 +143,22 @@ public class BigDataSplitter extends Task {
 
     /**
      * This loads the header of the original ARFF file.
+     * @param  fileNo number of the input file to be processed
      * @throws Exception
      */
-    private void loadHeader() throws Exception {
-        this.header = FileUtils.readArffStructure(this.input.get(0));
+    private void loadHeader(int fileNo) throws Exception {
+        this.header = FileUtils.readArffStructure(this.input.get(fileNo));
     }
 
     /**
      * This processes the whole input file, splits it into chunks of the given size and converts the string
      * attributes to nominal along the way.
+     * @param fileNo number of the input file to be processed
      * @throws Exception
      */
-    private void processData() throws Exception {
+    private void processData(int fileNo) throws Exception {
 
-        BufferedReader inRead = openAndSkipHeader(this.input.get(0));
+        BufferedReader inRead = openAndSkipHeader(this.input.get(fileNo));
 
         boolean eof = false;
         int curChunkNo = 0;
@@ -167,7 +178,7 @@ public class BigDataSplitter extends Task {
 
             if (curChunk.numInstances() > 0){
                 // convert string to nominal
-                FileUtils.writeArff(StringUtils.replace(this.output.get(0), Integer.toString(curChunkNo)),
+                FileUtils.writeArff(StringUtils.replace(this.output.get(fileNo), Integer.toString(curChunkNo)),
                         FileUtils.allStringToNominal(curChunk));
 
                 Logger.getInstance().message(this.id + ": chunk " + curChunkNo + " written ... ", Logger.V_DEBUG);
@@ -176,6 +187,7 @@ public class BigDataSplitter extends Task {
         }
 
         inRead.close();
+        inRead = null;
     }
 
     /**
@@ -199,10 +211,11 @@ public class BigDataSplitter extends Task {
      * Given the input file and the desired number of chunks or the desired chunk length (with 
      * equal_chunks setting), this finds out the length of the file and therefore the number of
      * instances for one chunk.
+     * @param  fileNo number of the input file to be processed
      */
-    private void determineChunkLength() throws IOException {
+    private void determineChunkLength(int fileNo) throws IOException {
 
-        BufferedReader inRead = openAndSkipHeader(this.input.get(0));
+        BufferedReader inRead = openAndSkipHeader(this.input.get(fileNo));
         String line = inRead.readLine();
         int numInst = 0;
 
@@ -215,6 +228,7 @@ public class BigDataSplitter extends Task {
             line = inRead.readLine();
         }
         inRead.close();
+        inRead = null;
 
         if (this.chunkLength == -1){
             this.chunkLength = numInst / this.chunksNo;

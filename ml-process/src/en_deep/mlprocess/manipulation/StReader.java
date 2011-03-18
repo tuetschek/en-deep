@@ -430,9 +430,9 @@ public class StReader {
     }
 
     /**
-     * This returns all the compulsory information about the given words (starting with a comma,
-     * fields enclosed in quotes if necessary). It returns all the features values if applicable
-     * the missing values as ARFF unquoted '?'.
+     * This returns all the compulsory information about the given word (starting with a comma,
+     * fields enclosed in quotes if necessary). It returns all the features values if applicable;
+     * the missing values are returned as ARFF unquoted '?'.
      * @param wordNo the number of the word in the current sentence
      * @param fieldNo the number of the desired information field
      * @return the given information field for the given word, in quotes

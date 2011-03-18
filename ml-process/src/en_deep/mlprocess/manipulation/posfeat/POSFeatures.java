@@ -83,7 +83,7 @@ public abstract class POSFeatures {
     protected abstract String listFeats(String values);
 
     /**
-     * This, given an ST value for POS and morph. features string, returns a weighted combination
+     * This, given an ST value for POS and morph. features string, returns a combination
      * to be used as a true POS tag in the output file
      * @param posVal value of the POS field in the ST file
      * @param featVal value of the FEAT field in the ST file

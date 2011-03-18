@@ -30,38 +30,25 @@ package en_deep.mlprocess.manipulation.genfeat;
 import en_deep.mlprocess.manipulation.StReader;
 
 /**
- * This generated feature indicates the relative position of the given word to
- * its head {Before,After,-}. N/A value is used for ROOT.
- * 
+ * This feature indicates the topological distance from the given word to its syntactic
+ * head.
  * @author Ondrej Dusek
  */
-public class HeadPos extends Feature {
+public class HeadDistance extends Feature {
 
-    public HeadPos(StReader reader) {
+    public HeadDistance(StReader reader) {
         super(reader);
     }
 
-
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " HeadPos " + StReader.CLASS + "{Before,After,_}";
+        return StReader.ATTRIBUTE + " HeadDistance " + StReader.INTEGER;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        int headPos = this.reader.getHeadPos(wordNo);
-
-        if (headPos == 0){
-            return "_";
-        }
-
-        if (wordNo < headPos){
-            return "Before";
-        }
-        else {
-            return "After";
-        }
+        return Integer.toString(Math.abs(wordNo - this.reader.getHeadPos(wordNo)));
     }
 
 }
