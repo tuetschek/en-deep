@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.utils;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
 import java.io.File;
 import java.util.ArrayList;
@@ -591,12 +592,13 @@ public class StringUtils {
     }
 
     /**
-     * Prepend the given string with the working directory path, if it doesn't contain any directory separator
+     * Prepend the given string with the working directory path, if it is not absolute.
      * @param path the original file / path name (with or without directory specifications)
      * @return the path, with working directory prepended, if needed
      */
     public static String getPath(String path) {
-        if (!path.contains(File.separator)){
+        
+        if (!(new File(path)).isAbsolute()){
             return Process.getInstance().getWorkDir() + path;
         }
         return path;

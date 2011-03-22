@@ -277,6 +277,7 @@ public class StReader {
     void setInputFile(String fileName) throws IOException {
 
         this.inputFileName = fileName;
+        Logger.getInstance().message("Reading file :" + fileName, Logger.V_DEBUG);
         this.inputFile = new Scanner(new File(fileName), Process.getInstance().getCharset());
     }
 

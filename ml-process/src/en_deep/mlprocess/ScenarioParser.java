@@ -213,7 +213,6 @@ class ScenarioParser {
     private Vector<String> getFileList(String clause) throws DataException {
 
         Vector<String> list = StringUtils.parseCSV(clause); // raw parsing
-        String workDir = Process.getInstance().getWorkDir();
 
         // remove quotes & spaces
         for(int i = 0; i < list.size(); ++i){
@@ -226,7 +225,7 @@ class ScenarioParser {
             else if (s.contains("\"") || s.matches("(?s).*\\s.*")){
                 throw new DataException(DataException.ERR_INVALID_CHAR_IN_FILE_NAME, this.fileName, this.line);
             }
-            list.setElementAt(workDir + s, i); // prepend with working directory
+            list.setElementAt(StringUtils.getPath(s), i); // prepend with working directory, if needed
         }
         
         // return the result
