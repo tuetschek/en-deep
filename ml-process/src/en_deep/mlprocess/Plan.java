@@ -86,9 +86,11 @@ public class Plan {
     /** Number of tasks that should be retrieved at the same time */
     private int retrieveCount;
 
+    /** Were there any tasks with a {@link TaskStatus#FAILED} in the plan file upon last use ? */
+    private boolean failedTasks;
+
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
-
 
 
     /* METHODS */
@@ -529,25 +531,32 @@ public class Plan {
 
 
     /**
-     * Writes the current plan status into the plan file, using serialization.
+     * Writes the current plan status into the plan file, using serialization. Sets the {@link #failedTasks}
+     * variable.
      * @param plan the current plan status
      * @param planFile the file to write to (an open output stream)
      */
     private synchronized void writePlan(Vector<TaskDescription> plan, RandomAccessFile planFile) throws IOException {
 
-        FileOutputStream debugOs = new FileOutputStream(this.statusFile, false);
+        this.failedTasks = false;
+
+        FileOutputStream statusOs = new FileOutputStream(this.statusFile, false);
+
         for (TaskDescription td : plan){
-            debugOs.write(td.toString().getBytes());
+            statusOs.write(td.toString().getBytes());
+            if (td.getStatus() == TaskStatus.FAILED){
+                this.failedTasks = true;
+            }
         }
-        debugOs.close();
+        statusOs.close();
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        ObjectOutputStream planOs = new ObjectOutputStream(bos);
         byte [] planData;
 
-        oos.writeObject(plan);
-        oos.flush();
-        oos.close();
+        planOs.writeObject(plan);
+        planOs.flush();
+        planOs.close();
 
         planData = bos.toByteArray();
 
@@ -922,5 +931,13 @@ public class Plan {
             }
             plan.add(pos, addCur);
         }
+    }
+
+    /**
+     * Returns true, if there currently are some tasks with a {@link TaskStatus#FAILED} in the plan file.
+     * @return true, if there are some failed tasks in the plan file
+     */
+    public boolean hasFailedTasks(){
+        return this.failedTasks;
     }
 }

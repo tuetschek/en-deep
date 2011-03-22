@@ -136,8 +136,8 @@ public class Process {
     }
 
     /**
-     * Parse the command arguments and create the Process singleton.
-     * @param args the command line arguments (see the @{link Process class description} for details)
+     * Parses the command arguments and creates the {@link Process} singleton, runs it and returns the exit status.
+     * @param args the command line arguments (see the {@link Process} class description} for details)
      */
     public static void main(String[] args) {
 
@@ -210,7 +210,7 @@ public class Process {
             opts.inputFile = args[args.length - 1];
 
             // find out the working directory, if set within the input file specs
-            if (opts.workDir == null && opts.inputFile.indexOf(File.separator) != -1){
+            if (opts.workDir == null && opts.inputFile.contains(File.separator)){
 
                 opts.workDir = opts.inputFile.substring(0, opts.inputFile.lastIndexOf(File.separator));
                 opts.inputFile = StringUtils.truncateFileName(opts.inputFile);
@@ -219,16 +219,17 @@ public class Process {
             else if (opts.workDir == null){
                 opts.workDir = ".";
             }
-            // append path separator character to the directory specification
+             // append path separator character to the directory specification
             if (opts.workDir.charAt(opts.workDir.length() - 1) != File.separatorChar){
                 opts.workDir += File.separator;
             }
 
             // check the validity of the input file and working directory (if applicable)
-            if (!(new File(opts.workDir)).isDirectory()){ // TODO possibly check access rights for working directory and input file ?
+            // TODO possibly check access rights for working directory and input file ?
+            if (!(new File(opts.workDir)).isDirectory()){ 
                 throw new ParamException(ParamException.ERR_DIR_NOT_FOUND);
             }
-            if (!(new File(opts.workDir + opts.inputFile)).exists()){
+            if (!(new File(opts.inputFile.contains(File.separator) ? opts.inputFile : opts.workDir + opts.inputFile)).exists()){
                 throw new ParamException(ParamException.ERR_FILE_NOT_FOUND);
             }
         }
@@ -245,6 +246,7 @@ public class Process {
         try {
             Process p = new Process(opts);
             p.run();
+            System.exit(p.getExitStatus());
         }
         catch (Exception e){
             Logger.getInstance().message("Could not create process - " + e.getMessage(), Logger.V_IMPORTANT);
@@ -288,8 +290,8 @@ public class Process {
 
         Process.instance = this;
 
-        Logger.getInstance().message("Starting process - input:" + this.opts.workDir + File.separator
-                + this.opts.inputFile + ", " + this.opts.threads + " thread(s); "
+        Logger.getInstance().message("Starting process - input file: " + this.getInputFile()
+                + ", working directory: " + this.getWorkDir() + ", " + this.opts.threads + " thread(s); "
                 + this.opts.instances + " instance(s) assumed.", Logger.V_INFO);
 
         if (this.opts.resetTasks != null){
@@ -306,12 +308,12 @@ public class Process {
     }
 
     /**
-     * Returns the path to the input process file. The path is already related to the process
-     * working directory.
+     * Returns the path to the input process file (i.e\. not just the file name)
+     * 
      * @return the path to the input process file
      */
     public String getInputFile(){
-        return this.opts.workDir + this.opts.inputFile;
+        return this.opts.inputFile.contains(File.separator) ? this.opts.inputFile : this.opts.workDir + this.opts.inputFile;
     }
 
     /**
@@ -372,15 +374,34 @@ public class Process {
         }
 
         this.workers = new Worker [this.opts.threads];
+        Thread [] threads = new Thread [this.workers.length];
 
         // create all the workers and run them
         for (int i = 0; i < this.opts.threads; ++i){
             
             this.workers[i] = new Worker(i);
-            Thread t = new Thread(this.workers[i]);
-
-            t.start();
+            threads[i] = new Thread(this.workers[i]);
+            threads[i].start();
         }
+
+        // wait for all of them to finish
+        boolean interrupted = true;
+        while (interrupted){
+
+            interrupted = false;
+
+            for (int i = 0; i < this.workers.length; ++i){
+                try {
+                    threads[i].join();
+                }
+                catch (InterruptedException ex) {
+                    interrupted = true;
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
+        Logger.getInstance().message("All threads finished, exit status: " + this.getExitStatus(), Logger.V_INFO);
     }
 
     /**
@@ -395,6 +416,14 @@ public class Process {
 
         out.write(resetTasks.getBytes());
         out.close();        
+    }
+
+    /**
+     * Returns the exit status number, if the process is finished.
+     * @return
+     */
+    private int getExitStatus(){
+        return Plan.getInstance().hasFailedTasks() ? 1 : 0;
     }
 
     /**

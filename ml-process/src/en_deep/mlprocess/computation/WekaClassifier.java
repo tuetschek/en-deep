@@ -111,7 +111,7 @@ public class WekaClassifier extends GeneralClassifier {
      * <p>
      * There must be no patterns in the input and output specifications, the number of inputs
      * must min. 2, the number of outputs must be one less and there are no patterns allowed in inputs and outputs.
-     * The first input is used as training data and the second as evaluation data.
+     * The first input is used as training data and all the remaining ones as evaluation data.
      * </p>
      * <p>
      * There is one compulsory parameter:
@@ -142,13 +142,13 @@ public class WekaClassifier extends GeneralClassifier {
      * and binarization settings are then taken from this file as well (i.e. all attributes except <tt>prob_dist</tt>
      * are ignored).</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
-     * additional output) for later use<tt></li>
+     * additional output at the end of the outputs specification) for later use<tt></li>
      * <li><tt>pattern</tt> -- if the parameter is set and the (first) output is a pattern,
      * this is assumed to be a pattern matching the input evaluation files, so that replacements may be created
      * on the output for every one of them.</li>
      * </ul>
      * <p>
-     * Parameters <tt>select_args</tt> a <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
+     * Parameters <tt>select_args</tt> and <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
      * are mutually exclusive.
      * </p>
      * <p>
