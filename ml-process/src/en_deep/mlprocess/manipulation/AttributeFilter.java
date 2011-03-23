@@ -28,15 +28,20 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Set;
 import java.util.Vector;
 import weka.core.Attribute;
+import weka.core.Instance;
 import weka.core.Instances;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.AddValues;
 
 /**
  * This creates new attributes that contain only the most common values of the old ones. Everything else is
@@ -58,6 +63,8 @@ public class AttributeFilter extends MergedHeadersOutput {
     private static final String DEL_ORIG = "del_orig";
     /** The "attributes" parameter name */
     private static final String ATTRIBUTES = "attributes";
+    /** The "add_other_val" parameter name */
+    private static final String ADD_OTHER_VAL = "add_other_val";
 
     /** The string that is appended to all filtered attribute names */
     private static final String ATTR_NAME_SUFF = "_filt";
@@ -67,10 +74,10 @@ public class AttributeFilter extends MergedHeadersOutput {
 
     /* DATA */
 
+    /** Add the {@link #OTHER_VALUE} to all nominal attributes ? */
+    private boolean addOtherVal;
     /** Delete the original attributePrefixes ? */
     private boolean delOrig;
-    /** Merge the inputs before processing ? */
-    private boolean mergeInputs;
     /** How many most common feature values should be kept ? (-1 = not applied) */
     private int mostCommon = -1;
     /** What's the minimum number of occurrences a value should have to be preserved ? (-1 = not applied) */
@@ -119,6 +126,7 @@ public class AttributeFilter extends MergedHeadersOutput {
      * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last outputs(s) are considered to be output files where the processing info about this filtering
      * is saved for later use.</tt>
+     * <li><tt>add_other_val</tt> -- adds {@link #OTHER_VALUE} to the list of acceptable values for all attributes
      * </ul>
      */
     public AttributeFilter(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
@@ -143,6 +151,7 @@ public class AttributeFilter extends MergedHeadersOutput {
         }
 
         this.delOrig = this.getBooleanParameterVal(DEL_ORIG);
+        this.addOtherVal = this.getBooleanParameterVal(ADD_OTHER_VAL);
 
         if (!this.hasInfoIn() && (this.attributePrefixes == null
                 || (this.mostCommon == -1 && this.minOccurrences == -1 && this.minPercentage == Double.NaN))){
@@ -162,41 +171,46 @@ public class AttributeFilter extends MergedHeadersOutput {
 
     /**
      * This filters just one attribute of the given name, which must be present in the data
-     * and nominal.
+     * and nominal. If the original set of values contains some values not present in the filtered
+     * set, the {@link #OTHER_VALUE} must be in the set of allowed attributes.
      *
      * @param attrPrefix the name of the attribute
      * @param data the data for which the filtering should apply
-     * @return attribute name and a list of allowed values
+     * @param newName the new name, if left blank, a name with {@link #ATTR_NAME_SUFF} will be assigned
+     * @param deleteOriginal if true, the original attribute will be removed
      * @throws NumberFormatException
      * @throws TaskException
+     * @return the new name of the filtered attribute
      */
-    private String filterAttribute(String attrName, Instances[] data, Set<String> allowedValues) throws
+    private String filterAttribute(String attrName, String newName, Instances[] data,
+            Vector<String> allowedValues, boolean deleteOriginal) throws
             NumberFormatException, TaskException {
 
-        String newName = attrName + ATTR_NAME_SUFF;
+        if (newName == null || newName.equals("") || newName.equals(attrName)){
+            newName = attrName + ATTR_NAME_SUFF;
+        }
 
-        // create a unique name for the new attribute
+        // create a unique name for the new attribute, if there is a collision
         while (data[0].attribute(newName) != null) {
             if (newName.endsWith(ATTR_NAME_SUFF)) {
                 newName += "1";
-            } else {
+            }
+            else {
                 int num = Integer.parseInt(newName.substring(newName.lastIndexOf(ATTR_NAME_SUFF) + ATTR_NAME_SUFF.length()));
                 newName.replaceFirst("[0-9]+$", Integer.toString(num + 1));
             }
         }
 
-        allowedValues.add(OTHER_VALUE);
-
         Attribute newAttr = new Attribute(newName, new Vector<String>(allowedValues));
         for (int i = 0; i < data.length; ++i) {
             this.addFiltered(data[i], attrName, newAttr, allowedValues);
-            if (this.delOrig) {
+            if (deleteOriginal) {
                 // delete the old attribute if necessary
                 data[i].deleteAttributeAt(data[i].attribute(attrName).index());
             }
         }
-        allowedValues.remove(OTHER_VALUE);
-        return attrName + ":" + StringUtils.join(allowedValues.toArray(),",", true);
+
+        return newName;
     }
 
 
@@ -206,12 +220,13 @@ public class AttributeFilter extends MergedHeadersOutput {
      *
      * @param data the data to be filtered
      * @param attrPrefix the prefix of attributes to be filtered
-     * @param list of filtered attributes with valid values (one attribute per line)
+     * @return a mapping from the processed attributes names to their original names
      */
-    private String filterAttributePrefix(Instances [] data, String attrPrefix) throws TaskException {
+    private HashMap<String, String>  filterAttributePrefix(Instances [] data, String attrPrefix) throws TaskException {
 
         Vector<String> matches = new Vector<String>();
         Enumeration<Attribute> allAttribs = data[0].enumerateAttributes();
+        HashMap<String, String> filtered = new HashMap<String, String>();
 
         // find all matching nominal attributes
         while (allAttribs.hasMoreElements()){
@@ -224,24 +239,82 @@ public class AttributeFilter extends MergedHeadersOutput {
         // no matching attribute found
         if (matches.isEmpty()) {
             // attribute must be found and must be nominal
-            Logger.getInstance().message(this.id + " : No attribute matching " + attrPrefix + " found in data "
+            Logger.getInstance().message(this.id + " : No nominal attribute matching " + attrPrefix + " found in data "
                     + data[0].relationName(), Logger.V_WARNING);
-            return "";
         }
 
         // filter all matching attributes
-        StringBuilder sb = new StringBuilder();
         for (String attrName : matches){
 
             Vector<String> vals = this.getAttributeValues(data[0], attrName);
             // collect statistics about the given attribute and create its filtered version
             int minOccur = this.getMinOccurrences(data);
             int[] stats = this.collectStatistics(data, attrName);
-            Set<String> allowedVals = this.filterValues(stats, minOccur, vals);
+            Vector<String> allowedVals = this.filterValues(stats, minOccur, vals);
 
-            sb.append(this.filterAttribute(attrName, data, allowedVals)).append("\n");
+            allowedVals.add(OTHER_VALUE);
+            String filteredName = this.filterAttribute(attrName, null, data, allowedVals, this.delOrig);
+            filtered.put(filteredName, attrName);
         }
-        return sb.toString();
+
+        return filtered;
+    }
+
+    /**
+     * This parses the filtering information loaded from a file and applies it to the given data.
+     *
+     * @param data the data to be filtered
+     * @param info the filtering options, as stored in a file
+     * @throws TaskException
+     * @throws NumberFormatException
+     */
+    private void filterWithInfo(Instances[] data, String info) throws TaskException, NumberFormatException {
+
+        String[] infoLines = info.split("\\n");
+        // this keeps the information about all attributes modifications: new name + allowed values
+        HashMap<String, Vector<Pair<String, String>>> attribInfos = new HashMap<String, Vector<Pair<String, String>>>();
+
+        // parse the filtering info, retain information about each attribute and what has been done to it
+        // (can be multiple lines, in fact max. 2 -- original & filtered)
+        for (String infoLine : infoLines) {
+            String[] nameVal = infoLine.split(":", 3);
+            Vector<Pair<String, String>> modifs = null;
+
+            if (attribInfos.containsKey(nameVal[0])) {
+                modifs = attribInfos.get(nameVal[0]);
+            }
+            else {
+                modifs = new Vector<Pair<String, String>>();
+                attribInfos.put(nameVal[0], modifs);
+            }
+            modifs.add(new Pair<String, String>(nameVal[1], nameVal[2]));
+        }
+
+        // now filter the attributes according to the retrieved information
+        // for all nominal attributes
+        for (String attrName : attribInfos.keySet()) {
+
+            // check for the existence of the attribute, equal headers assumed
+            Attribute attr = data[0].attribute(attrName);
+            if (attr == null || !attr.isNominal()) {
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Missing attribute " + attrName);
+            }
+
+            // get a list of modifications
+            Vector<Pair<String, String>> modifs = attribInfos.get(attrName);
+            
+            // process each modification separately; delete the original in the last round
+            while (modifs.size() > 0) {
+
+                Pair<String, String> modif = modifs.remove(modifs.size() - 1);
+                Vector<String> allowedVals = this.parseAllowedValues(modif.second);
+
+                String newName = this.filterAttribute(attrName, modif.first, data, allowedVals, modifs.isEmpty());
+                if (!newName.equals(modif.first)){
+                    this.renameAttribute(data, newName, modif.first);
+                }
+            }
+        }
     }
 
     /**
@@ -293,9 +366,9 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param minOccurrences the minimum number of occurrences the values must have
      * @return true for the values that have passed the filtering, false otherwise
      */
-    private Set<String> filterValues(int[] stats, int minOccurrences, Vector<String> vals) {
+    private Vector<String> filterValues(int[] stats, int minOccurrences, Vector<String> vals) {
 
-        HashSet<String> allowedVals = new HashSet<String>();
+        Vector<String> allowedVals = new Vector<String>();
 
         if (this.mostCommon > 0){
             
@@ -338,14 +411,15 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param newAttr the new attribute
      * @param allowedValues the allowed values of the old attribute
      */
-    private void addFiltered(Instances data, String attrName, Attribute newAttr, Set<String> allowedValues) {
+    private void addFiltered(Instances data, String attrName, Attribute newAttr, Vector<String> allowedValues) {
 
         Attribute oldAttr = data.attribute(attrName);
         int oldIndex = oldAttr.index();
-        
+        HashSet allowedSet = new HashSet<String>(allowedValues);
+
         boolean [] allowedIdxs = new boolean [oldAttr.numValues()]; // create map for faster queries
         for (int i = 0; i < oldAttr.numValues(); ++i){
-            if (allowedValues.contains(oldAttr.value(i))){
+            if (allowedSet.contains(oldAttr.value(i))){
                 allowedIdxs[i] = true;
             }
         }
@@ -354,6 +428,11 @@ public class AttributeFilter extends MergedHeadersOutput {
         newAttr = data.attribute(oldIndex + 1);
 
         for (int i = 0; i < data.numInstances(); ++i){
+
+            if (data.instance(i).isMissing(oldIndex)){
+                data.instance(i).setMissing(newAttr);
+                continue;
+            }
             int val = (int) data.instance(i).value(oldIndex);
             
             if (allowedIdxs[val]){
@@ -403,6 +482,41 @@ public class AttributeFilter extends MergedHeadersOutput {
     }
 
     /**
+     * Composes the filtering information that is to be printed out to a file after the filtering
+     * has finished. Format: <tt>original name:new name (or empty if unchanged):values</tt>.
+     * 
+     * @param data the data with attributes already filtered
+     * @param filtered a map of filtered attributes names to their original names
+     * @return the processing information for later use with <tt>info_file</tt>
+     */
+    private String getFilteringInfo(Instances data, HashMap<String, String> filtered) {
+
+        StringBuilder sb = new StringBuilder();
+
+        Enumeration<Attribute> attrs = data.enumerateAttributes();
+
+        while (attrs.hasMoreElements()) {
+            Attribute attr = attrs.nextElement();
+            if (attr.isNominal()) {
+
+                // this attribute has been filtered, name changed
+                if (filtered.containsKey(attr.name())){
+                    sb.append(filtered.get(attr.name())).append(":").append(attr.name()).append(":");
+                }
+                // not filtered, no change in name
+                else {
+                    sb.append(attr.name()).append(":").append(attr.name()).append(":");
+                }
+
+                sb.append(StringUtils.join(Collections.list(attr.enumerateValues()).toArray(), ",", true))
+                        .append("\n");
+            }
+        }
+
+        return sb.toString();
+    }
+
+    /**
      * This computes the minimum number of occurrences a value must have in order to be preserved, according to
      * the {@link #minOccurrences} and {@link #minPercentage} settings.
      *
@@ -438,48 +552,82 @@ public class AttributeFilter extends MergedHeadersOutput {
     protected String processData(Instances[] data, String info) throws Exception {
 
         if (info == null){
-            StringBuilder sb = new StringBuilder();
+            HashMap<String, String> filtered = new HashMap<String, String>();
+
             for (int j = 0; j < this.attributePrefixes.length; ++j) {
-                sb.append(this.filterAttributePrefix(data, this.attributePrefixes[j]));                
+                filtered.putAll(this.filterAttributePrefix(data, this.attributePrefixes[j]));
             }
-            return sb.toString();
+            if (this.addOtherVal){
+                this.addOtherValue(data);
+            }
+            return this.getFilteringInfo(data[0], filtered);
         }
         else {
-            String [] attribInfos = info.split("\\n");
-
-            for (String attribInfo : attribInfos){
-                String [] nameVal = attribInfo.split(":", 2);
-                Set<String> allowedVals = this.findAllowedValues(data, nameVal[0], nameVal[1]);
-                this.filterAttribute(nameVal[0], data, allowedVals);
-            }
+            this.filterWithInfo(data, info);
             return info;
         }
     }
 
 
     /**
-     * Given the input info line, this finds out the valid attribute values.
+     * This parses the attribute values specifications and and returns the valid attribute values.
      *
-     * @param data the data to be processed (equal headers assumed)
-     * @param attrName the name of the attribute to be processed
      * @param values the string list of allowed attribute value labels (quoted)
      * @return a set of allowed values
      */
-    private Set<String> findAllowedValues(Instances [] data, String attrName, String values) throws TaskException{
-
-        Attribute attr = data[0].attribute(attrName);
-        if (attr == null || !attr.isNominal()){
-            throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Missing attribute " + attrName);
-        }
+    private Vector<String> parseAllowedValues(String values) throws TaskException{
 
         // parse the values
         Vector<String> valList = StringUtils.parseCSV(values);
-        HashSet<String> valSet = new HashSet<String>(valList.size());
+        Vector<String> valSet = new Vector<String>(valList.size());
 
         for (int i = 0; i < valList.size(); ++i){
             valSet.add(StringUtils.unquote(valList.get(i).trim()));
         }
         return valSet;
+    }
+
+    /**
+     * Renames an attribute for all the given data sets.
+     * @param data the data sets to be processed
+     * @param oldName the old name of the attribute
+     * @param newName the new name of the attribute
+     */
+    private void renameAttribute(Instances[] data, String oldName, String newName) {
+
+        for (int i = 0; i < data.length; ++i) {
+            data[i].renameAttribute(data[i].attribute(oldName), newName);
+        }
+    }
+
+    /**
+     * Add the {@link #OTHER_VALUE} to all nominal attributes in all the data sets.
+     * @param data the data sets to be processed
+     */
+    private void addOtherValue(Instances[] data) throws Exception {
+
+        Enumeration<Attribute> attrs = data[0].enumerateAttributes();
+
+        while (attrs.hasMoreElements()) {
+
+            Attribute attr = attrs.nextElement();
+
+            if (attr.isNominal() && attr.indexOfValue(OTHER_VALUE) == -1) {
+
+                AddValues filter = new AddValues();
+                filter.setLabels(OTHER_VALUE);
+                filter.setAttributeIndex(Integer.toString(attr.index()+1));
+                Logger.getInstance().message("Attribute: " + attr.name(), Logger.V_DEBUG);
+                filter.setInputFormat(data[0]);
+
+                for (int i = 0; i < data.length; ++i){
+
+                    String oldName = data[i].relationName();
+                    Filter.useFilter(data[i], filter);
+                    data[i].setRelationName(oldName);
+                }
+            }
+        }
     }
 
 }

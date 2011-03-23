@@ -196,7 +196,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                         break;
 
                     case UNARY:
-                        if (!this.checkDifferentVlaues(data, attr.name())){
+                        if (!this.checkDifferentValues(data, attr.name())){
                             forRemoval.add(attr.name());
                         }
                         break;
@@ -273,7 +273,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * @param name the attribute name to check
      * @return true if there are two different values of the given attribute in the data
      */
-    private boolean checkDifferentVlaues(Instances[] data, String name) {
+    private boolean checkDifferentValues(Instances[] data, String name) {
 
         double firstValue = Double.NaN;
 
