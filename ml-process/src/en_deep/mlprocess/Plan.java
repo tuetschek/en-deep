@@ -110,6 +110,7 @@ public class Plan {
         try {
             // this ensures we never have an exception, but the file may be empty
             planFile.createNewFile();
+            statusFile.createNewFile();
             resetFile.createNewFile();
         }
         catch(IOException ex){
@@ -939,5 +940,16 @@ public class Plan {
      */
     public boolean hasFailedTasks(){
         return this.failedTasks;
+    }
+
+    /**
+     * Requests that the {@link #planFile}, {@link #statusFile} and {@link #resetFile} be deleted upon the
+     * exit of the Java VM.
+     */
+    public synchronized void requestFileCleanup(){
+
+        this.planFile.deleteOnExit();
+        this.statusFile.deleteOnExit();
+        this.resetFile.deleteOnExit();
     }
 }

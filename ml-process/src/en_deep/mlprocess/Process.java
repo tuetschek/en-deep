@@ -59,6 +59,7 @@ import java.nio.charset.Charset;
  * <li><tt>--retrieve_count (-c)</tt> the number of tasks that should be retrieved by one worker at one time (default: 10)</li>
  * <li><tt>--parse_only (-p)</tt> if set, the program will just parse the scenario file, report any problems and end.</li>
  * <li><tt>--workdir (-d)</tt> specifies the working directory (if not the same as that of the plan file).</li>
+ * <li><tt>--cleanup (-l)</tt> tries to delete temporary files created by {@link Plan} when the program ends.</li>
  * </ul>
  * <p>
  * The verbosity setting looks as follows:
@@ -94,6 +95,8 @@ public class Process {
     private static final String OPTL_PARSE_ONLY = "parse_only";
     /** The --charset option long name */
     private static final String OPTL_CHARSET = "charset";
+    /** The --cleanup option long name */
+    private static final String OPTL_CLEANUP = "cleanup";
 
     /** The --threads option short name */
     private static final char OPTS_THREADS = 't';
@@ -111,11 +114,13 @@ public class Process {
     private static final char OPTS_PARSE_ONLY = 'p';
     /** The --charset option short name */
     private static final char OPTS_CHARSET = 's';
+    /** The --cleanup option short name */
+    private static final char OPTS_CLEANUP = 'l';
 
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process";
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "i:t:v:d:r:c:s:p";
+    private static final String OPTSTRING = "i:t:v:d:r:c:s:pl";
 
     /* DATA */
 
@@ -153,7 +158,7 @@ public class Process {
 
         try {
             // parsing the options
-            LongOpt[] possibleOpts = new LongOpt[8];
+            LongOpt[] possibleOpts = new LongOpt[9];
             possibleOpts[0] = new LongOpt(OPTL_THREADS, LongOpt.REQUIRED_ARGUMENT, null, OPTS_THREADS);
             possibleOpts[1] = new LongOpt(OPTL_INSTANCES, LongOpt.REQUIRED_ARGUMENT, null, OPTS_INSTANCES);
             possibleOpts[2] = new LongOpt(OPTL_VERBOSITY, LongOpt.REQUIRED_ARGUMENT, null, OPTS_VERBOSITY);
@@ -162,6 +167,7 @@ public class Process {
             possibleOpts[5] = new LongOpt(OPTL_RETRIEVE_COUNT, LongOpt.REQUIRED_ARGUMENT, null, OPTS_RETRIEVE_COUNT);
             possibleOpts[6] = new LongOpt(OPTL_PARSE_ONLY, LongOpt.NO_ARGUMENT, null, OPTS_PARSE_ONLY);
             possibleOpts[7] = new LongOpt(OPTL_CHARSET, LongOpt.REQUIRED_ARGUMENT, null, OPTS_CHARSET);
+            possibleOpts[8] = new LongOpt(OPTL_CLEANUP, LongOpt.NO_ARGUMENT, null, OPTS_CLEANUP);
 
             Getopt getter = new Getopt(PROGNAME, args, OPTSTRING, possibleOpts);
             int c;
@@ -189,6 +195,9 @@ public class Process {
                         break;
                     case OPTS_PARSE_ONLY:
                         opts.parseOnly = true;
+                        break;
+                    case OPTS_CLEANUP:
+                        opts.cleanup = true;
                         break;
                     case OPTS_CHARSET:
                         opts.charsetName = getter.getOptarg();
@@ -368,6 +377,7 @@ public class Process {
      */
     private void run() {
 
+        // special option: just parse the scenario file
         if (this.opts.parseOnly){
             Plan.getInstance().checkScenario();
             return;
@@ -399,6 +409,11 @@ public class Process {
                     Thread.currentThread().interrupt();
                 }
             }
+        }
+
+        // request cleanup, if supposed to
+        if (this.opts.cleanup){
+            Plan.getInstance().requestFileCleanup();
         }
 
         Logger.getInstance().message("All threads finished, exit status: " + this.getExitStatus(), Logger.V_INFO);
@@ -447,5 +462,7 @@ public class Process {
         boolean parseOnly;
         /** Name of the desired charset to be used by all routines of this program */
         String charsetName;
+        /** Should the {@link Plan} temporary files be deleted on exit ? */
+        boolean cleanup;
     }
 }

@@ -95,7 +95,7 @@ public class ParamException extends GeneralException {
             case ERR_MISSING:
                 return "Missing command parameter:" + this.parName;
             case ERR_TOO_MANY:
-                return "Too many arugments.";
+                return "Too many arguments.";
             case ERR_FILE_NOT_FOUND:
                 return "The input file cannot be found.";
             case ERR_DIR_NOT_FOUND:
