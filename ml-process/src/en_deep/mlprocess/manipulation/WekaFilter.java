@@ -29,12 +29,15 @@ package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.computation.GeneralClassifier;
+import en_deep.mlprocess.computation.WekaClassifier;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Attribute;
 import weka.core.Instances;
 import weka.core.OptionHandler;
 import weka.filters.Filter;
@@ -56,19 +59,19 @@ public class WekaFilter extends Task {
 
     /**
      * This just checks if the number of inputs and outputs is the same an that the required parameters
-     * are set:
+     * are set.
+     * The parameters:
      * <ul>
      * <li><tt>filter_class</tt> -- the WEKA filter class to be used</li>
+     * <li><tt>class_arg</tt> -- the name of the target argument that will be used for classification
+     * (since this influences the behavior of some WEKA filters)</li>
      * </ul>
      * <p>
      * All the input data must have the same headers.
      * </p>
      * <p>
-     * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
-     * a parameter with the name "X", it's passed to the weka class as "-X". Parameters with empty value
-     * are used as switches (e.g. param X="").
-     * Some of these WEKA parameters may be compulsory to the classifier, too. See the particular
-     * classifier definition to check what parameters are possible.
+     * All other (one-character) parameters are treated as parameters of the corresponding WEKA class. Please
+     * see {@link WekaClassifier} for the exact handling of these parameters.
      * </p>
      * 
      */
@@ -86,7 +89,7 @@ public class WekaFilter extends Task {
         }
 
         if (this.getParameterVal(FILTER_CLASS) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameter.");
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameter: " + FILTER_CLASS);
         }
     }
 
@@ -114,7 +117,8 @@ public class WekaFilter extends Task {
     }
 
     /**
-     * This reads all the input data and checks their headers if they're identical.
+     * This reads all the input data and checks their headers if they're identical and sets the class
+     * attribute if provided in the input parameters.
      * @return all the data read from the individual files
      */
     private Instances[] readAndCheckData() throws Exception {
@@ -130,6 +134,21 @@ public class WekaFilter extends Task {
                         + this.input.get(i) + " and " + this.input.get(0) + " don't have equal headers.");
             }
         }
+
+        // set class attribute if set in the data
+        if (this.hasParameter(GeneralClassifier.CLASS_ARG)){
+            String className = this.parameters.remove(GeneralClassifier.CLASS_ARG);
+
+            for (int i = 0; i < data.length; ++i){
+                Attribute classAttr = data[i].attribute(className);
+                if (classAttr == null){
+                    throw new TaskException(TaskException.ERR_INVALID_DATA, this.id,
+                            "Class attribute " + className + " not found in the input data.");
+                }
+                data[i].setClass(classAttr);
+            }
+        }
+
         return data;
     }
 

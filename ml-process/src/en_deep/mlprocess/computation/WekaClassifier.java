@@ -152,11 +152,18 @@ public class WekaClassifier extends GeneralClassifier {
      * are mutually exclusive.
      * </p>
      * <p>
-     * All other parameters are treated as parameters of the corresponding WEKA class, e.g. if there is
-     * a parameter with the name "X", it's passed to the weka class as "-X". Parameters with empty value
-     * are used as switches (e.g. param X="").
-     * Some of these WEKA parameters may be compulsory to the classifier, too. See the particular
-     * classifier definition to check what parameters are possible.
+     * All other (one-character) parameters are treated as parameters of the corresponding WEKA class,
+     * e.g. if there is a parameter with the name "X", it's passed to the weka class as "-X". Parameters
+     * with empty value are used as switches (e.g. <tt>param X="", ...</tt> or <tt>param X, ...</tt>).
+     * </p>
+     * <p>
+     * Since multiple parameters of the same name are allowed for WEKA classes, but not for {@link Task}
+     * classes, parameters consisting of one character and a number are passed on to the WEKA class as
+     * parameters of the same name (e.g. <tt>param X1="foo", X2="bar"</tt> is passed on as <tt>-X foo -X bar</tt>).
+     * </p>
+     * <p>
+     * Some of these WEKA parameters may be compulsory to the WEKA class, too. See the particular
+     * WEKA class documentation to check what parameters are possible.
      * </p>
      *
      * @todo rename select_args to select_attrib, so that the name reflects the function

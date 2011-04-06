@@ -28,10 +28,13 @@
 package en_deep.mlprocess.utils;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.Process;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -194,32 +197,44 @@ public class StringUtils {
 
     /**
      * This takes the parameters of a {@link en_deep.mlprocess.Task} and creates the options for the WEKA
-     * classifier/filter class out of it. Boolean WEKA parameters should
-     * be set without any value in the Task parameters.
+     * classifier/filter class out of it. Boolean WEKA parameters should be set without any value in the Task
+     * parameters. If there are multiple parameters with the same name needed for the WEKA class, their name
+     * (character) should be suffixed with a number.
      *
+     * @param parameters the {@link Task} class parameters, containing the options to be passed to WEKA
      * @return the list of all options to be passed to WEKA
      */
     public static String[] getWekaOptions(Hashtable<String, String> parameters) {
 
-        Vector classifParams = new Vector<String>(parameters.size());
+        Vector<Pair<String, String>> classifParams = new Vector<Pair<String,String>>(parameters.size());
         Enumeration<String> allParams = parameters.keys();
 
+        // collect all parameters, with or without values
         while (allParams.hasMoreElements()) {
 
             String name = allParams.nextElement();
             String value;
 
             value = parameters.get(name);
+            classifParams.add(new Pair(name, value));
+        }
 
-            if (value.equals("")) { // boolean parameters should have no value
-                classifParams.add("-" + name);
-            }
-            else {
-                classifParams.add("-" + name);
-                classifParams.add(value);
+        // sort the parameters of the same name by their numerical suffixes
+        Pair<String, String> [] paramsArray = classifParams.toArray(new Pair[0]);
+        Arrays.sort(paramsArray, new NumberSuffixFirstComparator());
+        Vector<String> ret = new Vector<String>();
+
+        // add them to an array in that order, with or without a value
+        for (int i = 0; i < paramsArray.length; ++i){
+
+            ret.add("-" + paramsArray[i].first.replaceFirst("[0-9]+$", ""));
+
+            if (!paramsArray[i].second.equals("")){
+                ret.add(paramsArray[i].second);
             }
         }
-        return (String[]) classifParams.toArray(new String[0]);
+
+        return ret.toArray(new String [0]);        
     }
 
     /**
@@ -625,5 +640,86 @@ public class StringUtils {
         }
         return false;
     }
+
+    /**
+     * A special class for comparing the {@link #first} parts of {@link String} {@link Pair}s with respect
+     * to numerical suffixes, i.e\. in the same order Windows Explorer does. This means e.g.
+     * that <tt>abc12</tt> is greater than <tt>abc2</tt>.
+     */
+    public static class NumberSuffixFirstComparator implements Comparator<Pair<String, String>> {
+
+        /**
+         * Compare two {@link String} {@link Pair}s with respect to numerical suffixes that may occur in
+         * any of the strings.
+         * @param a the first object to compare
+         * @param b the second object to compare
+         * @return -1 / 0 / 1 according to the order of the objects
+         */
+        @Override
+        public int compare(Pair<String, String> a, Pair<String, String> b) {
+
+            // weird cases, null is at the beginning
+            if (a.first == null){
+                if (b.first == null){
+                    return 0;
+                }
+                return -1;
+            }
+            else if (b.first == null){
+                return 1;
+            }
+
+            // normal case
+            return numberSuffixOrder(a.first, b.first);
+        }
+
+        /**
+         * Compares two strings with respect to number suffixes that may occur in them.
+         * @param a the first string to compare
+         * @param b the second string to compare
+         * @return -1 / 0 / 1 according to the order of the strings
+         */
+        private int numberSuffixOrder(String a, String b) {
+
+            int numBegA = getNumPos(a);
+            int numBegB = getNumPos(b);
+
+            if (numBegA != -1 && numBegB != -1 && numBegA == numBegB
+                    && a.substring(0, numBegA).equals(b.substring(0, numBegA))){
+
+                int numA = 0;
+                int numB = 0;
+                try {
+                    numA = Integer.parseInt(a.substring(numBegA));
+                    numB = Integer.parseInt(b.substring(numBegB));
+                }
+                catch (NumberFormatException e){
+                    Logger.getInstance().message("Number comparing error: " + e.getMessage(), Logger.V_IMPORTANT);
+                }
+
+                return numA < numB ? -1 : (numA > numB ? 1 : 0);
+            }
+            return a.compareTo(b);
+        }
+
+        /**
+         * Find the position where a numeric suffix begins in the string.
+         * @param str the string to be examined
+         * @return the position where a numeric suffix begins, or -1 if there is none
+         */
+        private int getNumPos(String str) {
+
+            if (!Character.isDigit(str.charAt(str.length()-1))){
+                return -1;
+            }
+            int pos = str.length() - 1;
+            while (pos > 0 && Character.isDigit(str.charAt(pos-1))){
+                pos--;
+            }
+            return pos;
+        }
+
+    }
+
 
 }
