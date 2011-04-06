@@ -28,8 +28,8 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.manipulation.DataReader;
 import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -48,7 +48,7 @@ public abstract class Feature {
     /* DATA */
 
     /** The used ST-file reader */
-    StReader reader;
+    DataReader reader;
 
 
     /* METHODS */
@@ -57,7 +57,7 @@ public abstract class Feature {
      * Constructor, to be used by subclasses only
      * @param reader the language-specific ST-file configuration
      */
-    protected Feature(StReader reader){
+    protected Feature(DataReader reader){
         this.reader = reader;
     }
 
@@ -69,7 +69,7 @@ public abstract class Feature {
      * @param reader the ST-format input reader, providing all the data and settings
      * @return the {@link Feature} object to use with the {@link StToArff} class.
      */
-    public static Feature createFeature(String name, StReader reader) {
+    public static Feature createFeature(String name, DataReader reader) {
 
         Feature res = null;
         Class featureClass = null;
@@ -88,7 +88,7 @@ public abstract class Feature {
 
         // try to call a constructor with no parameters
         try {
-            featureConstructor = featureClass.getConstructor(StReader.class);
+            featureConstructor = featureClass.getConstructor(DataReader.class);
             res = (Feature) featureConstructor.newInstance(reader);
         }
         catch (InvocationTargetException e){
@@ -104,7 +104,7 @@ public abstract class Feature {
     }
 
     /**
-     * Returns the ARFF header for this generated feature. The header is does not end with a new-line
+     * Returns the ARFF header for this generated feature. The header must not end with a new-line
      * character.
      * @return the ARFF-style header (name &amp; type)
      */

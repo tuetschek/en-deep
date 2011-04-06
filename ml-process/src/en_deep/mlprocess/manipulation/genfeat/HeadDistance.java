@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
 
 /**
  * This feature indicates the topological distance from the given word to its syntactic
@@ -36,19 +36,19 @@ import en_deep.mlprocess.manipulation.StReader;
  */
 public class HeadDistance extends Feature {
 
-    public HeadDistance(StReader reader) {
+    public HeadDistance(DataReader reader) {
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " HeadDistance " + StReader.INTEGER;
+        return DataReader.ATTRIBUTE + " HeadDistance " + DataReader.INTEGER;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        return Integer.toString(Math.abs(wordNo - this.reader.getHeadPos(wordNo)));
+        return Integer.toString(Math.abs(wordNo - this.reader.getHead(wordNo)));
     }
 
 }

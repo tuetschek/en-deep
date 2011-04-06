@@ -87,7 +87,7 @@ public class StringUtils {
     /**
      * Concatenates all the string representations of objects from a given field, separating them with the
      * given string.
-     * @param data the objects, whose string representations are to be joined
+     * @param data the objects whose string representations are to be joined
      * @param sep field separator
      * @param escape if set, it will enclose all string values in quotes and escape them; treat missing values
      *  as unquoted `?'s.

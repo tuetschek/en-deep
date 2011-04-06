@@ -31,6 +31,7 @@ import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
@@ -236,8 +237,9 @@ public class StToArff extends StLikeConvertor {
         Vector<Pair<String, String>> outputs = null;
         FileOutputStream os = null;
         PrintStream out = null;
+        StReader stData = (StReader) this.reader; // for easier access to methods not in DataReader
 
-        this.reader.setInputFile(st);
+        stData.setInputFile(st);
 
         if (this.oneFileMode){
             os = new FileOutputStream(arff);
@@ -245,9 +247,9 @@ public class StToArff extends StLikeConvertor {
             this.writeHeader(out, StringUtils.truncateFileName(arff), true, !this.omitSemClass);
         }
 
-        while (this.reader.loadNextSentence()){
+        while (stData.loadNextSentence()){
 
-            predNums = this.reader.getPredicates();
+            predNums = stData.getPredicates();
             outputs = this.findOutputs(predNums, arff); // find corresponding output predicate & file names
             if (!this.oneFileMode){
                 this.writeHeaders(outputs); // prepare output file headers
@@ -261,12 +263,12 @@ public class StToArff extends StLikeConvertor {
                     out = new PrintStream(os);
                 }
 
-                for (int j = 0; j < this.reader.length(); ++j){
+                for (int j = 0; j < stData.getSentenceLength(); ++j){
 
                     // skip non-predicate or pruned lines or filtered PsOS if such setting is imposed
                     if (this.predOnly && j != predNums[i]
-                            || this.prune && !this.reader.isInNeighborhood(predNums[i], j)
-                            || this.isFiltered(this.reader.getWordInfo(j, this.reader.IDXI_POS))){
+                            || this.prune && !stData.isInNeighborhood(predNums[i], j)
+                            || this.isFiltered(stData.getWordInfo(j, WordInfo.POS))){
                         continue;
                     }
 
@@ -274,9 +276,9 @@ public class StToArff extends StLikeConvertor {
                     if (this.oneFileMode){
                         out.print("\"" + StringUtils.escape(outputs.get(i).first) + "\",");
                     }
-                    out.print(this.reader.getSentenceId());
+                    out.print(stData.getSentenceId());
 
-                    out.print(this.reader.getCompulsoryFields(j));
+                    out.print(stData.getInputFields(j));
                     
                     // add generated features
                     for (Feature f : this.genFeats){
@@ -285,7 +287,7 @@ public class StToArff extends StLikeConvertor {
 
                     // print the resulting semantic relation to the given predicate
                     if (!this.omitSemClass){
-                        out.print("," + this.reader.getSemRole(j, i));
+                        out.print("," + stData.getSemRole(j, i));
                     }
 
                     out.println();
@@ -297,8 +299,8 @@ public class StToArff extends StLikeConvertor {
                 }
             }
 
-            if (this.reader.getSentenceId() % 1000 == 0){
-                Logger.getInstance().message(this.id + ": Input: " + st + ", sentence: " + this.reader.getSentenceId(),
+            if (stData.getSentenceId() % 1000 == 0){
+                Logger.getInstance().message(this.id + ": Input: " + st + ", sentence: " + stData.getSentenceId(),
                         Logger.V_DEBUG);
             }
         }
@@ -361,9 +363,9 @@ public class StToArff extends StLikeConvertor {
 
             String predicate, fileName;
 
-            predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], this.reader.IDXI_PRED)
-                    : this.reader.getWordInfo(predNums[i], this.reader.IDXI_LEMMA))
-                    + this.reader.getPredicateType(this.reader.getWordInfo(predNums[i], this.reader.IDXI_POS));
+            predicate = (this.divideSenses ?  this.reader.getWordInfo(predNums[i], WordInfo.PRED)
+                    : this.reader.getWordInfo(predNums[i], WordInfo.LEMMA))
+                    + ((StReader) this.reader).getPredicateType(this.reader.getWordInfo(predNums[i], WordInfo.POS));
             fileName = StringUtils.replace(pattern, this.outPrefix + FileUtils.fileNameEncode(predicate));
             this.usedFiles.put(predicate, fileName); // store the used file name
             outputs.add(new Pair<String, String>(predicate, fileName));
@@ -488,6 +490,17 @@ public class StToArff extends StLikeConvertor {
             }
         }
         return false;
+    }
+
+    protected void initReader() throws TaskException{
+        // initialize the ST reader
+        try {
+            this.reader = new StReader(this);
+        }
+        catch (IOException e){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                    "Cannot initialize ST reader, probably lang_conf file error:" + e.getMessage());
+        }
     }
     
 }

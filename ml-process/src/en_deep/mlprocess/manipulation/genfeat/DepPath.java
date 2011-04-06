@@ -27,8 +27,8 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
 
@@ -42,23 +42,23 @@ import java.util.Arrays;
  */
 public class DepPath extends Feature {
 
-    public DepPath(StReader reader) {
+    public DepPath(DataReader reader) {
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " DepPathRel " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " DepPathPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " DepPathCPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " DepPathDir " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " DepPathLength " + StReader.INTEGER;
+        return DataReader.ATTRIBUTE + " DepPathRel " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " DepPathPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " DepPathCPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " DepPathDir " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " DepPathLength " + DataReader.INTEGER;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        int [] pathBack = new int [this.reader.length()];
+        int [] pathBack = new int [this.reader.getSentenceLength()];
         int curPos = predNo + 1; // current position
         String pos; // last used POS value, for producing the Coarse POSes
         StringBuilder pathRel = new StringBuilder(), pathPos = new StringBuilder(), 
@@ -73,7 +73,7 @@ public class DepPath extends Feature {
         }
 
         while(curPos > 0){ // find the way from the root to the predicate and store it in pathBack
-            int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_HEAD));
+            int head = this.reader.getHead(curPos - 1) + 1;
 
             if (head > 0){
                 pathBack[head-1] = curPos;
@@ -87,11 +87,11 @@ public class DepPath extends Feature {
         // find the way up from the argument to the predicate-root path
         curPos = wordNo + 1;
         while (curPos != 0 && curPos != predNo + 1 && pathBack[curPos-1] == -1){
-            int head = Integer.parseInt(this.reader.getWordInfo(curPos - 1,this.reader.IDXI_HEAD));
+            int head = this.reader.getHead(curPos - 1) + 1;
 
             if (curPos != wordNo + 1){
-                pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
-                pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1,this.reader.IDXI_POS));
+                pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                 pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
                 pathDir.append("/");
             }
@@ -111,8 +111,8 @@ public class DepPath extends Feature {
             }
             else {
                 if (curPos != wordNo + 1){ // end the way up
-                    pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
-                    pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
+                    pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                    pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                     pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
                     pathDir.append("/");
                     pathLength++;
@@ -121,8 +121,8 @@ public class DepPath extends Feature {
             }
             // follow the predicate-root path down to the predicate
             while (curPos != 0 && curPos != predNo + 1){
-                pathRel.append("\\").append(this.reader.getWordInfo(curPos - 1, this.reader.IDXI_DEPREL));
-                pathPos.append("\\").append(pos = this.reader.getWordInfo(curPos - 1, this.reader.IDXI_POS));
+                pathRel.append("\\").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                pathPos.append("\\").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                 pathCpos.append("\\").append(StringUtils.safeSubstr(pos, 0, 1));
                 pathDir.append("\\");
                 curPos = pathBack[curPos-1];

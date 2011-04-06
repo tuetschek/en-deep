@@ -27,9 +27,9 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StReader.Direction;
-import en_deep.mlprocess.manipulation.StToArff;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.Direction;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -43,23 +43,23 @@ public class SiblingPOS extends Feature {
 
     /* METHODS */
 
-    public SiblingPOS(StReader reader){
+    public SiblingPOS(DataReader reader){
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " LeftSiblingPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " RightSiblingPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " LeftSiblingCPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " RightSiblingCPOS " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " LeftSiblingPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " RightSiblingPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " LeftSiblingCPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " RightSiblingCPOS " + DataReader.STRING;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        String leftPOS = this.reader.getWordInfo(this.reader.getSiblingPos(wordNo, Direction.LEFT), this.reader.IDXI_POS);
-        String rightPOS = this.reader.getWordInfo(this.reader.getSiblingPos(wordNo, Direction.RIGHT), this.reader.IDXI_POS);
+        String leftPOS = this.reader.getWordInfo(this.reader.getSibling(wordNo, Direction.LEFT), WordInfo.POS);
+        String rightPOS = this.reader.getWordInfo(this.reader.getSibling(wordNo, Direction.RIGHT), WordInfo.POS);
         String leftCPOS = StringUtils.safeSubstr(leftPOS, 0, 1);
         String rightCPOS = StringUtils.safeSubstr(rightPOS, 0, 1);
 

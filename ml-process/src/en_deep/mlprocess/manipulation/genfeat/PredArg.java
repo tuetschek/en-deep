@@ -27,8 +27,8 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StToArff;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -49,7 +49,7 @@ public class PredArg extends Feature {
      * The constructor just sets the {@link #reader} variable.
      * @param reader the St-file reader
      */
-    public PredArg(StReader reader) {
+    public PredArg(DataReader reader) {
         super(reader);
     }
 
@@ -76,11 +76,11 @@ public class PredArg extends Feature {
      */
     private String getHeaderText(String prefix) {
 
-        return StReader.ATTRIBUTE + " " + prefix + "Form " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " " + prefix + "Lemma " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " " + prefix + "POS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " " + prefix + "CPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " " + prefix + "DepRel " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " " + prefix + "Form " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " " + prefix + "Lemma " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " " + prefix + "POS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " " + prefix + "CPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " " + prefix + "DepRel " + DataReader.STRING;
     }
 
     /**
@@ -92,11 +92,11 @@ public class PredArg extends Feature {
         String [] info = new String [5];
         int i = 0;
 
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.reader.IDXI_FORM));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.reader.IDXI_LEMMA));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.reader.IDXI_POS));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.reader.IDXI_POS).substring(0, 1));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.reader.IDXI_DEPREL));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.FORM));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.LEMMA));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS).substring(0, 1));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.DEPREL));
 
         return info;
     }

@@ -29,8 +29,8 @@ package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StReader.Direction;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.Direction;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -85,7 +85,7 @@ public class Clusters extends Feature {
      * Just the initialization -- reads the clusterType files and saves the clusters for later use.
      * @param reader
      */
-    public Clusters(StReader reader) throws TaskException {
+    public Clusters(DataReader reader) throws TaskException {
 
         super(reader);
 
@@ -119,19 +119,19 @@ public class Clusters extends Feature {
 
         for (int i = 0; i < this.featNames.length; ++i){
 
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append(" " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left3 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left2 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left1 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left12 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right12 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right1 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right2 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right3 " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Parent " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Children " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_LeftSibling " + StReader.STRING).append(LF);
-            text.append(StReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_RightSibling " + StReader.STRING);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append(" " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left3 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left2 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left1 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Left12 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right12 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right1 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right2 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Right3 " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Parent " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_Children " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_LeftSibling " + DataReader.STRING).append(LF);
+            text.append(DataReader.ATTRIBUTE + " ").append(this.featNames[i]).append("_RightSibling " + DataReader.STRING);
 
             if (i < this.featNames.length - 1){
                 text.append(LF);
@@ -167,10 +167,10 @@ public class Clusters extends Feature {
             text.append(this.getCluster(clusterType, wordNo + 3)).append(",");
 
             // parent
-            text.append(this.getCluster(clusterType, this.reader.getHeadPos(wordNo))).append(",");
+            text.append(this.getCluster(clusterType, this.reader.getHead(wordNo))).append(",");
 
             // children
-            int [] childrenPos = this.reader.getChildrenPos(wordNo);
+            int [] childrenPos = this.reader.getChildren(wordNo);
             if (childrenPos.length == 0){
                 text.append("-");
             }
@@ -185,8 +185,8 @@ public class Clusters extends Feature {
             text.append(",");
 
             // left & right sibling
-            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.LEFT))).append(",");
-            text.append(this.getCluster(clusterType, this.reader.getSiblingPos(wordNo, Direction.RIGHT)));
+            text.append(this.getCluster(clusterType, this.reader.getSibling(wordNo, Direction.LEFT))).append(",");
+            text.append(this.getCluster(clusterType, this.reader.getSibling(wordNo, Direction.RIGHT)));
         }
         return text.toString();
     }
@@ -227,7 +227,7 @@ public class Clusters extends Feature {
      */
     private String getToken(int dataTypeNo, int wordNo) {
 
-        if (wordNo < 0 || wordNo >= this.reader.length()){
+        if (wordNo < 0 || wordNo >= this.reader.getSentenceLength()){
             return "";
         }
 

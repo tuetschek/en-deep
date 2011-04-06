@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
 
 /**
  * This feature indicates several following relations:
@@ -37,14 +37,14 @@ import en_deep.mlprocess.manipulation.StReader;
  */
 public class SyntRel extends Feature {
 
-    public SyntRel(StReader reader) {
+    public SyntRel(DataReader reader) {
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " SiblChild " + StReader.INTEGER + LF
-                + StReader.ATTRIBUTE + " SyntDep " + StReader.INTEGER;
+        return DataReader.ATTRIBUTE + " SiblChild " + DataReader.INTEGER + LF
+                + DataReader.ATTRIBUTE + " SyntDep " + DataReader.INTEGER;
     }
 
     @Override
@@ -55,7 +55,7 @@ public class SyntRel extends Feature {
         int curPos = wordNo;
 
         while (curPos != -1){ // find out the syntactical dependency (a predicate doesn't depend on itself)
-            curPos = this.reader.getHeadPos(curPos);
+            curPos = this.reader.getHead(curPos);
 
             if (curPos == predNo){
                 syntDep = true;
@@ -64,11 +64,11 @@ public class SyntRel extends Feature {
         }
 
         // siblings (a predicate is it's own sibling)
-        if (this.reader.getHeadPos(wordNo) == this.reader.getHeadPos(predNo)){
+        if (this.reader.getHead(wordNo) == this.reader.getHead(predNo)){
             siblChild = true;
         }
         // direct child
-        else if (this.reader.getHeadPos(wordNo) == predNo) {
+        else if (this.reader.getHead(wordNo) == predNo) {
             siblChild = true;
         }
 

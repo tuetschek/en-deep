@@ -22,7 +22,7 @@ import java.util.Vector;
 public class StLikeToArff extends StLikeConvertor {
 
     /**
-     * This creates a new {@link StToArff} task.
+     * This creates a new {@link StLikeToArff} task.
      * <p>
      * The output specification must have a "**" pattern, in order to produce more output files. If there
      * are more input files, the exactly same number of outputs (with "**") must be given.
@@ -38,20 +38,14 @@ public class StLikeToArff extends StLikeConvertor {
      *   <li>a regexp that catches all adverbial modifier semantic roles</li>
      *   <li>a space-separated list of additional columns in the ST file, if any</li>
      * </ul></li>
-     * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
+     * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only (only works with {@link StReader})
+     * </li>
      * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
-     * valency arguments and for adverbials &amp; references.</li>
-     * <li><tt>pred_only</tt> -- if set to non-false, only predicates are output, omitting all other words in the sentence</li>
-     * <li><tt>divide_senses</tt> -- if set to non-false, the data are divided according to the sense of predicates, too</li>
-     * <li><tt>prune</tt> -- if set, the argument candidates are pruned (syntactical neighborhood of the predicate only)</li>
-     * <li><tt>filt_pos</tt> -- (optional) provide a space-separated list of POS which should be filtered at the output,
-     * e.g. meaningful for English are: "'' ( ) , . : `` EX HYPH LS NIL POS"</li>
-     * <li><tt>one_file</tt> -- this turns the one-file-mode on. If set, the headers won't be set to nominal and the output
-     * will go into one file only</li>
+     * valency arguments and for adverbials &amp; references (only works with {@link StReader}).</li>
      * </ul>
      * <p>
-     * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s,
-     * or by the super-classes.
+     * Additional parameters may be required by the individual generated
+     * {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s, or by the super-classes.
      * </p>
      *
      * @todo no need for possible list of POS, FEAT and DEPREL in the lang_conf file, exclude it
@@ -118,11 +112,11 @@ public class StLikeToArff extends StLikeConvertor {
 
         while (this.reader.loadNextSentence()){
 
-            for (int j = 0; j < this.reader.length(); ++j){
+            for (int j = 0; j < this.reader.getSentenceLength(); ++j){
 
                 out.print(this.reader.getSentenceId());
 
-                out.print(this.reader.getCompulsoryFields(j));
+                out.print(this.reader.getInputFields(j));
 
                 // add generated features
                 for (Feature f : this.genFeats){
@@ -140,6 +134,12 @@ public class StLikeToArff extends StLikeConvertor {
 
         out.close();
         out = null;
+    }
+
+    @Override
+    protected void initReader() throws TaskException {
+        // TODO parametr na třídu Readeru, k tomu napsat ArffReader (snad jednoduchý)
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
 }

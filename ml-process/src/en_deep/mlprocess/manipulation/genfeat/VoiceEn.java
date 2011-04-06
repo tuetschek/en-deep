@@ -27,8 +27,8 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 
 /**
  * This feature indicates the word's voice in English (as a verb), if applicable. It depends
@@ -40,21 +40,21 @@ public class VoiceEn extends Feature {
 
     /* METHODS */
 
-    public VoiceEn(StReader reader) {
+    public VoiceEn(DataReader reader) {
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " Voice " + StReader.CLASS + "{Infinite,Active,Passive,_}";
+        return DataReader.ATTRIBUTE + " Voice " + DataReader.CLASS + "{Infinite,Active,Passive,_}";
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        String wordPOS = this.reader.getWordInfo(wordNo, this.reader.IDXI_POS);
+        String wordPOS = this.reader.getWordInfo(wordNo, WordInfo.POS);
         // head POS -- will be "" for root node
-        String headPOS = this.reader.getWordInfo(this.reader.getHeadPos(wordNo), this.reader.IDXI_POS);
+        String headPOS = this.reader.getWordInfo(this.reader.getHead(wordNo), WordInfo.POS);
 
         // we need to deal with a verb
         if (wordPOS.startsWith("VB") || wordPOS.equals("MD")){

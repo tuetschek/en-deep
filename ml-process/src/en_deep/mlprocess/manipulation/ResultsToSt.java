@@ -30,11 +30,12 @@ package en_deep.mlprocess.manipulation;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 import weka.core.Attribute;
@@ -127,6 +128,19 @@ public class ResultsToSt extends StManipulation {
 
 
     @Override
+    protected void initReader() throws TaskException{
+        // initialize the ST reader
+        try {
+            this.reader = new StReader(this);
+        }
+        catch (IOException e){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
+                    "Cannot initialize ST reader, probably lang_conf file error:" + e.getMessage());
+        }
+    }
+
+
+    @Override
     public void perform() throws TaskException {
         
         try {
@@ -153,7 +167,7 @@ public class ResultsToSt extends StManipulation {
                         this.rewriteArguments();
                         break;
                 }
-                out.print(this.reader.getSentenceST());
+                out.print(((StReader) this.reader).getSentenceST());
                 out.print("\n"); // force unix-LF as in original format
 
                 if (ctr > 0 && ctr % 1000 == 0){
@@ -200,13 +214,17 @@ public class ResultsToSt extends StManipulation {
      */
     private void rewritePredicates() {
 
-        for (int i = 0; i < this.reader.length(); ++i){
-            if (!this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals(this.reader.EMPTY_VALUE)){
+        // we know this works, and otherwise it would be too complicated to use the modifying methods that are generally
+        // not present in DataReader
+        StReader stData = (StReader) this.reader;
 
-                String predName = this.reader.getWordInfo(i, this.reader.IDXI_LEMMA) +
-                        this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));
+        for (int i = 0; i < stData.getSentenceLength(); ++i){
+            if (!stData.getWordInfo(i, stData.IDXI_FILLPRED).equals(stData.EMPTY_VALUE)){
 
-                this.reader.setField(this.reader.IDXI_PRED, i, this.predicatePredictions.get(predName).getNext());
+                String predName = stData.getWordInfo(i, WordInfo.LEMMA) +
+                        stData.getPredicateType(stData.getWordInfo(i, WordInfo.POS));
+
+                stData.setField(stData.IDXI_PRED, i, this.predicatePredictions.get(predName).getNext());
             }
         }
     }
@@ -217,19 +235,22 @@ public class ResultsToSt extends StManipulation {
      */
     private void rewriteArguments() {
 
+        // see rewritePredicates for explanation
+        StReader stData = (StReader) this.reader;
+
         int predicateNo = 0;
-        int sentId = this.reader.getSentenceId();
+        int sentId = stData.getSentenceId();
        
         // ensure there are always enough columns, even if the sentence doesn't contain any predicates at all
-        if (this.reader.width() < this.reader.IDXI_PRED + 1){
-            this.reader.setField(this.reader.IDXI_PRED, 0, this.reader.EMPTY_VALUE);
+        if (stData.width() < stData.IDXI_PRED + 1){
+            stData.setField(stData.IDXI_PRED, 0, stData.EMPTY_VALUE);
         }
-        for (int i = 0; i < this.reader.length(); ++i){           
+        for (int i = 0; i < stData.getSentenceLength(); ++i){
 
-            if (!this.reader.getWordInfo(i, this.reader.IDXI_FILLPRED).equals(this.reader.EMPTY_VALUE)){ // predicate found
+            if (!stData.getWordInfo(i, stData.IDXI_FILLPRED).equals(stData.EMPTY_VALUE)){ // predicate found
 
-                String predName = this.reader.getWordInfo(i, this.reader.IDXI_PRED) +
-                        this.reader.getPredicateType(this.reader.getWordInfo(i, this.reader.IDXI_POS));
+                String predName = stData.getWordInfo(i, stData.IDXI_PRED) +
+                        stData.getPredicateType(stData.getWordInfo(i, stData.IDXI_POS));
                 ArgumentPrediction predicts = this.argumentPredictions.get(predName);
 
                 if (predicts == null){
@@ -238,8 +259,8 @@ public class ResultsToSt extends StManipulation {
                     continue;
                 }
 
-                for (int j = 0; j < this.reader.length(); ++j){
-                    this.reader.setField(this.reader.IDXI_SEMROLE + predicateNo, j, predicts.get(sentId, j+1));
+                for (int j = 0; j < stData.getSentenceLength(); ++j){
+                    stData.setField(stData.IDXI_SEMROLE + predicateNo, j, predicts.get(sentId, j+1));
                 }
                 predicateNo++;
             }

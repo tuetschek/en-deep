@@ -27,8 +27,8 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -37,32 +37,32 @@ import en_deep.mlprocess.utils.StringUtils;
  */
 public class Head extends Feature {
 
-    public Head(StReader reader){
+    public Head(DataReader reader){
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " ParentPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ParentCPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ParentLemma " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ParentForm " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " ParentPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ParentCPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ParentLemma " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ParentForm " + DataReader.STRING;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
         
-        Integer headPos = this.reader.getHeadPos(wordNo);
+        Integer headPos = this.reader.getHead(wordNo);
 
         if (headPos == 0){ // the root node
             return "\"\",\"\",\"\",\"\"";
         }
-        String pos = this.reader.getWordInfo(headPos, this.reader.IDXI_POS);
+        String pos = this.reader.getWordInfo(headPos, WordInfo.POS);
         String cpos = pos.isEmpty() ? "" : pos.substring(0, 1);
         return "\"" + StringUtils.escape(pos) + "\",\""
                 + StringUtils.escape(cpos) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_LEMMA)) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(headPos, this.reader.IDXI_FORM)) + "\"";
+                + StringUtils.escape(this.reader.getWordInfo(headPos, WordInfo.LEMMA)) + "\",\""
+                + StringUtils.escape(this.reader.getWordInfo(headPos, WordInfo.FORM)) + "\"";
     }
 
 }

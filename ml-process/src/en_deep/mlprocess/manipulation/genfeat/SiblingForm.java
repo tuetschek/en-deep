@@ -27,9 +27,9 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StReader.Direction;
-import en_deep.mlprocess.manipulation.StToArff;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.Direction;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -43,14 +43,14 @@ public class SiblingForm extends Feature {
 
     /* METHODS */
 
-    public SiblingForm(StReader reader){
+    public SiblingForm(DataReader reader){
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " LeftSiblingForm " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " RightSiblingForm " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " LeftSiblingForm " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " RightSiblingForm " + DataReader.STRING;
     }
 
     @Override
@@ -58,9 +58,9 @@ public class SiblingForm extends Feature {
 
         // produce output -- find the forms of the both siblings, if applicable
         return "\"" + StringUtils.escape(this.reader.getWordInfo(
-                this.reader.getSiblingPos(wordNo, Direction.LEFT), this.reader.IDXI_FORM)) + "\",\""
+                this.reader.getSibling(wordNo, Direction.LEFT), WordInfo.FORM)) + "\",\""
                 + StringUtils.escape(this.reader.getWordInfo(
-                this.reader.getSiblingPos(wordNo, Direction.RIGHT), this.reader.IDXI_FORM)) + "\"";
+                this.reader.getSibling(wordNo, Direction.RIGHT), WordInfo.FORM)) + "\"";
     }
 
 }

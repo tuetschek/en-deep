@@ -27,9 +27,9 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StReader.Direction;
-import en_deep.mlprocess.manipulation.StToArff;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.Direction;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -43,14 +43,14 @@ public class SiblingLemma extends Feature {
 
     /* METHODS */
 
-    public SiblingLemma(StReader reader){
+    public SiblingLemma(DataReader reader){
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " LeftSiblingLemma " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " RightSiblingLemma " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " LeftSiblingLemma " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " RightSiblingLemma " + DataReader.STRING;
     }
 
     @Override
@@ -58,9 +58,9 @@ public class SiblingLemma extends Feature {
 
         // produce output -- find the lemmas of the both siblings, if applicable
         return "\"" + StringUtils.escape(this.reader.getWordInfo(
-                this.reader.getSiblingPos(wordNo, Direction.LEFT), this.reader.IDXI_LEMMA)) + "\",\""
+                this.reader.getSibling(wordNo, Direction.LEFT), WordInfo.LEMMA)) + "\",\""
                 + StringUtils.escape(this.reader.getWordInfo(
-                this.reader.getSiblingPos(wordNo, Direction.RIGHT), this.reader.IDXI_LEMMA)) + "\"";
+                this.reader.getSibling(wordNo, Direction.RIGHT), WordInfo.LEMMA)) + "\"";
     }
 
 }

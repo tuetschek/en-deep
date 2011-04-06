@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
 
 /**
  * This feature indicates the topological distance from the predicate to the given word.
@@ -35,13 +35,13 @@ import en_deep.mlprocess.manipulation.StReader;
  */
 public class WordDistance extends Feature {
 
-    public WordDistance(StReader reader) {
+    public WordDistance(DataReader reader) {
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " WordDistance " + StReader.INTEGER;
+        return DataReader.ATTRIBUTE + " WordDistance " + DataReader.INTEGER;
     }
 
     @Override

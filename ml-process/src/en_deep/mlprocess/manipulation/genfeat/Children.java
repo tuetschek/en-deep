@@ -27,8 +27,8 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -41,26 +41,26 @@ public class Children extends Feature {
     /** The separator for the individual children */
     private static final String SEP = "|";
 
-    public Children(StReader reader){
+    public Children(DataReader reader){
         super(reader);
     }
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " ChildrenPOS " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ChildrenLemma " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ChildrenForm " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ChildrenCPOS " + StReader.STRING;
+        return DataReader.ATTRIBUTE + " ChildrenPOS " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ChildrenLemma " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ChildrenForm " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ChildrenCPOS " + DataReader.STRING;
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
 
-        int [] children = this.reader.getChildrenPos(wordNo);
-        String [] pos = this.reader.getWordsInfo(children, this.reader.IDXI_POS);
-        String [] lemma = this.reader.getWordsInfo(children, this.reader.IDXI_LEMMA);
-        String [] form = this.reader.getWordsInfo(children, this.reader.IDXI_FORM);
+        int [] children = this.reader.getChildren(wordNo);
+        String [] pos = this.reader.getWordsInfo(children, WordInfo.POS);
+        String [] lemma = this.reader.getWordsInfo(children, WordInfo.LEMMA);
+        String [] form = this.reader.getWordsInfo(children, WordInfo.FORM);
         String [] cpos = StringUtils.substrings(pos, 0, 1);
 
         // output the result

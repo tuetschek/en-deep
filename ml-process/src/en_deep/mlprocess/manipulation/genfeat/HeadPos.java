@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
 
 /**
  * This generated feature indicates the relative position of the given word to
@@ -37,20 +37,20 @@ import en_deep.mlprocess.manipulation.StReader;
  */
 public class HeadPos extends Feature {
 
-    public HeadPos(StReader reader) {
+    public HeadPos(DataReader reader) {
         super(reader);
     }
 
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " HeadPos " + StReader.CLASS + "{Before,After,_}";
+        return DataReader.ATTRIBUTE + " HeadPos " + DataReader.CLASS + "{Before,After,_}";
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        int headPos = this.reader.getHeadPos(wordNo);
+        int headPos = this.reader.getHead(wordNo);
 
         if (headPos == 0){
             return "_";

@@ -29,7 +29,6 @@ package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
-import en_deep.mlprocess.manipulation.posfeat.POSFeatures;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -43,22 +42,10 @@ import java.util.Vector;
  * This stores all the configuration needed for the conversion an the generated
  * features as well.
  */
-public class StReader {
+public class StReader extends DataReader {
 
     /* CONSTANTS */
 
-    /** Topological direction */
-    public enum Direction {
-        LEFT, RIGHT
-    }
-    /** Attribute definition start in ARFF files */
-    public static final String ATTRIBUTE = "@ATTRIBUTE";
-    /** Specification of an attribute as CLASS in ARFF files @todo move to StReader */
-    public static final String CLASS = "";
-    /** Specification of an attribute as INTEGER in ARFF files @todo move to StReader */
-    public static final String INTEGER = "INTEGER";
-    /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
-    public static final String STRING = "STRING";
 
     /** Name of the ARFF lemma attribute */
     public final String LEMMA;
@@ -134,16 +121,6 @@ public class StReader {
 
     /** Sentence ID generation -- last used value */
     private static int lastSentenceId = 0;
-
-    /** 
-     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.POSFeatures} subclass that should handle the
-     * POS features of this language, or null.
-     */
-    public String posFeatName;
-    /**
-     * The POS features handling class for this language, or null if not necessary.
-     */
-    public POSFeatures posFeatHandler;
     /** Possible semantic roles */
     public String[] semRoles;
     /** Tag pattern for verbs in the ST file */
@@ -166,13 +143,9 @@ public class StReader {
      * (predicted or non-predicted) member by IDXI_ .. + predictedNon.
      */
     public final int predictedNon;
-    /** The {@link StManipulation} task this reader works for. */
-    private final StManipulation task;
     
     /** The data for the current sentence */
     private Vector<String []> words;
-    /** The id of the current sentence */
-    private int sentenceId;
 
     /** List of additional columns (possibly) included with the ST data (before any APREDs) */
     private final String[] additionalColumns;
@@ -189,8 +162,8 @@ public class StReader {
      */
     StReader(StManipulation task) throws IOException {
 
-        // set main parameters
-        this.task = task;
+        super(task);
+        
         this.usePredicted = this.task.getBooleanParameterVal(StManipulation.PREDICTED);
         this.divideAMs = this.task.getBooleanParameterVal(StToArff.DIVIDE_AMS);
 
@@ -254,26 +227,11 @@ public class StReader {
     }
 
     /**
-     * If there is a name of the POS handling class in the configuration file, this will try to initialize
-     * it. If the class is not found in the {@link en_deep.mlprocess.manipulation.genfeat} package, the process
-     * will fail.
-     */
-    private void initPOSFeats() throws IOException {
-
-        if (this.posFeatName != null){
-            this.posFeatHandler = POSFeatures.createHandler(this.posFeatName);
-
-            if (this.posFeatHandler == null){
-                throw new IOException("POS feature handling " + "class `" + this.posFeatName + "' creation failed.");
-            }
-        }
-    }
-
-    /**
      * Sets a new input file and opens it.
      *
      * @param inputFile the path to the new input ST file
      */
+    @Override
     void setInputFile(String fileName) throws IOException {
 
         this.inputFileName = fileName;
@@ -286,7 +244,7 @@ public class StReader {
      * @return list of semantic roles
      */
     private String getSemRoles() {
-        return this.listMembers(this.semRoles);
+        return StringUtils.join(this.semRoles, ",", true);
     }
 
     /**
@@ -299,50 +257,12 @@ public class StReader {
     private String getSemRoles(boolean adverbials){
 
         String [] matchingRoles = StringUtils.getMatching(this.semRoles, this.amsPat, !adverbials);
-        return this.listMembers(matchingRoles);
+        return StringUtils.join(matchingRoles, ",", true);
     }
 
-    /**
-     * Return a comma-separated list of items from an array
-     * @param arr the array to be transformed to a string
-     * @return a comma-separated list in string form
-     */
-    private String listMembers(String[] arr) {
-        StringBuilder sb = new StringBuilder();
-        if (arr == null || arr.length == 0) {
-            return "";
-        }
-        sb.append("\"").append(StringUtils.escape(arr[0])).append("\"");
-        for (int j = 1; j < arr.length; ++j) {
-            sb.append(",\"").append(StringUtils.escape(arr[j])).append("\"");
-        }
-        return sb.toString();
-    }
+  
 
-
-    /**
-     * Returns the value of the given task parameter.
-     * @param paramName the desired parameter name
-     * @return the value of the given task parameter
-     */
-    public String getTaskParameter(String paramName) {
-        return this.task.getParameterVal(paramName);
-    }
-
-    /**
-     * Returns the id of the current task.
-     * @return the id of the current task
-     */
-    public String getTaskId() {
-        return this.task.getId();
-    }
-
-    /**
-     * Reads the sentence from the input ST file. Generates an ID for the sentence.
-     * On EOF, closes the input file.
-     *
-     * @return true if successful, false on EOF
-     */
+    @Override
     boolean loadNextSentence() throws IOException {
 
         String word;
@@ -376,10 +296,10 @@ public class StReader {
      */
     int[] getPredicates() {
 
-        int [] ret = new int [this.length()]; // upper bound
+        int [] ret = new int [this.getSentenceLength()]; // upper bound
         int pos = 0;
 
-        for (int i = 0; i < this.length(); ++i){ // collect all predicate positions
+        for (int i = 0; i < this.getSentenceLength(); ++i){ // collect all predicate positions
             if (this.getWordInfo(i, IDXI_FILLPRED).equals("Y")){
                 ret[pos] = i;
                 pos++;
@@ -389,10 +309,13 @@ public class StReader {
     }
 
     /**
-     * Returns the number of words in the current sentence.
+     * Returns the number of words in the current sentence, -1 if no sentence loaded.
      * @return the length of the current sentence
      */
-    public int length() {
+    public int getSentenceLength() {
+        if (this.words == null){
+            return -1;
+        }
         return this.words.size();
     }
 
@@ -430,15 +353,9 @@ public class StReader {
         return this.words.get(wordNo)[fieldNo];
     }
 
-    /**
-     * This returns all the compulsory information about the given word (starting with a comma,
-     * fields enclosed in quotes if necessary). It returns all the features values if applicable;
-     * the missing values are returned as ARFF unquoted '?'.
-     * @param wordNo the number of the word in the current sentence
-     * @param fieldNo the number of the desired information field
-     * @return the given information field for the given word, in quotes
-     */
-    public String getCompulsoryFields(int wordNo){
+
+    @Override
+    public String getInputFields(int wordNo){
 
         int goldFeatPos = this.usePredicted ? this.IDXI_FEAT + this.predictedNon : this.IDXI_FEAT;
         int predFeatPos = this.usePredicted ? this.IDXI_FEAT : this.IDXI_FEAT + this.predictedNon;
@@ -491,11 +408,11 @@ public class StReader {
      * @param wordNo the word to get the children for
      * @return the children of the given word
      */
-    public int [] getChildrenPos(int wordNo){
+    public int [] getChildren(int wordNo){
 
         ArrayList<Integer> children = new ArrayList<Integer>();
         // find all children
-        for (int i = 0; i < this.length(); ++i){
+        for (int i = 0; i < this.getSentenceLength(); ++i){
             if (this.getWordInfo(i, IDXI_HEAD).equals(Integer.toString(wordNo + 1))){
                 children.add(i);
             }
@@ -507,14 +424,6 @@ public class StReader {
             ret[i] = children.get(i);
         }
         return ret;
-    }
-
-    /**
-     * Returns the ID of the current sentence.
-     * @return the sentence ID
-     */
-    public int getSentenceId(){
-        return this.sentenceId;
     }
 
    /**
@@ -532,9 +441,9 @@ public class StReader {
      * @param wordNo the word to look up the head for
      * @return the position of the syntactic head of the given word, or -1 for the root node
      */
-    public int getHeadPos(int wordNo) {
+    public int getHead(int wordNo) {
 
-        if (wordNo < 0 || wordNo >= this.length()){
+        if (wordNo < 0 || wordNo >= this.getSentenceLength()){
             return -1;
         }
 
@@ -552,7 +461,7 @@ public class StReader {
      * @param whichOne which (left or right) sibling to get
      * @return the position of the desired sibling, or -1, if it does not exist
      */
-    public int getSiblingPos(int wordNo, Direction whichOne){
+    public int getSibling(int wordNo, Direction whichOne){
 
         // find the mother node number
         String motherNo = this.getWordInfo(wordNo, IDXI_HEAD);
@@ -570,36 +479,13 @@ public class StReader {
         }
         // right sibling
         else {
-            for (int i = wordNo + 1; i < this.length(); ++i){
+            for (int i = wordNo + 1; i < this.getSentenceLength(); ++i){
                 if (this.getWordInfo(i, IDXI_HEAD).equals(motherNo)){
                     return i;
                 }
             }
             return -1;
         }
-    }
-
-    /**
-     * This is for debugging purposes (exceptions etc.), it returns the full text of the currently
-     * loaded sentence.
-     * 
-     * @return the text of the currently loaded sentence
-     */
-    public String getSentenceText(){
-
-        if (this.words == null){
-            return "[NULL-No sentence currently loaded]";
-        }
-
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < this.length(); ++i){
-            sb.append(this.getWordInfo(i, this.IDXI_FORM));
-            if (i < this.length() -1){
-                sb.append(" ");
-            }
-        }
-        return sb.toString();
     }
 
 
@@ -611,7 +497,7 @@ public class StReader {
 
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < this.length(); ++i){
+        for (int i = 0; i < this.getSentenceLength(); ++i){
             sb.append(StringUtils.join(this.words.get(i), "\t"));
             sb.append("\n");
         }
@@ -674,11 +560,11 @@ public class StReader {
 
         int curNode = pred;
         while (curNode >= 0){
-            int [] kids = this.getChildrenPos(curNode);
+            int [] kids = this.getChildren(curNode);
             if (curNode == argCand || MathUtils.find(kids, argCand) != -1){
                 return true;
             }
-            curNode = this.getHeadPos(curNode);
+            curNode = this.getHead(curNode);
         }
         return false;
     }
@@ -748,6 +634,7 @@ public class StReader {
      * Returns the headers for semantic roles, according to the {@link #divideAMs} settings.
      * @return the semantic class headers
      */
+    @Override
     String getSemRolesHeader(){
 
         StringBuilder sb = new StringBuilder();
@@ -768,4 +655,35 @@ public class StReader {
         return sb.toString();
     }
 
+
+    @Override
+    public String getWordInfo(int word, WordInfo info) {
+        return this.getWordInfo(word, this.getInfoPos(info));
+    }
+
+    @Override
+    public String[] getWordsInfo(int[] words, WordInfo info) {
+        return this.getWordsInfo(words, this.getInfoPos(info));
+    }
+
+    /**
+     * Returns the position of the given information in the ST input file.
+     * @param info the needed information
+     * @return the position of the needed information in the ST file
+     */
+    private int getInfoPos(WordInfo info){
+
+        switch (info){
+            case DEPREL:
+                return IDXI_DEPREL;
+            case FORM:
+                return IDXI_FORM;
+            case LEMMA:
+                return IDXI_LEMMA;
+            case POS:
+                return IDXI_LEMMA;
+            default:
+                return -1; // cause errors
+        }
+    }
 }

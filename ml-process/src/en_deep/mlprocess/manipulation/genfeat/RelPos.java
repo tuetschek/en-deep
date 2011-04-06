@@ -27,8 +27,7 @@
 
 package en_deep.mlprocess.manipulation.genfeat;
 
-import en_deep.mlprocess.manipulation.StToArff;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
 
 /**
  * This generated feature indicates the relative position of the given word to the
@@ -38,14 +37,14 @@ import en_deep.mlprocess.manipulation.StReader;
  */
 public class RelPos extends Feature {
 
-    public RelPos(StReader reader) {
+    public RelPos(DataReader reader) {
         super(reader);
     }
 
 
     @Override
     public String getHeader() {
-        return StReader.ATTRIBUTE + " RelPos " + StReader.CLASS + "{Before,On,After}";
+        return DataReader.ATTRIBUTE + " RelPos " + DataReader.CLASS + "{Before,On,After}";
     }
 
     @Override

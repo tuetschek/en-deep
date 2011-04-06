@@ -28,7 +28,8 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.exception.TaskException;
-import en_deep.mlprocess.manipulation.StReader;
+import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.utils.StringUtils;
 
@@ -69,7 +70,7 @@ public class ChildrenTypes extends Feature {
      * </ul>
      * @param reader
      */
-    public ChildrenTypes(StReader reader) throws TaskException {
+    public ChildrenTypes(DataReader reader) throws TaskException {
 
         super(reader);
 
@@ -92,8 +93,8 @@ public class ChildrenTypes extends Feature {
      * @param suffix
      */
     private String getHeaderText(String suffix){
-        return StReader.ATTRIBUTE + " ChildrenType_" + suffix + " " + StReader.STRING + LF
-                + StReader.ATTRIBUTE + " ChildrenTypeNum_" + suffix + " " + StReader.INTEGER;
+        return DataReader.ATTRIBUTE + " ChildrenType_" + suffix + " " + DataReader.STRING + LF
+                + DataReader.ATTRIBUTE + " ChildrenTypeNum_" + suffix + " " + DataReader.INTEGER;
     }
 
     @Override
@@ -113,9 +114,9 @@ public class ChildrenTypes extends Feature {
     @Override
     public String generate(int wordNo, int predNo) {
 
-        int [] children = this.reader.getChildrenPos(wordNo);
-        String [] pos = this.reader.getWordsInfo(children, this.reader.IDXI_POS);
-        String [] words = this.reader.getWordsInfo(children, this.reader.IDXI_FORM);
+        int [] children = this.reader.getChildren(wordNo);
+        String [] pos = this.reader.getWordsInfo(children, WordInfo.POS);
+        String [] words = this.reader.getWordsInfo(children, WordInfo.FORM);
         StringBuilder out = new StringBuilder();
 
         for (int j = 0; j < patterns.length; j++) {

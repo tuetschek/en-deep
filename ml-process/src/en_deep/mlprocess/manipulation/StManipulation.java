@@ -55,7 +55,7 @@ public abstract class StManipulation extends Task {
     /* DATA */
 
     /** The input reader */
-    protected StReader reader;
+    protected DataReader reader;
 
 
     /* METHODS */
@@ -84,13 +84,13 @@ public abstract class StManipulation extends Task {
         }
         this.parameters.put(LANG_CONF, configFile); // set-up the LANG_CONF path
 
-        // initialize the ST reader
-        try {
-            this.reader = new StReader(this);
-        }
-        catch (IOException e){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                    "Cannot initialize ST reader, probably lang_conf file error:" + e.getMessage());
-        }
+        this.initReader();
     }
+
+    /**
+     * Initialize the input reader.
+     * @throws TaskException
+     */
+    protected abstract void initReader() throws TaskException;
+
 }
