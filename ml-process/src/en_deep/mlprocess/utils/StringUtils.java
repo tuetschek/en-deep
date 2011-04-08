@@ -144,10 +144,34 @@ public class StringUtils {
      *
      * @param str the input string
      * @return the escaped version
-     * @todo move to {@link Feature}
      */
     public static String escape(String str) {
         return str.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * Encloses all strings in double quotes and escapes them, but only if they are not numbers or contain
+     * non-alphanumeric characters.
+     *
+     * @param str the input string
+     * @return the escaped and quoted version, or the input itself, if needed
+     */
+    public static String protect(String str){
+
+        if (str == null){
+            return "?";
+        }
+
+        try {
+            Double.parseDouble(str);
+            return str;
+        }
+        catch (NumberFormatException e){
+            if (str.matches("[a-zA-Z0-9]+")){
+                return str;
+            }
+            return "\"" + escape(str) + "\"";
+        }
     }
 
     /**

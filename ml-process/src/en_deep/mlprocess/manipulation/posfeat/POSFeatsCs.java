@@ -27,9 +27,7 @@
 
 package en_deep.mlprocess.manipulation.posfeat;
 
-import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.manipulation.StReader;
-import en_deep.mlprocess.manipulation.StToArff;
 import java.util.HashMap;
 
 /**
@@ -68,7 +66,7 @@ public class POSFeatsCs extends POSFeatures {
 
 
     @Override
-    protected String getHeader(String prefix) {
+    public String getHeader(String prefix) {
 
         StringBuilder sb = new StringBuilder();
         boolean first = true;
@@ -85,7 +83,7 @@ public class POSFeatsCs extends POSFeatures {
     }
 
     @Override
-    protected String listFeats(String value) {
+    public String listFeats(String value) {
 
         String [] feats = value.split("\\|");
         String [] featArr = new String [FEATS_LIST.length];

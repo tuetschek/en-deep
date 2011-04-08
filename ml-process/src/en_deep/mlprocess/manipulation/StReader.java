@@ -29,6 +29,8 @@ package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
+import en_deep.mlprocess.Task;
+import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -46,6 +48,8 @@ public class StReader extends DataReader {
 
     /* CONSTANTS */
 
+    /** The lang_conf parameter name */
+    static final String LANG_CONF = "lang_conf";
 
     /** Name of the ARFF lemma attribute */
     public final String LEMMA;
@@ -68,9 +72,9 @@ public class StReader extends DataReader {
     public final int IDXI_LEMMA;
     /** Index of the HEAD attribute in the ST file */
     public final int IDXI_HEAD;
-    /** Index of the DEPREL attribute in the ST file */
+    /** Index of the SYNT_REL attribute in the ST file */
     public final int IDXI_DEPREL;
-    /** Index of the DEPREL attribute in the ST file */
+    /** Index of the SYNT_REL attribute in the ST file */
     public final int IDXI_FEAT;
     /** Index of the PRED attribute in the ST file */
     public final int IDXI_PRED = 13;
@@ -115,8 +119,6 @@ public class StReader extends DataReader {
         "@ATTRIBUTE pred STRING"
     };
 
-    private static final String LF = System.getProperty("line.separator");
-
     /* VARIABLES */
 
     /** Sentence ID generation -- last used value */
@@ -134,7 +136,7 @@ public class StReader extends DataReader {
     /** The name of the current input file */
     private String inputFileName;
 
-    /** Use predicted POS and DEPREL values ? */
+    /** Use predicted POS and SYNT_REL values ? */
     public final boolean usePredicted;
     /** Divide AM-s and references ? */
     private boolean divideAMs;
@@ -157,13 +159,24 @@ public class StReader extends DataReader {
      * i.e\. all SEMREL values, noun and verb POS tag pattern, handling of FEAT for the
      * current ST file language and a list of additional columns (for a detailed description,
      * see the {@link StToArff} constructor).
+     * <p>
+     * Task parameters required by this class:
+     * </p>
+     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains:
+     * <ul>
+     *   <li>a FEAT usage indication (name of the handling class derived from {@link Feature}, or empty line)</li>
+     *   <li>noun and verb tag regexp patterns (each on separate line)</li>
+     *   <li>list of all possible semantic roles (one line, space-separated)</li>
+     *   <li>a regexp that catches all adverbial modifier semantic roles</li>
+     *   <li>a space-separated list of additional columns in the ST file, if any</li>
+     * </ul></li>
      *
      * @param task the StToArff task for this conversion
      */
-    StReader(StManipulation task) throws IOException {
+    StReader(Task task) throws IOException {
 
         super(task);
-        
+
         this.usePredicted = this.task.getBooleanParameterVal(StManipulation.PREDICTED);
         this.divideAMs = this.task.getBooleanParameterVal(StToArff.DIVIDE_AMS);
 
@@ -189,13 +202,19 @@ public class StReader extends DataReader {
             POS = "pos";
         }
 
-        // read the config file
-        Scanner config = new Scanner(new File(this.task.getParameterVal(StToArff.LANG_CONF)),
-                Process.getInstance().getCharset());
+        // check the lang_conf parameter
+        if (!this.task.hasParameter(LANG_CONF)){
+            throw new IOException(new TaskException(TaskException.ERR_INVALID_PARAMS,
+                    this.getTaskId(), "Parameter lang_conf is missing."));
+        }
 
-        this.posFeatName = config.nextLine(); // name of the feature-handling class or empty line
-        if (this.posFeatName.matches("\\s*")){ // no features handled
-            this.posFeatName = null;
+        // read the configuration file
+        String configFilePath = StringUtils.getPath(this.task.getParameterVal(LANG_CONF));
+        Scanner config = new Scanner(new File(configFilePath), Process.getInstance().getCharset());
+
+        this.posFeatHandlerName = config.nextLine(); // name of the feature-handling class or empty line
+        if (this.posFeatHandlerName.matches("\\s*")){ // no features handled
+            this.posFeatHandlerName = null;
         }
 
         this.nounPat = config.nextLine();
@@ -312,6 +331,7 @@ public class StReader extends DataReader {
      * Returns the number of words in the current sentence, -1 if no sentence loaded.
      * @return the length of the current sentence
      */
+    @Override
     public int getSentenceLength() {
         if (this.words == null){
             return -1;
@@ -335,11 +355,12 @@ public class StReader extends DataReader {
      * Returns the given piece of information about the given word, as it appears in the ST file.
      * This is protected against out-of-range errors -- empty string is returned for out-of-range
      * requests.
-     * 
+     *
      * @param wordNo the number of the word in the sentence
      * @param fieldNo the number of the desired field from the ST file
      * @return the given field of the given word form the ST file format
      */
+    @Override
     public String getWordInfo(int wordNo, int fieldNo){
 
         if (wordNo < 0 || wordNo >= this.words.size() || fieldNo < 0 || fieldNo >= this.words.get(wordNo).length){
@@ -384,47 +405,6 @@ public class StReader extends DataReader {
         return sb.toString();
     }
 
-    /**
-     * Returns the given piece of information about for several words in a sentence.
-     *
-     * @param wordNos the numbers of the desired words in the sentence
-     * @param fieldNo the number of the desired field from the ST file
-     * @return the given field of the given word form the ST file format
-     */
-    public String [] getWordsInfo(int [] wordNos, int fieldNo){
-
-        String [] ret = new String [wordNos.length];
-
-        for (int i = 0; i < wordNos.length; ++i){
-            ret[i] = this.getWordInfo(wordNos[i], fieldNo);
-        }
-        return ret;
-    }
-
-    /**
-     * Returns the numbers of the syntactical children for the given word in the
-     * currently loaded sentence.
-     * 
-     * @param wordNo the word to get the children for
-     * @return the children of the given word
-     */
-    public int [] getChildren(int wordNo){
-
-        ArrayList<Integer> children = new ArrayList<Integer>();
-        // find all children
-        for (int i = 0; i < this.getSentenceLength(); ++i){
-            if (this.getWordInfo(i, IDXI_HEAD).equals(Integer.toString(wordNo + 1))){
-                children.add(i);
-            }
-        }
-
-        // save them to an array
-        int [] ret = new int [children.size()];
-        for (int i = 0; i < children.size(); ++i){
-            ret[i] = children.get(i);
-        }
-        return ret;
-    }
 
    /**
      * Generates a unique sentence ID.
@@ -434,58 +414,6 @@ public class StReader extends DataReader {
 
         lastSentenceId++;
         return lastSentenceId;
-    }
-
-    /**
-     * Returns the word position of the syntactic head of the given word (not its ID!).
-     * @param wordNo the word to look up the head for
-     * @return the position of the syntactic head of the given word, or -1 for the root node
-     */
-    public int getHead(int wordNo) {
-
-        if (wordNo < 0 || wordNo >= this.getSentenceLength()){
-            return -1;
-        }
-
-        int pos = Integer.parseInt(this.getWordInfo(wordNo, IDXI_HEAD));
-
-        // head ID is the same as (position + 1), root node has head ID "0", so "-1" will be returned
-        return (pos - 1);
-    }
-
-
-    /**
-     * Returns the position of the given syntactical sibling of the given word.
-     *
-     * @param wordNo the order of the desired word
-     * @param whichOne which (left or right) sibling to get
-     * @return the position of the desired sibling, or -1, if it does not exist
-     */
-    public int getSibling(int wordNo, Direction whichOne){
-
-        // find the mother node number
-        String motherNo = this.getWordInfo(wordNo, IDXI_HEAD);
-
-        // left sibling
-        if (whichOne == Direction.LEFT){
-            int ret = -1;
-
-            for (int i = 0; i < wordNo; ++i){
-                if (this.getWordInfo(i, IDXI_HEAD).equals(motherNo)){
-                    ret = i;
-                }
-            }
-            return ret;
-        }
-        // right sibling
-        else {
-            for (int i = wordNo + 1; i < this.getSentenceLength(); ++i){
-                if (this.getWordInfo(i, IDXI_HEAD).equals(motherNo)){
-                    return i;
-                }
-            }
-            return -1;
-        }
     }
 
 
@@ -593,12 +521,7 @@ public class StReader extends DataReader {
         }
     }
 
-    /**
-     * Returns the headers for the compulsory ST file fields that are always written to the ARFF output,
-     * including the (possible) extended ST file fields, which are always assumed to be strings.
-     *
-     * @return the ARFF header compulsory fields
-     */
+    @Override
     String getArffHeaders(){
 
         StringBuilder sb = new StringBuilder();
@@ -635,7 +558,7 @@ public class StReader extends DataReader {
      * @return the semantic class headers
      */
     @Override
-    String getSemRolesHeader(){
+    String getTargetClassHeader(){
 
         StringBuilder sb = new StringBuilder();
 
@@ -656,32 +579,29 @@ public class StReader extends DataReader {
     }
 
 
-    @Override
-    public String getWordInfo(int word, WordInfo info) {
-        return this.getWordInfo(word, this.getInfoPos(info));
-    }
-
-    @Override
-    public String[] getWordsInfo(int[] words, WordInfo info) {
-        return this.getWordsInfo(words, this.getInfoPos(info));
-    }
-
     /**
      * Returns the position of the given information in the ST input file.
      * @param info the needed information
      * @return the position of the needed information in the ST file
      */
-    private int getInfoPos(WordInfo info){
+    @Override
+    protected int getInfoPos(WordInfo info){
 
         switch (info){
-            case DEPREL:
+            case SYNT_REL:
                 return IDXI_DEPREL;
             case FORM:
                 return IDXI_FORM;
             case LEMMA:
                 return IDXI_LEMMA;
             case POS:
-                return IDXI_LEMMA;
+                return IDXI_POS;
+            case PRED:
+                return IDXI_PRED;
+            case HEAD:
+                return IDXI_HEAD;
+            case PFEAT:
+                return IDXI_FEAT;
             default:
                 return -1; // cause errors
         }

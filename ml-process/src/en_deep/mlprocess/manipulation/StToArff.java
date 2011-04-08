@@ -109,14 +109,6 @@ public class StToArff extends StLikeConvertor {
      * <strong>Parameters:</strong>
      * </p>
      * <ul>
-     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains:
-     * <ul>
-     *   <li>a FEAT usage indication (name of the handling class derived from {@link Feature}, or empty line)</li>
-     *   <li>noun and verb tag regexp patterns (each on separate line)</li>
-     *   <li>list of all possible semantic roles (one line, space-separated)</li>
-     *   <li>a regexp that catches all adverbial modifier semantic roles</li>
-     *   <li>a space-separated list of additional columns in the ST file, if any</li>
-     * </ul></li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only </li>
      * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
      * valency arguments and for adverbials &amp; references.</li>
@@ -129,11 +121,14 @@ public class StToArff extends StLikeConvertor {
      * will go into one file only</li>
      * </ul>
      * <p>
-     * Additional parameters may be required by the individual generated {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s,
-     * or by the super-classes.
+     * For parameters required by the input reader helper class, see {@link StReader}.
+     * </p>
+     * <p>
+     * Additional parameters may be required by the individual generated 
+     * {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s, or by the super-classes.
      * </p>
      *
-     * @todo no need for possible list of POS, FEAT and DEPREL in the lang_conf file, exclude it
+     * @todo no need for possible list of POS, FEAT and SYNT_REL in the lang_conf file, exclude it
      * @param id the task id
      * @param parameters the task parameters
      * @param input the input data sets or files

@@ -96,7 +96,7 @@ public class PredArg extends Feature {
         info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.LEMMA));
         info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS));
         info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS).substring(0, 1));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.DEPREL));
+        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.SYNT_REL));
 
         return info;
     }

@@ -33,8 +33,8 @@ import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
 
 /**
- * This feature contains the complete path in DEPREL POS, Coarse POS and direction values from the
- * argument candidate to the predicate, as well as the length of the path. It is composed of the DEPREL/POS
+ * This feature contains the complete path in SYNT_REL POS, Coarse POS and direction values from the
+ * argument candidate to the predicate, as well as the length of the path. It is composed of the SYNT_REL/POS
  * values + / and \ as "up" and "down", or a single "+" for the argument candidate being the predicate itself.
  * If the predicate and the argument are not in the same tree, "+++" is added to the path.
  *
@@ -90,7 +90,7 @@ public class DepPath extends Feature {
             int head = this.reader.getHead(curPos - 1) + 1;
 
             if (curPos != wordNo + 1){
-                pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
                 pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                 pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
                 pathDir.append("/");
@@ -111,7 +111,7 @@ public class DepPath extends Feature {
             }
             else {
                 if (curPos != wordNo + 1){ // end the way up
-                    pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                    pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
                     pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                     pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
                     pathDir.append("/");
@@ -121,7 +121,7 @@ public class DepPath extends Feature {
             }
             // follow the predicate-root path down to the predicate
             while (curPos != 0 && curPos != predNo + 1){
-                pathRel.append("\\").append(this.reader.getWordInfo(curPos - 1, WordInfo.DEPREL));
+                pathRel.append("\\").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
                 pathPos.append("\\").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
                 pathCpos.append("\\").append(StringUtils.safeSubstr(pos, 0, 1));
                 pathDir.append("\\");

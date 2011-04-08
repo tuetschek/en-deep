@@ -47,8 +47,6 @@ public abstract class StManipulation extends Task {
     
     /* CONSTANTS */
 
-    /** The lang_conf parameter name */
-    static final String LANG_CONF = "lang_conf";
     /** The predicted parameter name */
     static final String PREDICTED = "predicted";
 
@@ -72,18 +70,6 @@ public abstract class StManipulation extends Task {
 
         super(id, parameters, input, output);
 
-        // check the lang_conf parameter
-        if (this.parameters.get(LANG_CONF) == null){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter lang_conf is missing.");
-        }
-
-        // find the configuration file
-        String configFile = StringUtils.getPath(this.parameters.get(LANG_CONF));
-        if (!new File(configFile).exists()){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot find config file.");
-        }
-        this.parameters.put(LANG_CONF, configFile); // set-up the LANG_CONF path
-
         this.initReader();
     }
 
@@ -93,4 +79,5 @@ public abstract class StManipulation extends Task {
      */
     protected abstract void initReader() throws TaskException;
 
+    
 }

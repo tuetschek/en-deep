@@ -112,7 +112,7 @@ public abstract class StLikeConvertor extends StManipulation {
         }
         // print semrel headers (if supposed to)
         if (semClass) {
-            out.println(this.reader.getSemRolesHeader());
+            out.println(this.reader.getTargetClassHeader());
         }
         out.println(DATA);
     }

@@ -38,7 +38,7 @@ import java.lang.reflect.InvocationTargetException;
 public abstract class POSFeatures {
 
     /** Feature name prefix for golden feature values */
-    protected static final String PREFIX_GOLD = "feat_";
+    public static final String PREFIX_GOLD = "feat_";
     /** Feature name prefix for predicted feature values */
     protected static final String PREFIX_PRED = "pfeat_";
     /** Empty feature value (any string that is never used in the features values themselves) */
@@ -55,16 +55,15 @@ public abstract class POSFeatures {
     }
 
     /**
-     * This, given a prefix, lists all the POS features ARFF headers
-     * (to be used with {@link #PREFIX_GOLD} and {@link #PREFIX_PRED}.
+     * This, given a name prefix, lists all the POS features ARFF headers.
      *
      * @param prefix prefix for POS feature names in the headers
      * @return the ARFF header with all the available POS features
      */
-    protected abstract String getHeader(String prefix);
+     public abstract String getHeader(String prefix);
 
     /**
-     * This lists the POS feature values for ARFF, given the original ST file feature strings for
+     * This lists the POS feature values for ARFF, given the input feature strings for
      * both predicted and golden feature values.
      * @param goldFeat ST text format -- golden POS features values
      * @param predictedFeat ST text format -- predicted POS features values
@@ -75,12 +74,12 @@ public abstract class POSFeatures {
     }
 
     /**
-     * This lists the ARFF values of all possible morphological features, given their compact string representation
-     * from the ST file.
+     * This lists the ARFF values of all possible morphological features, given their compact string representation.
+     *
      * @param values the ST string representation of the features.
      * @return the ARFF array representation of the features.
      */
-    protected abstract String listFeats(String values);
+    public abstract String listFeats(String values);
 
     /**
      * This, given an ST value for POS and morph. features string, returns a combination

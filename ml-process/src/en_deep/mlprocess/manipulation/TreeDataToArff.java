@@ -6,23 +6,35 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Vector;
 
 /**
- * A convertor from an extended CoNLL-like format to ARFF, which disregards predicate-argument relations.
+ * A convertor to ARFF from a general table format that contains all the required information (currently supported:
+ * CoNLL-like column format, ARFF).
  * @author Ondrej Dusek
  */
-public class StLikeToArff extends StLikeConvertor {
+public class TreeDataToArff extends StLikeConvertor {
+    
+    /* CONSTANTS */
+    
+    /** The 'reader' class parameter name */
+    private static final String READER = "reader";
+
+
+    /* METHODS */
 
     /**
-     * This creates a new {@link StLikeToArff} task.
+     * This creates a new {@link TreeDataToArff} task.
      * <p>
      * The output specification must have a "**" pattern, in order to produce more output files. If there
      * are more input files, the exactly same number of outputs (with "**") must be given.
@@ -30,19 +42,16 @@ public class StLikeToArff extends StLikeConvertor {
      * <strong>Parameters:</strong>
      * </p>
      * <ul>
-     * <li><tt>lang_conf</tt> -- path to the language reader file, that contains:
-     * <ul>
-     *   <li>a FEAT usage indication (name of the handling class derived from {@link Feature}, or empty line)</li>
-     *   <li>noun and verb tag regexp patterns (each on separate line)</li>
-     *   <li>list of all possible semantic roles (one line, space-separated)</li>
-     *   <li>a regexp that catches all adverbial modifier semantic roles</li>
-     *   <li>a space-separated list of additional columns in the ST file, if any</li>
-     * </ul></li>
+     * <li><tt>reader</tt> -- the Java class that handles the reading of input, must be derived from {@link DataReader}.
+     * Currently, {@link ArffReader} and {@link StReader} are supported.</li>
      * <li><tt>predicted</tt> -- if set to non-false, work with predicted lemma, POS and only (only works with {@link StReader})
      * </li>
      * <li><tt>divide_ams</tt> -- if set to non-false, there will be two semantic relation attributes -- separate for
      * valency arguments and for adverbials &amp; references (only works with {@link StReader}).</li>
      * </ul>
+     * <p>
+     * Please see the documentation of the input reader class for their required task parameters.
+     * </p>
      * <p>
      * Additional parameters may be required by the individual generated
      * {@link en_deep.mlprocess.manipulation.genfeat.Feature Feature}s, or by the super-classes.
@@ -54,7 +63,7 @@ public class StLikeToArff extends StLikeConvertor {
      * @param input the input data sets or files
      * @param output the output data sets or files
      */
-    public StLikeToArff(String id, Hashtable<String, String> parameters,
+    public TreeDataToArff(String id, Hashtable<String, String> parameters,
             Vector<String> input, Vector<String> output) throws TaskException {
 
         super(id, parameters, input, output);
@@ -92,6 +101,7 @@ public class StLikeToArff extends StLikeConvertor {
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
     }
+
 
     /**
      * Converts one file from the ST-like extended format to ARFF.
@@ -138,8 +148,32 @@ public class StLikeToArff extends StLikeConvertor {
 
     @Override
     protected void initReader() throws TaskException {
-        // TODO parametr na třídu Readeru, k tomu napsat ArffReader (snad jednoduchý)
-        throw new UnsupportedOperationException("Not supported yet.");
+
+        if (!this.hasParameter(READER)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameter: " + READER);
+        }
+      
+        String className = this.getParameterVal(READER);
+
+        Class readerClass = null;
+        Constructor readerConstructor = null;
+
+        // retrieve the task class
+        try {
+            readerClass = Class.forName(className);
+        }
+        catch (ClassNotFoundException ex) {
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Reader class not found.");
+        }
+
+        // try to call a constructor
+        try {
+            readerConstructor = readerClass.getConstructor(Task.class);
+            this.reader = (DataReader) readerConstructor.newInstance(this);
+        }
+        catch (Exception ex){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Could not initialize reader class.");
+        }
     }
 
 }

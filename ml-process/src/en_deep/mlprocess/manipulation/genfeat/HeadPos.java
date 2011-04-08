@@ -52,7 +52,7 @@ public class HeadPos extends Feature {
 
         int headPos = this.reader.getHead(wordNo);
 
-        if (headPos == 0){
+        if (headPos < 0){
             return "_";
         }
 
