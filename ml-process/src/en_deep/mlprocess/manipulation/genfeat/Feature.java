@@ -44,6 +44,9 @@ public abstract class Feature {
     /* CONSTANTS */
     
     protected static final String LF = System.getProperty("line.separator");
+    
+    /** Separator for-value data (such as n-grams) */
+    protected static final String SEP = " ";
 
     /* DATA */
 

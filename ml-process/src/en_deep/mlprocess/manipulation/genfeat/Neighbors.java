@@ -39,11 +39,6 @@ import en_deep.mlprocess.utils.StringUtils;
  */
 public class Neighbors extends Feature {
 
-    /* CONSTANTS */
-
-    /** Word separator for bigrams */
-    private static final String BIGRAM_SEPARATOR = "|";
-
     /* METHODS */
 
     public Neighbors(DataReader reader){
@@ -99,9 +94,9 @@ public class Neighbors extends Feature {
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 1, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, info)
-                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo - 1, info));
+                    + SEP + this.reader.getWordInfo(wordNo - 1, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, info)
-                    + BIGRAM_SEPARATOR + this.reader.getWordInfo(wordNo + 2, info));
+                    + SEP + this.reader.getWordInfo(wordNo + 2, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 2, info));
         ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 3, info));

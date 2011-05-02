@@ -38,9 +38,6 @@ import en_deep.mlprocess.utils.StringUtils;
  */
 public class Children extends Feature {
 
-    /** The separator for the individual children */
-    private static final String SEP = "|";
-
     public Children(DataReader reader){
         super(reader);
     }

@@ -38,11 +38,6 @@ import en_deep.mlprocess.utils.StringUtils;
  */
 public class PredArg extends Feature {
 
-    /* CONSTANTS */
-
-    /** Bigram separator */
-    private static final String SEP = "|";
-
     /* METHODS */
 
     /**

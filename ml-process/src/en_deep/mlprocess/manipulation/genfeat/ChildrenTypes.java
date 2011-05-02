@@ -42,9 +42,6 @@ public class ChildrenTypes extends Feature {
 
     /* CONSTANTS */
 
-    /** The separator for the individual children */
-    private static final String SEP = "|";
-
     /** The children_types parameter name */
     private static final String CHILDREN_TYPES = "children_types";
 

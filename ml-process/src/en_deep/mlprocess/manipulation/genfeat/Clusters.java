@@ -63,8 +63,6 @@ public class Clusters extends Feature {
     private static final String FEAT_NAME_SEP = "_";
     /** Number of the clusterType that contains not-associated tokens */
     private static final String NO_CLUSTER = "-1";
-    /** Separator for data values in bigrams etc. */
-    private static final String DATA_SEP = "|";
 
     /* DATA */
     
@@ -158,9 +156,9 @@ public class Clusters extends Feature {
             text.append(this.getCluster(clusterType, wordNo - 3)).append(",");
             text.append(this.getCluster(clusterType, wordNo - 2)).append(",");
             text.append(this.getCluster(clusterType, wordNo - 1)).append(",");
-            text.append(this.getCluster(clusterType, wordNo - 2)).append(DATA_SEP).append(
+            text.append(this.getCluster(clusterType, wordNo - 2)).append(SEP).append(
                     this.getCluster(clusterType, wordNo - 1)).append(",");
-            text.append(this.getCluster(clusterType, wordNo + 1)).append(DATA_SEP).append(
+            text.append(this.getCluster(clusterType, wordNo + 1)).append(SEP).append(
                     this.getCluster(clusterType, wordNo + 2)).append(",");
             text.append(this.getCluster(clusterType, wordNo + 1)).append(",");
             text.append(this.getCluster(clusterType, wordNo + 2)).append(",");
@@ -177,7 +175,7 @@ public class Clusters extends Feature {
             else {
                 for (int j = 0; j < childrenPos.length; ++j){
                     if (j > 0){
-                        text.append(DATA_SEP);
+                        text.append(SEP);
                     }
                     text.append(this.getCluster(clusterType, childrenPos[j]));
                 }
