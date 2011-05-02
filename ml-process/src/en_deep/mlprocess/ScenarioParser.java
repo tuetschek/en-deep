@@ -344,6 +344,7 @@ class ScenarioParser {
         byte [] rawLine;
         boolean quoted = false;
         boolean commented = false;
+        boolean escaped = false;
         // starts and ends of comments, relative to pos1
         Vector<Pair<Integer, Integer>> comments = new Vector<Pair<Integer, Integer>>();
 
@@ -366,15 +367,25 @@ class ScenarioParser {
                 }
                 commented = false;
             }
+            // escape-char
+            else if (c == '\\'){
+                escaped = !escaped;
+            }
             // begin comments (unquoted and uncommented hash-char begins comments)
-            else if (!quoted && !commented && c == '#'){
+            else if (!escaped && !quoted && !commented && c == '#'){
                 commented = true;
                 comments.add(new Pair<Integer, Integer>((int)(curPos - pos1)));
             }
-            // heed the quote characters, if not in comments
-            else if (!commented && c == '"'){
+            // heed the quote characters, if not in comments/not escaped
+            else if (!escaped && !commented && c == '"'){
                 quoted = !quoted;
             }
+
+            // end escaping
+            if (escaped && c != '\\'){
+                escaped = false;
+            }
+
             c = this.input.read();
             curPos++;
             lastC = c;
