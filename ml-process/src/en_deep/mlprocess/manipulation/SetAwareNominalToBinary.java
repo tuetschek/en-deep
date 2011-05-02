@@ -71,6 +71,9 @@ import java.util.Vector;
  * <pre> -V
  *  Invert matching sense of column indexes.</pre>
  *
+ * <pre> -S
+ *  Multiple-value separator string (default: one space).</pre>
+ *
  <!-- options-end -->
  *
  */
@@ -96,7 +99,7 @@ public class SetAwareNominalToBinary
   /** The separator string for set values */
   private String m_Separator = defaultSeparator;
 
-  /** Values of output attributes for each converted input attribute */
+  /** Values of output attributes for each converted input attribute, plus their output indexes */
   private HashMap<String,Integer> [] m_producedAttVals;
 
   /** Constructor - initialises the filter */
@@ -239,6 +242,9 @@ public class SetAwareNominalToBinary
    *
    * <pre> -V
    *  Invert matching sense of column indexes.</pre>
+   *
+   * <pre> -S
+   *  Multiple-value separator string (default: one space).</pre>
    *
    <!-- options-end -->
    *
@@ -600,6 +606,15 @@ public class SetAwareNominalToBinary
         return newAtts;
     }
 
+    /**
+     * Sets the values for all binary attributes pertaining to the given source attribute with
+     * respect to possible multiple values.
+     * 
+     * @param att the source attribute
+     * @param value the source value
+     * @param vals the field where the values are to be stored
+     * @param offset the offset where the values for this attribute should begin
+     */
     private void setConvertedAttribute(Attribute att, double value, double[] vals, int offset) {
 
         String strVal = att.value((int) value);

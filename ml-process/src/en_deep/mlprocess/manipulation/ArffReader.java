@@ -326,8 +326,8 @@ public class ArffReader extends DataReader {
         // handle all POS feats, if there is a POS features handler, skip and include with the rest otherwise
         for (int i = 0; i < this.posFeatAttrs.length; ++i){
             if (this.posFeatAttrs[i] >= 0 && this.posFeatHandler != null){
-                sb.append(",").append(StringUtils.protect(
-                        this.posFeatHandler.listFeats(word.stringValue(this.posFeatAttrs[i]))));
+                sb.append(",").append(
+                        this.posFeatHandler.listFeats(word.stringValue(this.posFeatAttrs[i])));
                 used.set(this.posFeatAttrs[i]);
             }
         }

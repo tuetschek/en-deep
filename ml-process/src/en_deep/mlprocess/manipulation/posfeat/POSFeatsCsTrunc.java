@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010 Ondrej Dusek
+ *  Copyright (c) 2011 Ondrej Dusek
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -28,83 +28,50 @@
 package en_deep.mlprocess.manipulation.posfeat;
 
 import en_deep.mlprocess.manipulation.StReader;
-import java.util.HashMap;
+import en_deep.mlprocess.utils.StringUtils;
 
 /**
- * This feature handles the ST file FEAT and PFEAT fields for the Czech language.
+ * This handles Czech positional POS tags by just truncating them to the first
+ * two positions (the actual POS, without any further information on flection etc.).
  * @author Ondrej Dusek
  */
-public class POSFeatsCs extends POSFeatures {
+public class POSFeatsCsTrunc extends POSFeatures {
 
     /* CONSTANTS */
 
-    /**
-     * List of possible features that may occur in the FEAT field for Czech (Sub-POS,
-     * Genus, Number, Case, Possessor Genus, Possessor Number, Person, Tense, Grade, Negation, Voice, Variant,
-     * Semantic feature).
-     */
-    private static final String [] FEATS_LIST = {"SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
-            "Gra", "Neg", "Voi", "Var", "Sem"};
-
-    /* DATA */
-
-    /** This maps the names in the {@link #FEATS_LIST} variable into their positions in that field */
-    private final HashMap<String, Integer> FEAT_POS;
+    /** The ARFF attribute name suffix */
+    private static final String ATTR_NAME = "POS";
 
     /* METHODS */
 
     /**
-     * This just initializes the table of possible feature values.
+     * Empty constructor.
      */
-    public POSFeatsCs(){
+    public POSFeatsCsTrunc(){
 
-        FEAT_POS = new HashMap<String, Integer>();
-        for (int i = 0; i < FEATS_LIST.length; ++i){
-            FEAT_POS.put(FEATS_LIST[i], i);
-        }
     }
 
 
     @Override
     public String getHeader(String prefix) {
 
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (String featType : FEATS_LIST){
-            if (first){
-                first = false;
-            }
-            else {
-                sb.append(LF);
-            }
-            sb.append(StReader.ATTRIBUTE + " ").append(prefix).append(featType).append(" " + StReader.STRING);
-        }
-        return sb.toString();
+        return StReader.ATTRIBUTE + " " + prefix + ATTR_NAME + " " + StReader.STRING;
     }
 
     @Override
     public String listFeats(String value) {
 
         String [] values = value.split(SEP); // allow multiple values
-        String [] feats = new String [FEATS_LIST.length];
+        String feats = null;
 
         for (String val : values){
 
-            if (!val.equals(StReader.EMPTY_VALUE)){
-
-                String [] featInfos = val.split("\\|");
-
-                for (String featInfo : featInfos){  // split into individual features listed
-
-                    String [] nameVal = featInfo.split("=", 2); // extract the name and value
-                    int pos = FEAT_POS.get(nameVal[0]); // find the position of each feature in the array
-
-                    feats[pos] = (feats[pos] == null ? "" : feats[pos] + SEP) + nameVal[1]; // set it at the right position in the array
-                }
+            // standard Czech POS tag, ignore otherwise
+            if (val.length() == 15){
+                feats = (feats == null ? "" : feats + SEP) + val.substring(0, 2);
             }
         }
-        
-        return printFeatValues(feats);
+        return feats == null ? EMPTY : "\"" + StringUtils.escape(feats) + "\"";
     }
 
 

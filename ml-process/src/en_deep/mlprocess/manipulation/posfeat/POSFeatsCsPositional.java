@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010 Ondrej Dusek
+ *  Copyright (c) 2011 Ondrej Dusek
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -28,13 +28,14 @@
 package en_deep.mlprocess.manipulation.posfeat;
 
 import en_deep.mlprocess.manipulation.StReader;
-import java.util.HashMap;
 
 /**
- * This feature handles the ST file FEAT and PFEAT fields for the Czech language.
+ * This feature handles Czech positional POS tags, splitting them into separate features for
+ * the individual positions.
+ *
  * @author Ondrej Dusek
  */
-public class POSFeatsCs extends POSFeatures {
+public class POSFeatsCsPositional extends POSFeatures {
 
     /* CONSTANTS */
 
@@ -43,25 +44,17 @@ public class POSFeatsCs extends POSFeatures {
      * Genus, Number, Case, Possessor Genus, Possessor Number, Person, Tense, Grade, Negation, Voice, Variant,
      * Semantic feature).
      */
-    private static final String [] FEATS_LIST = {"SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
-            "Gra", "Neg", "Voi", "Var", "Sem"};
+    private static final String [] FEATS_LIST = {"MainPOS", "SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
+            "Gra", "Neg", "Voi", /* two empty positions here (omitted) */ "Var"};
 
-    /* DATA */
-
-    /** This maps the names in the {@link #FEATS_LIST} variable into their positions in that field */
-    private final HashMap<String, Integer> FEAT_POS;
 
     /* METHODS */
 
     /**
-     * This just initializes the table of possible feature values.
+     * Empty constructor.
      */
-    public POSFeatsCs(){
+    public POSFeatsCsPositional(){
 
-        FEAT_POS = new HashMap<String, Integer>();
-        for (int i = 0; i < FEATS_LIST.length; ++i){
-            FEAT_POS.put(FEATS_LIST[i], i);
-        }
     }
 
 
@@ -86,24 +79,19 @@ public class POSFeatsCs extends POSFeatures {
     public String listFeats(String value) {
 
         String [] values = value.split(SEP); // allow multiple values
-        String [] feats = new String [FEATS_LIST.length];
+        String [] feats = new String [13];
 
         for (String val : values){
 
-            if (!val.equals(StReader.EMPTY_VALUE)){
-
-                String [] featInfos = val.split("\\|");
-
-                for (String featInfo : featInfos){  // split into individual features listed
-
-                    String [] nameVal = featInfo.split("=", 2); // extract the name and value
-                    int pos = FEAT_POS.get(nameVal[0]); // find the position of each feature in the array
-
-                    feats[pos] = (feats[pos] == null ? "" : feats[pos] + SEP) + nameVal[1]; // set it at the right position in the array
+            // standard Czech POS tag, ignore otherwise
+            if (val.length() == 15){
+                val = (val.substring(0, 12) + val.charAt(14)); // omit two empty (unused) positions
+                
+                for (int i = 0; i < feats.length; ++i){
+                    feats[i] = (feats[i] == null ? "" : feats[i] + SEP) + val.charAt(i);
                 }
             }
         }
-        
         return printFeatValues(feats);
     }
 

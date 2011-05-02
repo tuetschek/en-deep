@@ -28,6 +28,8 @@
 package en_deep.mlprocess.manipulation.posfeat;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.manipulation.genfeat.Feature;
+import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -43,7 +45,10 @@ public abstract class POSFeatures {
     protected static final String PREFIX_PRED = "pfeat_";
     /** Empty feature value (any string that is never used in the features values themselves) */
     protected static final String EMPTY = "-";
+
     protected static final String LF = System.getProperty("line.separator");
+    /** Separator for multiple values */
+    protected static final String SEP = Feature.SEP;
 
 
     /**
@@ -128,6 +133,25 @@ public abstract class POSFeatures {
         }
 
         return res;
+    }
+
+
+    /**
+     * Serializes a field of different feature values to a single string (by just adding an empty value
+     * to null-valued features and using {@link StringUtils#join(java.lang.Object[], java.lang.String, boolean)}).
+     *
+     * @param feats the feature values
+     * @return the string form of the feature values field
+     */
+    protected String printFeatValues(String [] feats){
+
+        for (int i = 0; i < feats.length; ++i){
+            if (feats[i] == null){
+                feats[i] = EMPTY;
+            }
+        }
+
+        return StringUtils.join(feats, ",", true);
     }
 
 }
