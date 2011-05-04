@@ -31,6 +31,7 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.manipulation.featmodif.FeatureModifier;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
@@ -152,6 +153,9 @@ public class StReader extends DataReader {
     /** List of additional columns (possibly) included with the ST data (before any APREDs) */
     private final String[] additionalColumns;
 
+    /** The POS features handling class for this language, or null if not necessary. */
+    private FeatureModifier posFeatHandler;
+
     /* METHODS */
 
     /**
@@ -164,7 +168,8 @@ public class StReader extends DataReader {
      * </p>
      * <li><tt>lang_conf</tt> -- path to the language reader file, that contains:
      * <ul>
-     *   <li>a FEAT usage indication (name of the handling class derived from {@link Feature}, or empty line)</li>
+     *   <li>a FEAT usage indication (name of the handling class derived from 
+     *       {@link en_deep.mlprocess.manipulation.featmodif.FeatureModifer}, or empty line)</li>
      *   <li>noun and verb tag regexp patterns (each on separate line)</li>
      *   <li>list of all possible semantic roles (one line, space-separated)</li>
      *   <li>a regexp that catches all adverbial modifier semantic roles</li>
@@ -601,4 +606,19 @@ public class StReader extends DataReader {
                 return -1; // cause errors
         }
     }
+
+    /**
+     * If there is a name of the POS handling class in the configuration file, this will try to initialize
+     * it. If the class is not found in the {@link en_deep.mlprocess.manipulation.genfeat} package, the process
+     * will fail.
+     */
+    protected void initPOSFeats() throws IOException {
+        if (this.posFeatHandlerName != null) {
+            this.posFeatHandler = FeatureModifier.createHandler(this.posFeatHandlerName);
+            if (this.posFeatHandler == null) {
+                throw new IOException("POS feature handling " + "class `" + this.posFeatHandlerName + "' creation failed.");
+            }
+        }
+    }
+
 }

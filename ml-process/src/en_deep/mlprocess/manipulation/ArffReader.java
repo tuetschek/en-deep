@@ -56,10 +56,6 @@ public class ArffReader extends DataReader {
     private static final String HEAD = "head";
     /** The default syntactic head ARFF attribute name */
     private static final String DEFAULT_HEAD = "head";
-    /** The pos_feat task parameter name */
-    private static final String POS_FEAT = "pos_feat";
-    /** The default POS features ARFF attribute name */
-    private static final String DEFAULT_POS_FEAT = "pfeat";
 
 
     /* DATA */
@@ -155,17 +151,6 @@ public class ArffReader extends DataReader {
         this.formName = this.task.hasParameter(FORM) ? this.task.getParameterVal(FORM) : DEFAULT_FORM;
         this.syntRelName = this.task.hasParameter(SYNT_REL) ? this.task.getParameterVal(SYNT_REL) : DEFAULT_SYNT_REL;
         this.headName = this.task.hasParameter(HEAD) ? this.task.getParameterVal(HEAD) : DEFAULT_HEAD;
-
-        if (this.task.hasParameter(POS_FEAT)){
-            this.posFeatNames = this.task.getParameterVal(POS_FEAT).split("\\s+");
-        }
-        else {
-            this.posFeatNames = new String [1];
-            this.posFeatNames[0] = DEFAULT_POS_FEAT;
-        }
-
-        // initialize POS features handler, if applicable
-        this.initPOSFeats();
     }
 
     
@@ -244,14 +229,6 @@ public class ArffReader extends DataReader {
             used.set(this.syntRelAttr);
         }
 
-        // handle all POS feats (if there is a POS features handler), skip and include with others otherwise
-        for (int i = 0; i < this.posFeatAttrs.length; ++i){
-            if (this.posFeatHandler != null && this.posFeatAttrs[i] >= 0){
-                sb.append(LF).append(this.posFeatHandler.getHeader(this.posFeatNames[i] + "_"));
-                used.set(this.posFeatAttrs[i]);
-            }
-        }
-
         // add other fields in the data (mask already used)
         for (int i = 0; i < this.input.numAttributes(); ++i){
             if (!used.get(i)){
@@ -322,16 +299,7 @@ public class ArffReader extends DataReader {
             sb.append(",").append(StringUtils.protect(word.stringValue(this.syntRelAttr)));
             used.set(this.syntRelAttr);
         }
-
-        // handle all POS feats, if there is a POS features handler, skip and include with the rest otherwise
-        for (int i = 0; i < this.posFeatAttrs.length; ++i){
-            if (this.posFeatAttrs[i] >= 0 && this.posFeatHandler != null){
-                sb.append(",").append(
-                        this.posFeatHandler.listFeats(word.stringValue(this.posFeatAttrs[i])));
-                used.set(this.posFeatAttrs[i]);
-            }
-        }
-        
+      
         // add other fields in the data (mask already used)
         for (int i = 0; i < this.input.numAttributes(); ++i){
             if (!used.get(i)){
