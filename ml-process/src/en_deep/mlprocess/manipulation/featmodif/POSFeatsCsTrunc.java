@@ -25,7 +25,7 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.posfeat;
+package en_deep.mlprocess.manipulation.featmodif;
 
 import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.utils.StringUtils;
@@ -35,12 +35,12 @@ import en_deep.mlprocess.utils.StringUtils;
  * two positions (the actual POS, without any further information on flection etc.).
  * @author Ondrej Dusek
  */
-public class POSFeatsCsTrunc extends POSFeatures {
+public class POSFeatsCsTrunc extends FeatureModifier {
 
     /* CONSTANTS */
 
     /** The ARFF attribute name suffix */
-    private static final String ATTR_NAME = "POS";
+    private static final String ATTR_NAME = "TruncPOS";
 
     /* METHODS */
 
@@ -53,25 +53,27 @@ public class POSFeatsCsTrunc extends POSFeatures {
 
 
     @Override
-    public String getHeader(String prefix) {
+    public String [] getOutputFeatsList(String prefix) {
 
-        return StReader.ATTRIBUTE + " " + prefix + ATTR_NAME + " " + StReader.STRING;
+        String [] ret = new String [1];
+        ret[0] = prefix + "_" + ATTR_NAME;
+        return ret;
     }
 
     @Override
-    public String listFeats(String value) {
+    public String [] getOutputValues(String value) {
 
-        String [] values = value.split(SEP); // allow multiple values
-        String feats = null;
+        String [] values = value != null ? value.split(SEP) : new String[0]; // allow multiple values
+        String [] feats = new String [1];
 
         for (String val : values){
 
             // standard Czech POS tag, ignore otherwise
             if (val.length() == 15){
-                feats = (feats == null ? "" : feats + SEP) + val.substring(0, 2);
+                feats[0] = (feats[0] == null ? "" : feats[0] + SEP) + val.substring(0, 2);
             }
         }
-        return feats == null ? EMPTY : "\"" + StringUtils.escape(feats) + "\"";
+        return feats;
     }
 
 

@@ -25,9 +25,10 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.posfeat;
+package en_deep.mlprocess.manipulation.featmodif;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.manipulation.StReader;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
 import en_deep.mlprocess.utils.StringUtils;
 import java.lang.reflect.Constructor;
@@ -37,7 +38,7 @@ import java.lang.reflect.InvocationTargetException;
  *
  * @author Ondrej Dusek
  */
-public abstract class POSFeatures {
+public abstract class FeatureModifier {
 
     /** Feature name prefix for golden feature values */
     public static final String PREFIX_GOLD = "feat_";
@@ -52,6 +53,14 @@ public abstract class POSFeatures {
 
 
     /**
+     * This, given a name prefix, lists all the output feature names.
+     *
+     * @param prefix prefix for the output feature names
+     * @return a list of all output feature names
+     */
+     public abstract String[] getOutputFeatsList(String prefix);
+
+     /**
      * This returns the POS features ARFF headers (both golden and predicted).
      * @return POS features ARFF headers
      */
@@ -65,7 +74,30 @@ public abstract class POSFeatures {
      * @param prefix prefix for POS feature names in the headers
      * @return the ARFF header with all the available POS features
      */
-     public abstract String getHeader(String prefix);
+     public String getHeader(String prefix){
+         
+         String [] attribs = this.getOutputFeatsList(prefix);
+         StringBuilder sb = new StringBuilder();
+
+         for (int i = 0; i < attribs.length; ++i){
+             sb.append(StReader.ATTRIBUTE + " ").append(attribs[i]).append(" " + StReader.STRING);
+             if (i < attribs.length-1){
+                 sb.append(LF);
+             }
+         }
+         return sb.toString();
+     }
+
+
+    /**
+     * This returns the output feature values, given the input text value of the processed feature.
+     * The text value may be null; if so, the returned value should be as much null values as the
+     * usual number of returned values.
+     *
+     * @param value the input feature value
+     * @return an array with output feature values
+     */
+    public abstract String [] getOutputValues(String value);
 
     /**
      * This lists the POS feature values for ARFF, given the input feature strings for
@@ -81,10 +113,22 @@ public abstract class POSFeatures {
     /**
      * This lists the ARFF values of all possible morphological features, given their compact string representation.
      *
-     * @param values the ST string representation of the features.
-     * @return the ARFF array representation of the features.
+     * @param value a string representation of the input feature
+     * @return the ARFF array representation of the features
      */
-    public abstract String listFeats(String values);
+    public String listFeats(String value){
+
+        String [] feats = this.getOutputValues(value);
+
+        for (int i = 0; i < feats.length; ++i){
+            if (feats[i] == null){
+                feats[i] = EMPTY;
+            }
+        }
+
+        return StringUtils.join(feats, ",", true);
+    }
+    
 
     /**
      * This, given an ST value for POS and morph. features string, returns a combination
@@ -101,16 +145,16 @@ public abstract class POSFeatures {
      * @param className the feature handling class name (within the {@link en_deep.mlprocess.manipulation.posfeat} package
      * @return the desired feature handler, or null if not successful
      */
-    public static POSFeatures createHandler(String className) {
+    public static FeatureModifier createHandler(String className) {
 
-        POSFeatures res = null;
+        FeatureModifier res = null;
         Class featureClass = null;
         Constructor featureConstructor = null;
 
         // retrieve the feature handler class
         try {
             if (!className.contains(".")){
-                className = POSFeatures.class.getPackage().getName() + "." + className;
+                className = FeatureModifier.class.getPackage().getName() + "." + className;
             }
             featureClass = Class.forName(className);
         }
@@ -121,7 +165,7 @@ public abstract class POSFeatures {
         // try to call a constructor with no parameters
         try {
             featureConstructor = featureClass.getConstructor();
-            res = (POSFeatures) featureConstructor.newInstance();
+            res = (FeatureModifier) featureConstructor.newInstance();
         }
         catch (InvocationTargetException e){
             Logger.getInstance().logStackTrace(e.getCause(), Logger.V_DEBUG);
@@ -135,23 +179,5 @@ public abstract class POSFeatures {
         return res;
     }
 
-
-    /**
-     * Serializes a field of different feature values to a single string (by just adding an empty value
-     * to null-valued features and using {@link StringUtils#join(java.lang.Object[], java.lang.String, boolean)}).
-     *
-     * @param feats the feature values
-     * @return the string form of the feature values field
-     */
-    protected String printFeatValues(String [] feats){
-
-        for (int i = 0; i < feats.length; ++i){
-            if (feats[i] == null){
-                feats[i] = EMPTY;
-            }
-        }
-
-        return StringUtils.join(feats, ",", true);
-    }
 
 }

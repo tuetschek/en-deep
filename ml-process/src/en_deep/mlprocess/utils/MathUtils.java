@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.utils;
 
+import java.util.BitSet;
 import java.util.Vector;
 
 /**
@@ -197,5 +198,20 @@ public class MathUtils {
             }
         }
 
+    }
+
+    /**
+     * Returns an array containing all numbers of bits that are set to true.
+     * @param set the set to be processed
+     * @return a list of all true bits in this set
+     */
+    public static int[] findTrue(BitSet set) {
+        int [] ret = new int [set.cardinality()];
+        int offset = 0;
+
+        for (int idx = set.nextSetBit(0); idx >= 0; idx = set.nextSetBit(idx+1)) {
+            ret[offset++] = idx;
+        }
+        return ret;
     }
 }

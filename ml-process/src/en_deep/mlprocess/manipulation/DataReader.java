@@ -6,7 +6,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
-import en_deep.mlprocess.manipulation.posfeat.POSFeatures;
+import en_deep.mlprocess.manipulation.featmodif.FeatureModifier;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -43,10 +43,10 @@ public abstract class DataReader {
     protected int sentenceId;
 
     /** The POS features handling class for this language, or null if not necessary. */
-    public POSFeatures posFeatHandler;
+    public FeatureModifier posFeatHandler;
 
     /**
-     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.POSFeatures} subclass that should handle the
+     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.FeatureModifier} subclass that should handle the
      * POS features of this language, or null.
      */
     public String posFeatHandlerName;
@@ -242,7 +242,7 @@ public abstract class DataReader {
      */
     protected void initPOSFeats() throws IOException {
         if (this.posFeatHandlerName != null) {
-            this.posFeatHandler = POSFeatures.createHandler(this.posFeatHandlerName);
+            this.posFeatHandler = FeatureModifier.createHandler(this.posFeatHandlerName);
             if (this.posFeatHandler == null) {
                 throw new IOException("POS feature handling " + "class `" + this.posFeatHandlerName + "' creation failed.");
             }

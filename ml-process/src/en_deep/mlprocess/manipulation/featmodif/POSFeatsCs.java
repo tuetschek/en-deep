@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2011 Ondrej Dusek
+ *  Copyright (c) 2010 Ondrej Dusek
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -25,17 +25,16 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.posfeat;
+package en_deep.mlprocess.manipulation.featmodif;
 
 import en_deep.mlprocess.manipulation.StReader;
+import java.util.HashMap;
 
 /**
- * This feature handles Czech positional POS tags, splitting them into separate features for
- * the individual positions.
- *
+ * This feature handles the ST file FEAT and PFEAT fields for the Czech language.
  * @author Ondrej Dusek
  */
-public class POSFeatsCsPositional extends POSFeatures {
+public class POSFeatsCs extends FeatureModifier {
 
     /* CONSTANTS */
 
@@ -44,55 +43,61 @@ public class POSFeatsCsPositional extends POSFeatures {
      * Genus, Number, Case, Possessor Genus, Possessor Number, Person, Tense, Grade, Negation, Voice, Variant,
      * Semantic feature).
      */
-    private static final String [] FEATS_LIST = {"MainPOS", "SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
-            "Gra", "Neg", "Voi", /* two empty positions here (omitted) */ "Var"};
+    private static final String [] FEATS_LIST = {"SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
+            "Gra", "Neg", "Voi", "Var", "Sem"};
 
+    /* DATA */
+
+    /** This maps the names in the {@link #FEATS_LIST} variable into their positions in that field */
+    private final HashMap<String, Integer> FEAT_POS;
 
     /* METHODS */
 
     /**
-     * Empty constructor.
+     * This just initializes the table of possible feature values.
      */
-    public POSFeatsCsPositional(){
+    public POSFeatsCs(){
 
-    }
-
-
-    @Override
-    public String getHeader(String prefix) {
-
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (String featType : FEATS_LIST){
-            if (first){
-                first = false;
-            }
-            else {
-                sb.append(LF);
-            }
-            sb.append(StReader.ATTRIBUTE + " ").append(prefix).append(featType).append(" " + StReader.STRING);
+        FEAT_POS = new HashMap<String, Integer>();
+        for (int i = 0; i < FEATS_LIST.length; ++i){
+            FEAT_POS.put(FEATS_LIST[i], i);
         }
-        return sb.toString();
+    }
+
+
+    @Override
+    public String [] getOutputFeatsList(String prefix) {
+
+        String [] list = new String [FEATS_LIST.length];
+        for (int i = 0; i < FEATS_LIST.length; ++i){
+            list[i] = prefix + "_" + FEATS_LIST[i];
+        }
+        return list;
     }
 
     @Override
-    public String listFeats(String value) {
+    public String [] getOutputValues(String value) {
 
-        String [] values = value.split(SEP); // allow multiple values
-        String [] feats = new String [13];
+        String [] values = value != null ? value.split(SEP) : new String[0]; // allow multiple values
+        String [] feats = new String [FEATS_LIST.length];
 
         for (String val : values){
 
-            // standard Czech POS tag, ignore otherwise
-            if (val.length() == 15){
-                val = (val.substring(0, 12) + val.charAt(14)); // omit two empty (unused) positions
-                
-                for (int i = 0; i < feats.length; ++i){
-                    feats[i] = (feats[i] == null ? "" : feats[i] + SEP) + val.charAt(i);
+            if (!val.equals(StReader.EMPTY_VALUE)){
+
+                String [] featInfos = val.split("\\|");
+
+                for (String featInfo : featInfos){  // split into individual features listed
+
+                    String [] nameVal = featInfo.split("=", 2); // extract the name and value
+                    int pos = FEAT_POS.get(nameVal[0]); // find the position of each feature in the array
+
+                    feats[pos] = (feats[pos] == null ? "" : feats[pos] + SEP) + nameVal[1]; // set it at the right position in the array
                 }
             }
         }
-        return printFeatValues(feats);
+        
+        return feats;
     }
 
 

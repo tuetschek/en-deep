@@ -230,22 +230,7 @@ public class StringUtils {
      */
     public static String[] getWekaOptions(Hashtable<String, String> parameters) {
 
-        Vector<Pair<String, String>> classifParams = new Vector<Pair<String,String>>(parameters.size());
-        Enumeration<String> allParams = parameters.keys();
-
-        // collect all parameters, with or without values
-        while (allParams.hasMoreElements()) {
-
-            String name = allParams.nextElement();
-            String value;
-
-            value = parameters.get(name);
-            classifParams.add(new Pair(name, value));
-        }
-
-        // sort the parameters of the same name by their numerical suffixes
-        Pair<String, String> [] paramsArray = classifParams.toArray(new Pair[0]);
-        Arrays.sort(paramsArray, new NumberSuffixFirstComparator());
+        Pair<String, String> [] paramsArray = getSortedParams(parameters, "");
         Vector<String> ret = new Vector<String>();
 
         // add them to an array in that order, with or without a value
@@ -259,6 +244,39 @@ public class StringUtils {
         }
 
         return ret.toArray(new String [0]);        
+    }
+
+    
+    /**
+     * Return an array of all parameters whose names start with a given prefix and continue with a numbers,
+     * sorted according to these numbers.
+     *
+     * @param parameters all the parameters of a task
+     * @param prefix the parameters with this prefix are to be selected
+     * @return the array, filled with the sorted parameter values
+     */
+    public static Pair<String, String> [] getSortedParams(Hashtable<String, String> parameters, String prefix){
+
+        Vector<Pair<String, String>> classifParams = new Vector<Pair<String,String>>(parameters.size());
+        Enumeration<String> allParams = parameters.keys();
+
+        // collect all parameters, with or without values, checking the prefix
+        while (allParams.hasMoreElements()) {
+
+            String name = allParams.nextElement();
+            if (prefix == null || name.startsWith(prefix)){
+                String value;
+
+                value = parameters.get(name);
+                classifParams.add(new Pair(name, value));
+            }
+        }
+
+        // sort the parameters of the same name by their numerical suffixes
+        Pair<String, String> [] paramsArray = classifParams.toArray(new Pair[0]);
+        Arrays.sort(paramsArray, new NumberSuffixFirstComparator());
+
+        return paramsArray;
     }
 
     /**

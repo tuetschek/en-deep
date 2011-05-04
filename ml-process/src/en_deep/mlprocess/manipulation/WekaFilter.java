@@ -85,7 +85,7 @@ public class WekaFilter extends Task {
         }
         if (this.input.size() != this.output.size()){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id, "The numbers of inputs and"
-                    + "outputs are not the same.");
+                    + " outputs are not the same.");
         }
 
         if (this.getParameterVal(FILTER_CLASS) == null){
@@ -175,8 +175,9 @@ public class WekaFilter extends Task {
             filter.setInputFormat(data); // first, parameters must be set, then the input format
         }
         catch (Exception e){
+            e.printStackTrace();
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Filter class not found or"
-                    + "invalid:" + filterName);
+                    + " invalid: " + filterName);
         }
 
         return filter;
