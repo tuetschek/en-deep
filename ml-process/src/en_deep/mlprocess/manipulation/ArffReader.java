@@ -396,4 +396,28 @@ public class ArffReader extends DataReader {
             throw new IOException("The attribute " + name + " must " + (numericity ? "" : "not ") + "be numeric!");
         }
     }
+
+    @Override
+    public String getAttributeName(int attributeNumber) {
+
+        if (this.renameStdHeaders){
+
+            if (attributeNumber == this.syntRelAttr){
+                return DEFAULT_SYNT_REL;
+            }
+            else if (attributeNumber == this.formAttr){
+                return DEFAULT_FORM;            
+            }
+            else if (attributeNumber == this.lemmaAttr){
+                return DEFAULT_LEMMA;  
+            }
+            else if (attributeNumber == this.posAttr){
+                return DEFAULT_POS;            
+            }
+            else if (attributeNumber == this.headAttr){
+                return DEFAULT_HEAD; 
+            }
+        }
+        return this.input.attribute(attributeNumber).name();
+    }
 }

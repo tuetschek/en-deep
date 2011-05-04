@@ -28,7 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
-import en_deep.mlprocess.manipulation.DataReader.WordInfo;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -36,18 +36,15 @@ import en_deep.mlprocess.utils.StringUtils;
  * word.
  * @author Ondrej Dusek
  */
-public class Children extends Feature {
+public class Children extends ParametrizedFeature {
 
     public Children(DataReader reader){
-        super(reader);
+        super(reader, FeatType.SYNT);
     }
 
     @Override
     public String getHeader() {
-        return DataReader.ATTRIBUTE + " ChildrenPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ChildrenLemma " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ChildrenForm " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ChildrenCPOS " + DataReader.STRING;
+        return this.getParametrizedHeader("Children",  DataReader.STRING);
     }
 
     @Override
@@ -55,16 +52,18 @@ public class Children extends Feature {
 
 
         int [] children = this.reader.getChildren(wordNo);
-        String [] pos = this.reader.getWordsInfo(children, WordInfo.POS);
-        String [] lemma = this.reader.getWordsInfo(children, WordInfo.LEMMA);
-        String [] form = this.reader.getWordsInfo(children, WordInfo.FORM);
-        String [] cpos = StringUtils.substrings(pos, 0, 1);
+        String [] values = new String [this.attrPos.length];
 
-        // output the result
-        return "\"" + StringUtils.escape(StringUtils.join(pos, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(lemma, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(form, SEP)) + "\",\""
-                + StringUtils.escape(StringUtils.join(cpos, SEP)) + "\"";
+        for (int i = 0; i < children.length; ++i){
+            
+            String [] fields = this.getFields(children[i]);
+
+            for (int j = 0; j < fields.length; ++j){
+                values[j] = (values[j] == null ? "" : values[j] + SEP) + fields[j];
+            }
+        }
+
+        return "\"" + StringUtils.join(values, "\",\"") + "\"";
     }
 
 

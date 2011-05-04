@@ -27,6 +27,8 @@
 
 package en_deep.mlprocess.manipulation.featmodif;
 
+import en_deep.mlprocess.utils.StringUtils;
+
 /**
  * This handles English POS tags by just truncating them to the first character.
  * 
@@ -67,7 +69,7 @@ public class POSFirstChar extends FeatureModifier {
 
             // standard Czech POS tag, ignore otherwise
             if (val.length() == 15){
-                feats[0] = (feats[0] == null ? "" : feats[0] + SEP) + val.substring(0, 1);
+                feats[0] = (feats[0] == null ? "" : feats[0] + SEP) + StringUtils.safeSubstr(val, 0, 1);
             }
         }
         return feats;

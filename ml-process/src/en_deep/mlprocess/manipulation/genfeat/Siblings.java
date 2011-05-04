@@ -29,45 +29,36 @@ package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
 import en_deep.mlprocess.manipulation.DataReader.Direction;
-import en_deep.mlprocess.manipulation.DataReader.WordInfo;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
- * This generated feature adds the POS and Coarse POS of the left and right sibling of
- * the given word. If the word doesn't have the appropriate sibling, a "-" is returned.
+ * This generated feature adds the word form of the left and right sibling of
+ * the given word. If the word doesn't have the appropriate sibling, an empty string is returned.
  * 
  * @author Ondrej Dusek
  */
-public class SiblingPOS extends Feature {
+public class Siblings extends ParametrizedFeature {
 
 
     /* METHODS */
 
-    public SiblingPOS(DataReader reader){
-        super(reader);
+    public Siblings(DataReader reader){
+        super(reader, FeatType.SYNT);
     }
 
     @Override
     public String getHeader() {
-        return DataReader.ATTRIBUTE + " LeftSiblingPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " RightSiblingPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " LeftSiblingCPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " RightSiblingCPOS " + DataReader.STRING;
+        return this.getParametrizedHeader("LeftSibling", DataReader.STRING) + LF
+                + this.getParametrizedHeader("RightSibling", DataReader.STRING);
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
-        String leftPOS = this.reader.getWordInfo(this.reader.getSibling(wordNo, Direction.LEFT), WordInfo.POS);
-        String rightPOS = this.reader.getWordInfo(this.reader.getSibling(wordNo, Direction.RIGHT), WordInfo.POS);
-        String leftCPOS = StringUtils.safeSubstr(leftPOS, 0, 1);
-        String rightCPOS = StringUtils.safeSubstr(rightPOS, 0, 1);
-
-
-        // produce output -- find the PsOS of the both siblings, if applicable
-        return "\"" + StringUtils.escape(leftPOS) + "\",\""
-                + StringUtils.escape(rightPOS) + "\",\"" + StringUtils.escape(leftCPOS)
-                + "\",\"" + StringUtils.escape(rightCPOS) + "\"";
+        return "\"" + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.LEFT)), "\",\"")
+                + "\",\"" + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.RIGHT)), "\",\"")
+                + "\"";
     }
 
 }

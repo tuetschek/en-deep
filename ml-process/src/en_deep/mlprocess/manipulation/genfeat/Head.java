@@ -28,41 +28,43 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
-import en_deep.mlprocess.manipulation.DataReader.WordInfo;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
  * This feature returns the lemma, POS, coarse POS and form of the parent node.
  * @author Ondrej Dusek
  */
-public class Head extends Feature {
+public class Head extends ParametrizedFeature {
 
     public Head(DataReader reader){
-        super(reader);
+        super(reader, FeatType.SYNT);
     }
 
     @Override
     public String getHeader() {
-        return DataReader.ATTRIBUTE + " ParentPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ParentCPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ParentLemma " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " ParentForm " + DataReader.STRING;
+        return getParametrizedHeader("Parent", DataReader.STRING);
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
         
         Integer headPos = this.reader.getHead(wordNo);
+        StringBuilder sb = new StringBuilder();
 
-        if (headPos == 0){ // the root node
-            return "\"\",\"\",\"\",\"\"";
+        for (int i = 0; i < this.attrPos.length; ++i){
+            if (i > 0){
+                sb.append(",");
+            }
+            if (headPos == 0){
+                sb.append("\"\"");
+            }
+            else {
+                sb.append("\"").append(StringUtils.escape(this.reader.getWordInfo(headPos, this.attrPos[i]))).append("\"");
+            }
         }
-        String pos = this.reader.getWordInfo(headPos, WordInfo.POS);
-        String cpos = pos.isEmpty() ? "" : pos.substring(0, 1);
-        return "\"" + StringUtils.escape(pos) + "\",\""
-                + StringUtils.escape(cpos) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(headPos, WordInfo.LEMMA)) + "\",\""
-                + StringUtils.escape(this.reader.getWordInfo(headPos, WordInfo.FORM)) + "\"";
+
+        return sb.toString();
     }
 
 }

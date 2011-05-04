@@ -28,7 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
-import en_deep.mlprocess.manipulation.DataReader.WordInfo;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
 
@@ -40,17 +40,18 @@ import java.util.Arrays;
  *
  * @author Ondrej Dusek
  */
-public class DepPath extends Feature {
+public class DepPath extends ParametrizedFeature {
+
+    /* METHODS */
 
     public DepPath(DataReader reader) {
-        super(reader);
+        
+        super(reader, FeatType.SYNT);
     }
 
     @Override
     public String getHeader() {
-        return DataReader.ATTRIBUTE + " DepPathRel " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " DepPathPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " DepPathCPOS " + DataReader.STRING + LF
+        return this.getParametrizedHeader("DepPath", DataReader.STRING) + LF
                 + DataReader.ATTRIBUTE + " DepPathDir " + DataReader.STRING + LF
                 + DataReader.ATTRIBUTE + " DepPathLength " + DataReader.INTEGER;
     }
@@ -61,10 +62,14 @@ public class DepPath extends Feature {
         int [] pathBack = new int [this.reader.getSentenceLength()];
         int curPos = predNo + 1; // current position
         String pos; // last used POS value, for producing the Coarse POSes
-        StringBuilder pathRel = new StringBuilder(), pathPos = new StringBuilder(), 
-                pathCpos = new StringBuilder(), pathDir = new StringBuilder();
+        StringBuilder [] paths = new StringBuilder [this.attrPos.length];
+        StringBuilder pathDir = new StringBuilder();
         int pathLength = 0;
         int predRoot = -1;
+
+        for (int i = 0; i < paths.length; ++i){
+            paths[i] = new StringBuilder();
+        }
 
         Arrays.fill(pathBack, -1);
 
@@ -90,9 +95,9 @@ public class DepPath extends Feature {
             int head = this.reader.getHead(curPos - 1) + 1;
 
             if (curPos != wordNo + 1){
-                pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
-                pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
-                pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
+                for (int i = 0; i < paths.length; ++i){
+                    paths[i].append("/").append(this.reader.getWordInfo(curPos - 1, this.attrPos[i]));
+                }
                 pathDir.append("/");
             }
             curPos = head;
@@ -102,18 +107,18 @@ public class DepPath extends Feature {
         if (curPos != predNo + 1){
 
             if (curPos == 0){ // the sentence is not a tree and predicate and the given word are in separate trees
-                pathRel.append("/+++");
-                pathPos.append("/+++");
-                pathCpos.append("/+++");
+                for (int i = 0; i < paths.length; ++i){
+                    paths[i].append("/+++");
+                }
                 pathDir.append("/+++");
                 curPos = predRoot;
                 pathLength += 100;
             }
             else {
                 if (curPos != wordNo + 1){ // end the way up
-                    pathRel.append("/").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
-                    pathPos.append("/").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
-                    pathCpos.append("/").append(StringUtils.safeSubstr(pos, 0, 1));
+                    for (int i = 0; i < paths.length; ++i){
+                        paths[i].append("/").append(this.reader.getWordInfo(curPos - 1, this.attrPos[i]));
+                    }
                     pathDir.append("/");
                     pathLength++;
                 }
@@ -121,28 +126,31 @@ public class DepPath extends Feature {
             }
             // follow the predicate-root path down to the predicate
             while (curPos != 0 && curPos != predNo + 1){
-                pathRel.append("\\").append(this.reader.getWordInfo(curPos - 1, WordInfo.SYNT_REL));
-                pathPos.append("\\").append(pos = this.reader.getWordInfo(curPos - 1, WordInfo.POS));
-                pathCpos.append("\\").append(StringUtils.safeSubstr(pos, 0, 1));
+                for (int i = 0; i < paths.length; ++i){
+                    paths[i].append("\\").append(this.reader.getWordInfo(curPos - 1, this.attrPos[i]));
+                }
                 pathDir.append("\\");
                 curPos = pathBack[curPos-1];
                 pathLength++;
             }
-            pathRel.append("\\");
-            pathPos.append("\\");
-            pathCpos.append("\\");
+            for (int i = 0; i < paths.length; ++i){
+                paths[i].append("\\");
+            }
             pathDir.append("\\");
         }
         else { // the way is up only - end it
-            pathRel.append("/");
-            pathPos.append("/");
-            pathCpos.append("/");
+            for (int i = 0; i < paths.length; ++i){
+                paths[i].append("/");
+            }
             pathDir.append("/");
         }
 
-        return "\"" + StringUtils.escape(pathRel.toString()) + "\",\""
-                + StringUtils.escape(pathPos.toString()) + "\",\"" + StringUtils.escape(pathCpos.toString()) + "\",\""
-                + StringUtils.escape(pathDir.toString()) + "\"," + Integer.toString(pathLength);
+        StringBuilder res = new StringBuilder();
+        for (int i = 0; i < paths.length; ++i){
+            res.append("\"").append(StringUtils.escape(paths[i].toString())).append("\",\"");
+        }
+        res.append(StringUtils.escape(pathDir.toString())).append("\",").append(Integer.toString(pathLength));
+        return res.toString();
     }
 
 }

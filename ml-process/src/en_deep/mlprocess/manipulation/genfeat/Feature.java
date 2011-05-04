@@ -60,7 +60,7 @@ public abstract class Feature {
      * Constructor, to be used by subclasses only
      * @param reader the language-specific ST-file configuration
      */
-    protected Feature(DataReader reader){
+    protected Feature(DataReader reader){       
         this.reader = reader;
     }
 

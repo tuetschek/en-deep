@@ -6,6 +6,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -27,6 +28,11 @@ public abstract class DataReader {
         POS, LEMMA, FORM, SYNT_REL, PRED, HEAD, PFEAT
     }
 
+    /** Generated feature type */
+    public enum FeatType {
+        MORPH, SYNT
+    }
+
     /** Attribute definition start in ARFF files */
     public static final String ATTRIBUTE = "@ATTRIBUTE";
     /** Specification of an attribute as CLASS in ARFF files @todo move to StReader */
@@ -35,6 +41,12 @@ public abstract class DataReader {
     public static final String INTEGER = "INTEGER";
     /** Specification of an attribute as STRING in ARFF files @todo move to StReader */
     public static final String STRING = "STRING";
+
+    /** Name of the 'genfeat_columns_morph' ARFF file parameter */
+    private static final String GENFEAT_COLUMNS_MORPH = "genfeat_columns_morph";
+    /** Name of the 'genfeat_columns_synt' ARFF file parameter */
+    private static final String GENFEAT_COLUMNS_SYNT = "genfeat_columns_synt";
+
 
     /* DATA */
 
@@ -53,6 +65,12 @@ public abstract class DataReader {
     /** Line feed character in the current OS */
     protected static final String LF = System.getProperty("line.separator");
 
+    /** Data columns to be used for various morphological generated features */
+    protected int [] genFeatMorph;
+    /** Data columns to be used for various syntactical generated features */
+    protected int [] genFeatSynt;
+
+
     /* METHODS */
 
     /**
@@ -61,6 +79,8 @@ public abstract class DataReader {
      */
     protected DataReader(Task task){
         this.task = task;
+
+        this.initGenFeatColumns();
     }
 
     
@@ -287,5 +307,72 @@ public abstract class DataReader {
     }
 
 
+    /**
+     * Returns the name of the given input attribute.
+     * 
+     * @param attributeNumber the input column number of the desired attribute
+     * @return  the name of the given attribute
+     */
+    public abstract String getAttributeName(int attributeNumber);
 
+    /**
+     * Returns the names of the listed input attributes.
+     * 
+     * @param attributeNumbers the numbers of desired attributes
+     * @return the names of the given attributes
+     */
+    public String [] getAttributeNames(int [] attributeNumbers){
+
+        String [] ret = new String [attributeNumbers.length];
+        for (int i = 0; i < ret.length; ++i){
+            ret[i] = this.getAttributeName(attributeNumbers[i]);
+        }
+        return ret;
+    }
+
+
+    /**
+     * Initialize the list of columns to be used by generated features (set to
+     * default or as specified in the 'genfeat_columns' parameter).
+     */
+    private void initGenFeatColumns() {
+
+        String genFeatList = this.getTaskParameter(GENFEAT_COLUMNS_MORPH);
+
+        if (genFeatList != null){
+            this.genFeatMorph = StringUtils.readListOfInts(genFeatList);
+        }
+        else {
+            this.genFeatMorph = new int [3];
+            this.genFeatMorph[0] = this.getInfoPos(WordInfo.FORM);
+            this.genFeatMorph[1] = this.getInfoPos(WordInfo.LEMMA);
+            this.genFeatMorph[2] = this.getInfoPos(WordInfo.POS);
+        }
+
+        genFeatList = this.getTaskParameter(GENFEAT_COLUMNS_SYNT);
+
+        if (genFeatList != null){
+            this.genFeatSynt = StringUtils.readListOfInts(genFeatList);
+        }
+        else {
+            this.genFeatSynt = new int [4];
+            this.genFeatSynt[0] = this.getInfoPos(WordInfo.FORM);
+            this.genFeatSynt[1] = this.getInfoPos(WordInfo.LEMMA);
+            this.genFeatSynt[2] = this.getInfoPos(WordInfo.POS);
+            this.genFeatSynt[3] = this.getInfoPos(WordInfo.SYNT_REL);
+        }
+    }
+
+    /**
+     * Return a list of input columns that should be used by the given type of generated features.
+     * @param type the desired type of generated features
+     * @return the list of corresponding input columns
+     */
+    public int [] getGenFeatColumns(FeatType type){
+
+        if (type == FeatType.SYNT){
+            return this.genFeatSynt;
+        }
+        return this.genFeatMorph;
+    }
 }

@@ -28,6 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.utils.StringUtils;
 
@@ -37,71 +38,48 @@ import en_deep.mlprocess.utils.StringUtils;
  * bigrams from both sides.
  * @author Ondrej Dusek
  */
-public class Neighbors extends Feature {
+public class Neighbors extends ParametrizedFeature {
 
     /* METHODS */
 
     public Neighbors(DataReader reader){
-        super(reader);
+        super(reader, FeatType.MORPH);
     }
 
     @Override
     public String getHeader() {
-        return this.getHeaderText("_Form") + LF + this.getHeaderText("_Lemma") + LF + this.getHeaderText("_POS")
-                + LF + this.getHeaderText("_CPOS");
-    }
-
-    /**
-     * Returns the whole text of one type of headers, with the given suffix
-     * @param suffix the suffix to be appended to the new features' names
-     * @return the text of one type of headers
-     */
-    private String getHeaderText(String suffix){
-        return DataReader.ATTRIBUTE + " Left3" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Left2" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Left1" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Left12" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Right12" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Right1" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Right2" + suffix + " " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " Right3" + suffix + " " + DataReader.STRING;
+        return this.getParametrizedHeader("Left3_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left2_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left1_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left12_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right12_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right1_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right2_", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right3_", DataReader.STRING);
     }
 
 
     @Override
     public String generate(int wordNo, int predNo) {
-        
-        return "\"" + StringUtils.join(this.getNeighborsInfo(wordNo, WordInfo.FORM),"\",\"") + "\",\""
-                + StringUtils.join(this.getNeighborsInfo(wordNo, WordInfo.LEMMA), "\",\"") + "\",\""
-                + StringUtils.join(this.getNeighborsInfo(wordNo, WordInfo.POS), "\",\"") + "\",\""
-                + StringUtils.join(StringUtils.substrings(this.getNeighborsInfo(wordNo, WordInfo.POS),0,1),"\",\"")
-                + "\"";
+
+        return this.getInfo(wordNo-3, false) + "," + this.getInfo(wordNo-2, false)
+                + "," + this.getInfo(wordNo-1, false) + "," + this.getInfo(wordNo-2, true)
+                + "," + this.getInfo(wordNo+1, true) + "," + this.getInfo(wordNo+1, false)
+                + "," + this.getInfo(wordNo+2, false) + "," + this.getInfo(wordNo+3, false);
     }
 
     /**
-     * Returns all the neighbors' values for the given field.
-     * 
-     * @param wordNo The word to compute the relative distance from.
-     * @param info The field to get.
-     * @return All the neighbors' values for the given field.
+     * Retrieves all the required information about one word or a word and its successor.
+     * @param wordNo the number of the word in question
+     * @param bindWithNext should also its successor's values be added ?
+     * @return all the required information, as ARFF quoted list
      */
-    private String [] getNeighborsInfo(int wordNo, WordInfo info){
+    private String getInfo(int wordNo, boolean bindWithNext){
 
-        String [] ret = new String [8];
-        int i = 0;
-
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 3, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 1, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo - 2, info)
-                    + SEP + this.reader.getWordInfo(wordNo - 1, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, info)
-                    + SEP + this.reader.getWordInfo(wordNo + 2, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 1, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 2, info));
-        ret[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo + 3, info));
-
-        return ret;
+        if (!bindWithNext){
+            return "\"" + StringUtils.join(this.getFields(wordNo), "\",\"") + "\"";
+        }
+        return "\"" + StringUtils.join(StringUtils.bigrams(this.getFields(wordNo), this.getFields(wordNo+1), SEP), "\",\"")
+                + "\"";
     }
-
 }

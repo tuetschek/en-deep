@@ -110,7 +110,7 @@ public class StReader extends DataReader {
         "@ATTRIBUTE p-lemma STRING",
         "@ATTRIBUTE pos STRING",
         "@ATTRIBUTE p-pos STRING",
-        "", // dummy field for generated features -- they are handled by a special class
+        "", // dummy field for POS features -- they are handled by a special class
         "",
         "@ATTRIBUTE head INTEGER",
         "@ATTRIBUTE p-head INTEGER",
@@ -619,6 +619,21 @@ public class StReader extends DataReader {
                 throw new IOException("POS feature handling " + "class `" + this.posFeatHandlerName + "' creation failed.");
             }
         }
+    }
+
+    @Override
+    public String getAttributeName(int attributeNumber) {
+
+        if (attributeNumber < HEADER.length){
+
+            String header = HEADER[attributeNumber].replaceFirst("[^ ]+ ([^ ]+) .*", "\\1");
+
+            if (header.equals("")){
+                return "A" + attributeNumber;
+            }
+            return header;
+        }
+        return this.additionalColumns[attributeNumber - HEADER.length];
     }
 
 }

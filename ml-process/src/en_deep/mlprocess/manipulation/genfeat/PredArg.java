@@ -28,7 +28,7 @@
 package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.manipulation.DataReader;
-import en_deep.mlprocess.manipulation.DataReader.WordInfo;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.utils.StringUtils;
 
 /**
@@ -36,7 +36,7 @@ import en_deep.mlprocess.utils.StringUtils;
  * about the argument candidate).
  * @author Ondrej Dusek
  */
-public class PredArg extends Feature {
+public class PredArg extends ParametrizedFeature {
 
     /* METHODS */
 
@@ -45,13 +45,14 @@ public class PredArg extends Feature {
      * @param reader the St-file reader
      */
     public PredArg(DataReader reader) {
-        super(reader);
+        super(reader, FeatType.SYNT);
     }
 
 
     @Override
     public String getHeader() {
-        return this.getHeaderText("Pred") + LF + this.getHeaderText("PredArg");
+        return this.getParametrizedHeader("Pred", DataReader.STRING) + LF
+                + this.getParametrizedHeader("PredArg", DataReader.STRING);
     }
 
     @Override
@@ -63,37 +64,6 @@ public class PredArg extends Feature {
         return "\"" + StringUtils.join(predInfo, "\",\"") + "\",\"" + StringUtils.join(predWordInfo, "\",\"")
                 + "\"";
     }
-
-    /**
-     * This returns all the header lines for one variant (Pred / PredArg).
-     * @param prefix the prefix of the given variant
-     * @return the header for the given variant of the feature
-     */
-    private String getHeaderText(String prefix) {
-
-        return DataReader.ATTRIBUTE + " " + prefix + "Form " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " " + prefix + "Lemma " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " " + prefix + "POS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " " + prefix + "CPOS " + DataReader.STRING + LF
-                + DataReader.ATTRIBUTE + " " + prefix + "DepRel " + DataReader.STRING;
-    }
-
-    /**
-     * This returns all the needed information about one word (form, lemma, POS, CPOS and deprel).
-     * @param wordNo the number of the word
-     * @return the information about the given word
-     */
-    private String[] getFields(int wordNo) {
-        String [] info = new String [5];
-        int i = 0;
-
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.FORM));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.LEMMA));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.POS).substring(0, 1));
-        info[i++] = StringUtils.escape(this.reader.getWordInfo(wordNo, WordInfo.SYNT_REL));
-
-        return info;
-    }
+    
 
 }
