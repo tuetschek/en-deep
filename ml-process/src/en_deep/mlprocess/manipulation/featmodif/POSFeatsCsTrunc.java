@@ -76,15 +76,4 @@ public class POSFeatsCsTrunc extends FeatureModifier {
         return feats;
     }
 
-
-    /**
-     * This returns just the POS to be used in the ARFF generated features (SubPOS not needed,
-     * since SubPOS & POS works the same as SubPOS alone).
-     */
-    @Override
-    public String getFullPOS(String posVal, String featVal) {
-
-        return posVal;
-    }
-
 }

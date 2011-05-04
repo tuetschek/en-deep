@@ -129,17 +129,7 @@ public abstract class FeatureModifier {
         return StringUtils.join(feats, ",", true);
     }
     
-
-    /**
-     * This, given an ST value for POS and morph. features string, returns a combination
-     * to be used as a true POS tag in the output file
-     * @param posVal value of the POS field in the ST file
-     * @param featVal value of the FEAT field in the ST file
-     * @return a combination of POS and features to be used as a POS by the generated features
-     */
-    public abstract String getFullPOS(String posVal, String featVal);
-
-    
+   
     /**
      * This tries to find the feature handling class with the given name and initialize it.
      * @param className the feature handling class name (within the {@link en_deep.mlprocess.manipulation.posfeat} package

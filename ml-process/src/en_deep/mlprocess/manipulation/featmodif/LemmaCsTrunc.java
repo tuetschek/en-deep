@@ -27,62 +27,43 @@
 
 package en_deep.mlprocess.manipulation.featmodif;
 
-import en_deep.mlprocess.manipulation.StReader;
-
 /**
- * This feature handles Czech positional POS tags, splitting them into separate features for
- * the individual positions.
- *
+ * This allows truncating Czech morphological lemmas to just the lemma-proper part.
  * @author Ondrej Dusek
  */
-public class POSFeatsCsPositional extends FeatureModifier {
+public class LemmaCsTrunc extends FeatureModifier {
 
     /* CONSTANTS */
 
-    /**
-     * List of possible features that may occur in the FEAT field for Czech (Sub-POS,
-     * Genus, Number, Case, Possessor Genus, Possessor Number, Person, Tense, Grade, Negation, Voice, Variant,
-     * Semantic feature).
-     */
-    private static final String [] FEATS_LIST = {"MainPOS", "SubPOS", "Gen", "Num", "Cas", "PGe", "PNu", "Per", "Ten",
-            "Gra", "Neg", "Voi", /* two empty positions here (omitted) */ "Var"};
-
+    /** The ARFF attribute name suffix */
+    private static final String ATTR_NAME = "TruncLemma";
 
     /* METHODS */
 
     /**
      * Empty constructor.
      */
-    public POSFeatsCsPositional(){
+    public LemmaCsTrunc(){
 
     }
+
 
     @Override
     public String [] getOutputFeatsList(String prefix) {
 
-        String [] list = new String [FEATS_LIST.length];
-        for (int i = 0; i < FEATS_LIST.length; ++i){
-            list[i] = prefix + "_" + FEATS_LIST[i];
-        }
-        return list;
+        String [] ret = new String [1];
+        ret[0] = prefix + "_" + ATTR_NAME;
+        return ret;
     }
 
     @Override
     public String [] getOutputValues(String value) {
 
         String [] values = value != null ? value.split(SEP) : new String[0]; // allow multiple values
-        String [] feats = new String [13];
+        String [] feats = new String [1];
 
         for (String val : values){
-
-            // standard Czech POS tag, ignore otherwise
-            if (val.length() == 15){
-                val = (val.substring(0, 12) + val.charAt(14)); // omit two empty (unused) positions
-                
-                for (int i = 0; i < feats.length; ++i){
-                    feats[i] = (feats[i] == null ? "" : feats[i] + SEP) + val.charAt(i);
-                }
-            }
+            feats[0] = (feats[0] == null ? "" : feats[0] + SEP) + val.replaceFirst("(-|`|_;|_:|_;|_,|_\\^).*$", "");
         }
         return feats;
     }
