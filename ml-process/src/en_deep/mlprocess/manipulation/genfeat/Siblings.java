@@ -56,9 +56,8 @@ public class Siblings extends ParametrizedFeature {
     @Override
     public String generate(int wordNo, int predNo) {
 
-        return "\"" + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.LEFT)), "\",\"")
-                + "\",\"" + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.RIGHT)), "\",\"")
-                + "\"";
+        return StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.LEFT)), ",", true)
+                + "," + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.RIGHT)), ",", true);
     }
 
 }

@@ -147,9 +147,9 @@ public class DepPath extends ParametrizedFeature {
 
         StringBuilder res = new StringBuilder();
         for (int i = 0; i < paths.length; ++i){
-            res.append("\"").append(StringUtils.escape(paths[i].toString())).append("\",\"");
+            res.append(StringUtils.protect(paths[i].toString())).append(",");
         }
-        res.append(StringUtils.escape(pathDir.toString())).append("\",").append(Integer.toString(pathLength));
+        res.append(StringUtils.protect(pathDir.toString())).append(",").append(Integer.toString(pathLength));
         return res.toString();
     }
 

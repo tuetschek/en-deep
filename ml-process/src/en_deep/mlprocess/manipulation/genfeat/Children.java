@@ -63,7 +63,13 @@ public class Children extends ParametrizedFeature {
             }
         }
 
-        return "\"" + StringUtils.join(values, "\",\"") + "\"";
+        for (int i = 0; i < values.length; ++i){
+            if (values[i] == null){
+                values[i] = "";
+            }
+        }
+
+        return StringUtils.join(values, ",", true);
     }
 
 

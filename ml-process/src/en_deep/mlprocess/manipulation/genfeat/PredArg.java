@@ -61,8 +61,7 @@ public class PredArg extends ParametrizedFeature {
         String [] predInfo = this.getFields(predNo);
         String [] predWordInfo = StringUtils.bigrams(predInfo, this.getFields(wordNo), SEP);
 
-        return "\"" + StringUtils.join(predInfo, "\",\"") + "\",\"" + StringUtils.join(predWordInfo, "\",\"")
-                + "\"";
+        return StringUtils.join(predInfo, ",", true) + "," + StringUtils.join(predWordInfo, ",", true);
     }
     
 

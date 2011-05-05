@@ -77,9 +77,8 @@ public class Neighbors extends ParametrizedFeature {
     private String getInfo(int wordNo, boolean bindWithNext){
 
         if (!bindWithNext){
-            return "\"" + StringUtils.join(this.getFields(wordNo), "\",\"") + "\"";
+            return StringUtils.join(this.getFields(wordNo), ",", true);
         }
-        return "\"" + StringUtils.join(StringUtils.bigrams(this.getFields(wordNo), this.getFields(wordNo+1), SEP), "\",\"")
-                + "\"";
+        return StringUtils.join(StringUtils.bigrams(this.getFields(wordNo), this.getFields(wordNo+1), SEP), ",", true);
     }
 }

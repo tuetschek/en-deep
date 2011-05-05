@@ -85,8 +85,7 @@ public abstract class ParametrizedFeature extends Feature {
     }
 
     /**
-     * This returns all the needed information about one word, as a field. The values
-     * are already escaped using {@link StringUtils#escape(java.lang.String)}.
+     * This returns all the needed information about one word, as a field.
      * 
      * @param wordNo the number of the word
      * @return the information about the given word
@@ -96,7 +95,7 @@ public abstract class ParametrizedFeature extends Feature {
         String [] info = new String [this.attrPos.length];
 
         for (int i = 0; i < this.attrPos.length; ++i){
-            info[i] = StringUtils.escape(this.reader.getWordInfo(wordNo, this.attrPos[i]));
+            info[i] = this.reader.getWordInfo(wordNo, this.attrPos[i]);
         }
         return info;
     }

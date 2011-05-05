@@ -60,7 +60,7 @@ public class Head extends ParametrizedFeature {
                 sb.append("\"\"");
             }
             else {
-                sb.append("\"").append(StringUtils.escape(this.reader.getWordInfo(headPos, this.attrPos[i]))).append("\"");
+                sb.append(StringUtils.protect(this.reader.getWordInfo(headPos, this.attrPos[i])));
             }
         }
 
