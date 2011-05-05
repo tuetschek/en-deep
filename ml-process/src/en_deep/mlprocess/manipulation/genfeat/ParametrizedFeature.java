@@ -77,7 +77,8 @@ public abstract class ParametrizedFeature extends Feature {
             if (i > 0){
                 sb.append(LF);
             }
-            sb.append(DataReader.ATTRIBUTE).append(" ").append(prefix).append(attrNames[i]).append(" ").append(type);
+            sb.append(DataReader.ATTRIBUTE).append(" ").append(prefix)
+                    .append("_").append(attrNames[i]).append(" ").append(type);
         }
 
         return sb.toString();

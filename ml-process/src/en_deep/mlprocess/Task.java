@@ -244,4 +244,15 @@ public abstract class Task implements Serializable {
         }
     }
 
+    /**
+     * This checks if the given parameter is set. If not, an exception is thrown.
+     * @param paramName the name of the required parameter
+     * @throws TaskException it the parameter is not set
+     */
+    protected void requireParameter(String paramName) throws TaskException {
+        if (!this.hasParameter(paramName)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing required parameter: " + paramName);
+        }
+    }
+
 }

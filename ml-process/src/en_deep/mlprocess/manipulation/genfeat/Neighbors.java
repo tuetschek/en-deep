@@ -48,14 +48,14 @@ public class Neighbors extends ParametrizedFeature {
 
     @Override
     public String getHeader() {
-        return this.getParametrizedHeader("Left3_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Left2_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Left1_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Left12_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Right12_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Right1_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Right2_", DataReader.STRING) + LF
-                + this.getParametrizedHeader("Right3_", DataReader.STRING);
+        return this.getParametrizedHeader("Left3", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left2", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left1", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Left12", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right12", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right1", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right2", DataReader.STRING) + LF
+                + this.getParametrizedHeader("Right3", DataReader.STRING);
     }
 
 
