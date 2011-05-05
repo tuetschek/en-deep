@@ -74,6 +74,9 @@ import java.util.Vector;
  * <pre> -S
  *  Multiple-value separator string (default: one space).</pre>
  *
+ * <pre> -D
+ *  Dual mode (non-set-aware and set-aware output).</pre>
+ *
  <!-- options-end -->
  *
  */
@@ -95,6 +98,9 @@ public class SetAwareNominalToBinary
 
   /** Are all values transformed into new attributes? */
   private boolean m_TransformAll = false;
+
+  /** Dual mode (set-aware and normal output) */
+  private boolean m_DualMode = false;
 
   /** The separator string for set values */
   private String m_Separator = defaultSeparator;
@@ -218,6 +224,10 @@ public class SetAwareNominalToBinary
         "\tThe separator for set values.",
         "S", 1, "-V <sep_char>"));
 
+    newVector.addElement(new Option(
+	"\tDual mode (non-set-aware and set-aware).",
+	"D", 0, "-D"));
+
     return newVector.elements();
   }
 
@@ -246,7 +256,10 @@ public class SetAwareNominalToBinary
    * <pre> -S
    *  Multiple-value separator string (default: one space).</pre>
    *
-   <!-- options-end -->
+   * <pre> -D
+   *  Dual mode (non-set-aware and set-aware output).</pre>
+   *
+    <!-- options-end -->
    *
    * @param options the list of options as an array of strings
    * @throws Exception if an option is not supported
@@ -265,6 +278,8 @@ public class SetAwareNominalToBinary
     }
     setInvertSelection(Utils.getFlag('V', options));
 
+    setDualMode(Utils.getFlag('D', options));
+
     setSeparator(Utils.getOption('S', options));
 
     if (getInputFormat() != null)
@@ -279,7 +294,7 @@ public class SetAwareNominalToBinary
   @Override
   public String [] getOptions() {
 
-    String [] options = new String [7];
+    String [] options = new String [8];
     int current = 0;
 
     if (getBinaryAttributesNominal()) {
@@ -298,6 +313,9 @@ public class SetAwareNominalToBinary
     }
     if (!getSeparator().equals(defaultSeparator)){
       options[current++] = "-S"; options[current++] = getSeparator();
+    }
+    if (getDualMode()){
+        options[current++] = "-D";
     }
 
     while (current < options.length) {
@@ -506,14 +524,7 @@ public class SetAwareNominalToBinary
 	  vals[attSoFar] = instance.value(j);
 	  attSoFar++;
 	} else {
-          if (instance.isMissing(j)) {
-            for (int k = 0; k < m_producedAttVals[j].size(); k++) {
-                vals[attSoFar + k] = instance.value(j);
-            }
-          } else {
-            setConvertedAttribute(att, instance.value(j), vals, attSoFar);
-          }
-	  attSoFar += m_producedAttVals[j].size();
+	  attSoFar += setConvertedAttribute(att, instance.value(j), vals, attSoFar);
 	}
       }
     }
@@ -577,9 +588,20 @@ public class SetAwareNominalToBinary
     private ArrayList<Attribute> convertAttribute(Attribute att){
 
         ArrayList newAtts = new ArrayList<Attribute>();
-        m_producedAttVals[att.index()] = new HashMap<String, Integer>();
 
-        // Compute values for new attributes
+        // In dual mode, use each possible value
+        if (m_DualMode){
+            for (int k = 0; k < att.numValues(); ++k){
+
+                String attName = att.name() + "=" + att.value(k);
+
+                newAtts.add(m_Numeric ? new Attribute(attName) : makeNominalAttribute(attName));
+            }
+        }
+
+        // Find all possible set values
+        m_producedAttVals[att.index()] = new HashMap<String, Integer>();
+        
         for (int k = 0; k < att.numValues(); k++) {
 
             String [] setVals = att.value(k).split(m_Separator);
@@ -591,38 +613,77 @@ public class SetAwareNominalToBinary
                 }
                 m_producedAttVals[att.index()].put(setVal, m_producedAttVals[att.index()].size());
 
-                String attributeName = att.name() + "=" + setVal;
+                String attName = att.name() + ">" + setVal;
 
-                if (m_Numeric) {
-                    newAtts.add(new Attribute(attributeName));
-                }
-                else {
-                    FastVector binVals = new FastVector(2);
-                    binVals.addElement("f"); binVals.addElement("t");
-                    newAtts.add(new Attribute(attributeName, binVals));
-                }
+                newAtts.add(m_Numeric ? new Attribute(attName) : makeNominalAttribute(attName));
             }
         }
+
         return newAtts;
     }
 
     /**
      * Sets the values for all binary attributes pertaining to the given source attribute with
-     * respect to possible multiple values.
+     * respect to possible multiple values (and normal setting, if {@link #m_DualMode} is enabled).
      * 
      * @param att the source attribute
      * @param value the source value
      * @param vals the field where the values are to be stored
      * @param offset the offset where the values for this attribute should begin
+     * @return number of processed output columns
      */
-    private void setConvertedAttribute(Attribute att, double value, double[] vals, int offset) {
+    private int setConvertedAttribute(Attribute att, double value, double[] vals, int offset) {
 
         String strVal = att.value((int) value);
         String [] setVals = strVal.split(m_Separator);
+        int totalValues = (m_DualMode ? att.numValues() : 0 ) + m_producedAttVals[att.index()].size();
 
+        if (Utils.isMissingValue(value)){
+            for (int i = 0; i < totalValues; ++i){
+                vals[offset + i] = value;
+            }
+            return totalValues;
+        }
+
+        if (m_DualMode){
+            vals[offset + (int) value] = 1;
+            offset += att.numValues();
+        }
         for (String setVal : setVals) {
             vals[offset + m_producedAttVals[att.index()].get(setVal)] = 1;
         }
+        return totalValues;
+    }
+
+    /**
+     * Returns true if the dual mode setting is in effect.
+     * @return true if the dual mode is enabled
+     */
+    private boolean getDualMode() {
+        return this.m_DualMode;
+    }
+
+    /**
+     * Sets dual mode (set-aware + normal) on/off.
+     *
+     * @param dualMode new value of dualMode mode
+     */
+    private void setDualMode(boolean dualMode) {
+        this.m_DualMode = dualMode;
+    }
+
+    /**
+     * Create a nominal binary attribute with the given name and two values <tt>f</tt> and <tt>t</tt>.
+     * @param attributeName the desired attribute name
+     * @return the new nominal binary attribute
+     */
+    private Attribute makeNominalAttribute(String attributeName) {
+
+        ArrayList binVals = new ArrayList(2);
+
+        binVals.add("f");
+        binVals.add("t");
+        return new Attribute(attributeName, binVals);
     }
 
 }
