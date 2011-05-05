@@ -27,23 +27,27 @@
 
 package en_deep.mlprocess.manipulation.featmodif;
 
+import en_deep.mlprocess.utils.StringUtils;
+
 /**
- * This allows truncating Czech morphological lemmas to just the lemma-proper part.
+ * This allows truncating semantic parts of speech to their first, or first and second field.
  * @author Ondrej Dusek
  */
-public class LemmaCsTrunc extends FeatureModifier {
+public class SemPOSTrunc extends FeatureModifier {
 
     /* CONSTANTS */
 
-    /** The ARFF attribute name suffix */
-    private static final String ATTR_NAME = "TruncLemma";
+    /** The ARFF attribute name suffix (second variant) */
+    private static final String ATTR_NAME1 = "Trunc1";
+    /** The ARFF attribute name suffix (second variant) */
+    private static final String ATTR_NAME2 = "Trunc2";
 
     /* METHODS */
 
     /**
      * Empty constructor.
      */
-    public LemmaCsTrunc(){
+    public SemPOSTrunc(){
 
     }
 
@@ -51,8 +55,9 @@ public class LemmaCsTrunc extends FeatureModifier {
     @Override
     public String [] getOutputFeatsList(String prefix) {
 
-        String [] ret = new String [1];
-        ret[0] = prefix + "_" + ATTR_NAME;
+        String [] ret = new String [2];
+        ret[0] = prefix + "_" + ATTR_NAME1;
+        ret[1] = prefix + "_" + ATTR_NAME2;
         return ret;
     }
 
@@ -60,10 +65,14 @@ public class LemmaCsTrunc extends FeatureModifier {
     public String [] getOutputValues(String value) {
 
         String [] values = value != null ? value.split(SEP) : new String[0]; // allow multiple values
-        String [] trunc = new String [1];
+        String [] trunc = new String [2];
 
         for (String val : values){
-            trunc[0] = (trunc[0] == null ? "" : trunc[0] + SEP) + val.replaceFirst("(-|`|_;|_:|_;|_,|_\\^).*$", "");
+
+            for (int i = 0; i < 2; ++i){
+                String [] fields = val.split("\\.");
+                trunc[i] = (trunc[i] == null ? "" : trunc[i] + SEP) + StringUtils.join(fields, 0, i+1, ".");
+            }
         }
         return trunc;
     }

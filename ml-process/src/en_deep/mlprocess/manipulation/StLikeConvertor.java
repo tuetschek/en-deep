@@ -48,6 +48,10 @@ public abstract class StLikeConvertor extends StManipulation {
      * </p>
      * <ul>
      * <li><tt>generate</tt> -- comma-separated list of features to be generated</li>
+     * <li><tt>genfeat_columns_morph</tt> -- a list of (1-based) column numbers to be used for morphological
+     * generated features</li>
+     * <li><tt>genfeat_columns_synt</tt> -- a list of (1-based) column numbers to be used for syntactic
+     * generated features</li>
      * <li><tt>omit_semclass</tt> -- if set to non-false, the semantic class is not output at all</li>
      * </ul>
      *

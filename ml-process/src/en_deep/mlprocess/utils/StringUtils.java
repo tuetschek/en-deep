@@ -63,7 +63,9 @@ public class StringUtils {
 
     /**
      * Concatenates all the strings from a given field portion, separating them with the
-     * given string.
+     * given string. If the the indexes are out of range, only the actually existing part of the
+     * array is joined.
+     * 
      * @param data the strings to be joined
      * @param lo lower bound of the field portion (inclusive)
      * @param hi upper bound of the field portion (exclusive)
@@ -74,7 +76,7 @@ public class StringUtils {
 
         StringBuilder sb = new StringBuilder();
 
-        for (int i = lo; i < hi; ++i){
+        for (int i = lo; i < hi && i < data.length; ++i){
             if (i > lo){
                 sb.append(sep);
             }

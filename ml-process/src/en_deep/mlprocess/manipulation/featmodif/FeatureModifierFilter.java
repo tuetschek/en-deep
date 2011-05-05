@@ -89,7 +89,12 @@ public class FeatureModifierFilter
   /** The actual operating class */
   private FeatureModifier m_OperClass = null;
 
+  /** Preserve original columns */
+  private boolean m_PreserveOriginals = false;
+
+  /** List of source string attributes, excluding the affected ones */
   private AttributeLocator m_StringToCopySrc = null;
+  /** List of target string attributes, excluding the affected ones */
   private AttributeLocator m_StringToCopyDst = null;
 
 
@@ -200,7 +205,11 @@ public class FeatureModifierFilter
 
     newVector.addElement(new Option(
         "\tThe requested operation (class).",
-        "O", 1, "-V <sep_char>"));
+        "O", 1, "-O <class_name>"));
+
+    newVector.addElement(new Option(
+	"\tPreserve original columns as well.",
+	"P", 0, "-P"));
 
     return newVector.elements();
   }
@@ -220,8 +229,11 @@ public class FeatureModifierFilter
    * <pre> -V
    *  Invert matching sense of column indexes.</pre>
    *
-   * <pre> -O
+   * <pre> -O &lt;class_name&gt;
    *  Operating class name.</pre>
+   *
+   * <pre> -P
+   *  Preserve original columns.</pre>
    *
    <!-- options-end -->
    *
@@ -239,6 +251,8 @@ public class FeatureModifierFilter
     setInvertSelection(Utils.getFlag('V', options));
 
     setOperClass(Utils.getOption('O', options));
+
+    setPreserveOriginal(Utils.getFlag('P', options));
 
     if (getInputFormat() != null)
       setInputFormat(getInputFormat());
@@ -265,7 +279,10 @@ public class FeatureModifierFilter
     if (getOperClass() != null){
         options[current++] = "-S"; options[current++] = getOperClass();
     }
-    
+
+    if (getPreserveOriginals()){
+        options[current++] = "-P";
+    }
 
     while (current < options.length) {
       options[current++] = "";
@@ -380,6 +397,10 @@ public class FeatureModifierFilter
 	  }
           newAtts.addAll(valueAttrs);
 
+          if (m_PreserveOriginals){
+              attrSrc.set(j);
+              attrDest.set(attSoFar);
+          }
           attSoFar += valueAttrs.size();
       }
     }
@@ -406,14 +427,14 @@ public class FeatureModifierFilter
     int attSoFar = 0;
 
     for(int j = 0; j < getInputFormat().numAttributes(); j++) {
-      Attribute att = getInputFormat().attribute(j);
+      Attribute att = instance.attribute(j);
       if (!m_Columns.isInRange(j)) {
 	vals[attSoFar] = instance.value(j);
 	attSoFar++;
       } else {
           // store new string values, make double values "missing" for now (if some string
           // values are missing, the double values will remain missing)
-          attSoFar += getAttributeOutputValue(instance.stringValue(j), vals, stringVals, attSoFar);
+          attSoFar += getAttributeOutputValue(att, instance.value(j), vals, stringVals, attSoFar);
       }
     }
     Instance inst = null;
@@ -483,6 +504,10 @@ public class FeatureModifierFilter
 
         ArrayList newAtts = new ArrayList<Attribute>();
 
+        if (this.m_PreserveOriginals){
+            newAtts.add(att.copy());
+        }
+
         String [] outputNames = this.m_OperClass.getOutputFeatsList(att.name());
 
         for (int i = 0; i < outputNames.length; ++i){
@@ -495,22 +520,28 @@ public class FeatureModifierFilter
     /**
      * Retrieves the values for all output attributes relating to the given source attribute.
      * 
-     * @param attValue the source attribute value
+     * @param att the source attribute
+     * @param attVal the attribute value
      * @param stringValArr the field where the double values are to be set to missing
      * @param stringValArr the field where the string values are to be stored
      * @param offset the offset where the values for this attribute should begin
      * @return the number of attribute values written
      */
-    private int getAttributeOutputValue(String attValue, double [] valArr, String [] stringValArr, int offset) {
+    private int getAttributeOutputValue(Attribute att, double attVal, double [] valArr, String [] stringValArr, int offset) {
 
-        String [] outVals = this.m_OperClass.getOutputValues(attValue);
+        if (this.m_PreserveOriginals){
+            valArr[offset] = attVal;
+            offset++;
+        }
+
+        String [] outVals = this.m_OperClass.getOutputValues(att.value((int) attVal));
         System.arraycopy(outVals, 0, stringValArr, offset, outVals.length);
 
         for (int i = 0; i < outVals.length; ++i){
             valArr[offset + i] = Utils.missingValue();
         }
 
-        return outVals.length;
+        return outVals.length + (this.m_PreserveOriginals ? 1 : 0);
     }
 
     @Override
@@ -520,5 +551,21 @@ public class FeatureModifierFilter
                 destDataset, m_OutputRelAtts);
 
         StringLocator.copyStringValues(instance, instSrcCompat, srcDataset, m_StringToCopySrc, destDataset, m_StringToCopyDst);
+    }
+
+    /**
+     * Set the new policy on preserving original columns.
+     * @param preserveOriginals true if original columns should be preserved
+     */
+    private void setPreserveOriginal(boolean preserveOriginals) {
+        this.m_PreserveOriginals = preserveOriginals;
+    }
+
+    /**
+     * Returns the current setting regarding preservation of original columns.
+     * @return true if original columns are to be preserved
+     */
+    private boolean getPreserveOriginals() {
+        return this.m_PreserveOriginals;
     }
 }

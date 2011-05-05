@@ -333,6 +333,9 @@ public abstract class DataReader {
 
         if (genFeatList != null){
             this.genFeatMorph = StringUtils.readListOfInts(genFeatList);
+            for (int i =  0; i < this.genFeatMorph.length; ++i){ // convert 1-based to 0-based column numbers
+                --this.genFeatMorph[i];
+            }
         }
         else {
             this.genFeatMorph = new int [3];
@@ -345,6 +348,9 @@ public abstract class DataReader {
 
         if (genFeatList != null){
             this.genFeatSynt = StringUtils.readListOfInts(genFeatList);
+            for (int i =  0; i < this.genFeatSynt.length; ++i){ // convert 1-based to 0-based column numbers
+                --this.genFeatSynt[i];
+            }
         }
         else {
             this.genFeatSynt = new int [4];
