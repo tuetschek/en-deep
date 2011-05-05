@@ -14,7 +14,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -115,6 +114,7 @@ public class TreeDataToArff extends StLikeConvertor {
         PrintStream out = null;
 
         this.reader.setInputFile(st);
+        this.initGenFeats();
 
         os = new FileOutputStream(arff);
         out = new PrintStream(os);

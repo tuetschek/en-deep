@@ -36,7 +36,6 @@ import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.Vector;
@@ -121,6 +120,12 @@ public class StReader extends DataReader {
     };
 
     /* VARIABLES */
+
+    /**
+     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.FeatureModifier} subclass that should handle the
+     * POS features of this language, or null.
+     */
+    public String posFeatHandlerName;
 
     /** Sentence ID generation -- last used value */
     private static int lastSentenceId = 0;

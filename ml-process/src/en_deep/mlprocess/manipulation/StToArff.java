@@ -235,6 +235,7 @@ public class StToArff extends StLikeConvertor {
         StReader stData = (StReader) this.reader; // for easier access to methods not in DataReader
 
         stData.setInputFile(st);
+        this.initGenFeats();
 
         if (this.oneFileMode){
             os = new FileOutputStream(arff);

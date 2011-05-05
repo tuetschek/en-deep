@@ -57,8 +57,6 @@ public abstract class StLikeConvertor extends StManipulation {
 
         super(id, parameters, input, output);
 
-        // initialize features to be generated
-        this.initGenFeats();
     }
 
     /**
@@ -69,17 +67,18 @@ public abstract class StLikeConvertor extends StManipulation {
     public abstract void perform() throws TaskException;
 
     /**
-     * Parse the parameter with generated features setting and initialize all needed.
+     * Parse the parameter with generated features setting and initialize all needed. Must be called after
+     * each source file is read, since source files may differ in their format.
      */
-    private void initGenFeats() {
+    protected void initGenFeats() {
 
         String[] featList;
 
         this.genFeats = new Vector<Feature>();
-        if (this.parameters.get(GENERATE) == null) {
+        if (!this.hasParameter(GENERATE)) {
             return;
         }
-        featList = this.parameters.get(GENERATE).split(",");
+        featList = this.getParameterVal(GENERATE).split(",");
         for (String featName : featList) {
             Feature feat = Feature.createFeature(featName.trim(), this.reader);
             if (feat == null) {

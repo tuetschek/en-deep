@@ -53,12 +53,6 @@ public abstract class DataReader {
     /** The id of the current sentence */
     protected int sentenceId;
 
-    /**
-     * Name of the {@link en_deep.mlprocess.manipulation.posfeat.FeatureModifier} subclass that should handle the
-     * POS features of this language, or null.
-     */
-    public String posFeatHandlerName;
-
     /** The task this reader works for. */
     protected final Task task;
 
@@ -79,8 +73,6 @@ public abstract class DataReader {
      */
     protected DataReader(Task task){
         this.task = task;
-
-        this.initGenFeatColumns();
     }
 
     
@@ -369,6 +361,10 @@ public abstract class DataReader {
      * @return the list of corresponding input columns
      */
     public int [] getGenFeatColumns(FeatType type){
+
+        if (this.genFeatMorph == null || this.genFeatSynt == null){
+            this.initGenFeatColumns();
+        }
 
         if (type == FeatType.SYNT){
             return this.genFeatSynt;

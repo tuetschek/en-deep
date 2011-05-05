@@ -22,8 +22,6 @@ public class ArffReader extends DataReader {
 
     /* CONSTANTS */
 
-    /** The feature handler class parameter name */
-    private static final String FEAT_HANDLER = "feat_handler";
     /** The rename_std_headers parameter name */
     private static final String RENAME_STD_HEADERS = "rename_std_headers";
 
@@ -40,6 +38,10 @@ public class ArffReader extends DataReader {
     private static final String POS = "pos";
     /** The default POS ARFF attribute name */
     private static final String DEFAULT_POS = "pos";
+    /** The pfeat task parameter name */
+    private static final String PFEAT = "pfeat";
+    /** The default POS features ARFF attribute name */
+    private static final String DEFAULT_PFEAT = "pfeat";
     /** The lemma task parameter name */
     private static final String LEMMA = "lemma";
     /** The default lemma ARFF attribute name */
@@ -76,7 +78,7 @@ public class ArffReader extends DataReader {
     /** The POS ARFF attribute name */
     private String posName;
     /** The POS features ARFF attribute name */
-    private String [] posFeatNames;
+    private String posFeatName;
     /** The word form ARFF attribute name */
     private String formName;
     /** The lemma ARFF attribute name */
@@ -93,8 +95,8 @@ public class ArffReader extends DataReader {
 
     /** The POS attribute index in the current ARFF file */
     private int posAttr;
-    /** The POS features ARFF attribute name(s) */
-    private int [] posFeatAttrs;
+    /** The POS features ARFF attribute name */
+    private int posFeatAttr;
     /** The word form attribute index in the current ARFF file */
     private int formAttr;
     /** The lemma attribute index in the current ARFF file */
@@ -140,7 +142,6 @@ public class ArffReader extends DataReader {
         
         super(task);
 
-        this.posFeatHandlerName = this.task.getParameterVal(FEAT_HANDLER);
         this.renameStdHeaders = this.task.getBooleanParameterVal(RENAME_STD_HEADERS);
 
         this.sentIdName = this.task.hasParameter(SENT_ID) ? this.task.getParameterVal(SENT_ID) : DEFAULT_SENT_ID;
@@ -151,6 +152,7 @@ public class ArffReader extends DataReader {
         this.formName = this.task.hasParameter(FORM) ? this.task.getParameterVal(FORM) : DEFAULT_FORM;
         this.syntRelName = this.task.hasParameter(SYNT_REL) ? this.task.getParameterVal(SYNT_REL) : DEFAULT_SYNT_REL;
         this.headName = this.task.hasParameter(HEAD) ? this.task.getParameterVal(HEAD) : DEFAULT_HEAD;
+        this.posFeatName = this.task.hasParameter(PFEAT) ? this.task.getParameterVal(PFEAT) : DEFAULT_PFEAT;
     }
 
     
@@ -338,12 +340,7 @@ public class ArffReader extends DataReader {
         this.lemmaAttr = this.input.attribute(this.lemmaName) != null ? this.input.attribute(this.lemmaName).index() : -1;
         this.syntRelAttr = this.input.attribute(this.syntRelName) != null ? this.input.attribute(this.syntRelName).index() : -1;
         this.headAttr = this.input.attribute(this.headName) != null ? this.input.attribute(this.headName).index() : -1;
-
-        this.posFeatAttrs = new int [this.posFeatNames.length];
-        for (int i = 0; i < this.posFeatNames.length; ++i){
-            this.posFeatAttrs[i] = this.input.attribute(this.posFeatNames[i]) != null 
-                    ? this.input.attribute(this.posFeatNames[i]).index() : -1;
-        }
+        this.posFeatAttr = this.input.attribute(this.posFeatName) != null ? this.input.attribute(this.posFeatName).index() : -1;
 
         // check the attribute types
         this.checkAttributeType(this.sentIdName, this.sentIdAttr, true);
@@ -353,11 +350,8 @@ public class ArffReader extends DataReader {
         this.checkAttributeType(this.lemmaName, this.lemmaAttr, false);
         this.checkAttributeType(this.posName, this.posAttr, false);
         this.checkAttributeType(this.syntRelName, this.syntRelAttr, false);
-        this.checkAttributeType(this.headName, this.headAttr, true);
-        
-        for (int i = 0; i < this.posFeatAttrs.length; ++i){
-            this.checkAttributeType(this.posFeatNames[i], this.posFeatAttrs[i], false);
-        }
+        this.checkAttributeType(this.headName, this.headAttr, true);        
+        this.checkAttributeType(this.posFeatName, this.posFeatAttr, false);
 
     }
 
@@ -381,7 +375,7 @@ public class ArffReader extends DataReader {
             case HEAD:
                 return this.headAttr;
             case PFEAT:
-                return this.posFeatAttrs[0];
+                return this.posFeatAttr;
             default:
                 return -1; // cause errors (PRED is not supported)
         }
@@ -416,6 +410,9 @@ public class ArffReader extends DataReader {
             }
             else if (attributeNumber == this.headAttr){
                 return DEFAULT_HEAD; 
+            }
+            else if (attributeNumber == this.posFeatAttr){
+                return DEFAULT_PFEAT;
             }
         }
         return this.input.attribute(attributeNumber).name();
