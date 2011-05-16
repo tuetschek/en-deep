@@ -52,24 +52,13 @@ public class Children extends ParametrizedFeature {
 
 
         int [] children = this.reader.getChildren(wordNo);
-        String [] values = new String [this.attrPos.length];
+        String [] [] data = new String [children.length] [];
 
-        for (int i = 0; i < children.length; ++i){
-            
-            String [] fields = this.getFields(children[i]);
-
-            for (int j = 0; j < fields.length; ++j){
-                values[j] = (values[j] == null ? "" : values[j] + SEP) + fields[j];
-            }
+        for (int i = 0; i < children.length; ++i){            
+            data[i] = this.getFields(children[i]);
         }
 
-        for (int i = 0; i < values.length; ++i){
-            if (values[i] == null){
-                values[i] = "";
-            }
-        }
-
-        return StringUtils.join(values, ",", true);
+        return StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
     }
 
 

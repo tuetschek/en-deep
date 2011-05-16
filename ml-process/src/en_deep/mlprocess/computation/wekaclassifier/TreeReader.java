@@ -322,6 +322,10 @@ public class TreeReader implements Sequence {
      */
     private void setNominalValue(int instanceNo, Attribute attr, String value) {
 
+        if (attr == null){
+            return;
+        }
+
         try {
             this.origData.get(instanceNo).setValue(attr, value);
         }
@@ -405,6 +409,10 @@ public class TreeReader implements Sequence {
      * @param addedValue the new value to be added to the set
      */
     private void addNominalValue(int instanceNo, Attribute attr, String addedValue) {
+
+        if (attr == null){
+            return;
+        }
 
         String origValue = this.origData.get(instanceNo).stringValue(attr);
 

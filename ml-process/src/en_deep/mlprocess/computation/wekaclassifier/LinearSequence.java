@@ -52,16 +52,19 @@ public class LinearSequence implements Sequence {
      */
     public LinearSequence(Instances data){
         this.data = data;
-        this.curPos = 0;
+        this.curPos = -1;
     }
 
 
     @Override
     public int getNextInstance() {
+
+        this.curPos++;
+
         if (this.curPos >= this.data.numInstances()){
             return -1;
         }
-        return this.curPos++;
+        return this.curPos;
     }
 
     @Override

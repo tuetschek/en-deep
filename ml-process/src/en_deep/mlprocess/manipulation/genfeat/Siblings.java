@@ -50,14 +50,54 @@ public class Siblings extends ParametrizedFeature {
     @Override
     public String getHeader() {
         return this.getParametrizedHeader("LeftSibling", DataReader.STRING) + LF
-                + this.getParametrizedHeader("RightSibling", DataReader.STRING);
+                + this.getParametrizedHeader("RightSibling", DataReader.STRING) + LF
+                + this.getParametrizedHeader("LeftSiblings", DataReader.STRING) + LF
+                + this.getParametrizedHeader("RightSiblings", DataReader.STRING);
     }
 
     @Override
     public String generate(int wordNo, int predNo) {
 
+        int head = this.reader.getHead(wordNo);
+        String left = null;
+        String right = null;
+
+        // only non-root nodes may have some siblings
+        if (head != -1){
+            int [] siblings = this.reader.getChildren(head);
+
+            int leftLen = 0;
+            while (siblings[leftLen] != wordNo){
+                leftLen++;
+            }
+
+            if (leftLen > 0){ // there are some left siblings
+                String [] [] data = new String [leftLen] [];
+                for (int i = 0; i < data.length; ++i){
+                    data[i] = this.getFields(siblings[i]);
+                }
+                left = StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
+            }
+            if (leftLen < siblings.length - 1){ // there are some right siblings
+                String [] [] data = new String [siblings.length - leftLen - 1] [];
+
+                for (int i = 0; i < data.length; ++i){
+                    data[i] = this.getFields(siblings[leftLen + i + 1]);
+                }
+                right = StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
+            }
+        }
+        // dummy values if there are no such siblings
+        if (left == null){
+            left = StringUtils.join(StringUtils.nGrams(new String [this.attrPos.length] [], SEP), ",", true);
+        }
+        if (right == null){
+            right = StringUtils.join(StringUtils.nGrams(new String [this.attrPos.length] [], SEP), ",", true);
+        }
+
         return StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.LEFT)), ",", true)
-                + "," + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.RIGHT)), ",", true);
+                + "," + StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.RIGHT)), ",", true)
+                + "," + left + "," + right;
     }
 
 }

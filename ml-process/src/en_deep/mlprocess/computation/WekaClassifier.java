@@ -286,8 +286,8 @@ public class WekaClassifier extends GeneralClassifier {
             this.trainModel(trainFile);
         }
 
+        // classify each data file
         for (int fileNo = 0; evalFiles != null && fileNo < evalFiles.size(); ++fileNo){
-
             classifyFile(evalFiles.get(fileNo), outFiles.get(fileNo));
         }
 
@@ -333,7 +333,7 @@ public class WekaClassifier extends GeneralClassifier {
         Sequence seq = this.hasParameter(TREE_READER)
                 ? new TreeReader(this.id, outData, this.getParameterVal(TREE_READER)) : new LinearSequence(outData);
 
-        for (int i = seq.getNextInstance(); i > 0; i = seq.getNextInstance()) {
+        for (int i = seq.getNextInstance(); i >= 0; i = seq.getNextInstance()) {
 
             if (!this.probabilities) {
                 // just set the most likely class
