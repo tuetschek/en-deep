@@ -214,4 +214,21 @@ public class MathUtils {
         }
         return ret;
     }
+
+    /**
+     * Return the index of the maximum value found in the array.
+     * @param values the array of values from which the highest one is to be found
+     * @return the index of the highest value
+     */
+    public static int findMax(double [] values){
+
+        int maxIdx = 0;
+
+        for (int i = 0; i < values.length; ++i){
+            if (values[i] > values[maxIdx]){
+                maxIdx = i;
+            }
+        }
+        return maxIdx;
+    }
 }

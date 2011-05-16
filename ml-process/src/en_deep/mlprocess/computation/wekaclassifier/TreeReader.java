@@ -25,7 +25,7 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess.manipulation.wekaclassifier;
+package en_deep.mlprocess.computation.wekaclassifier;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
@@ -37,7 +37,13 @@ import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.Reorder;
 
-public class TreeReader {
+/**
+ * A {@link Sequence} that browses through the ARFF data containing syntactic trees in a DFS order, tree-by-tree,
+ * propagating the newly set class values to the syntactic neighborhood of the current node.
+ *
+ * @author Ondrej Dusek
+ */
+public class TreeReader implements Sequence {
 
     /* CONSTANT */
 
@@ -112,7 +118,7 @@ public class TreeReader {
      * @param data the input ARFF data file
      * @param params parameters: format -- mode wordId sentId head headClass leftClass leftClasses
      */
-    TreeReader(String taskId, Instances data, String params) throws TaskException, Exception {
+    public TreeReader(String taskId, Instances data, String params) throws TaskException, Exception {
 
         this.taskId = taskId;
         String [] paramArr = params.split("\\s+");
@@ -134,11 +140,11 @@ public class TreeReader {
 
     /**
      * Returns the instance number of the root node for the next tree. Creates a tree-like structure
-     * in {@link #curRoot} to be browsed by all the further calls to {@link #getNextNode()}.
+     * in {@link #curRoot} to be browsed by all the further calls to {@link #getNextInstance()}.
      * 
      * @return the instance number of the root node for the next tree
      */
-    int getNextTree(){
+    private int getNextTree(){
         
         this.curSentBase += this.curSentLen; // first call: 0 + 0 = 0 and the further search begins
 
@@ -168,7 +174,7 @@ public class TreeReader {
      * @param head the syntactic head of the current node
      * @return the whole subtree of the newly created node
      */
-    Node exploreSubtree(int inst, Node head){
+    private Node exploreSubtree(int inst, Node head){
 
         Node n = new Node(inst);
 
@@ -221,14 +227,11 @@ public class TreeReader {
      * Returns the instance number of the next node (in DFS).
      * @return the instance number of the next node (in DFS).
      */
-    int getNextNode(){
+    @Override
+    public int getNextInstance(){
 
-        // the very first call
-        if (this.curNode == null){
-            this.curNode = this.curRoot;
-        }
         // usual case
-        else {
+        if (this.curNode != null){
             this.curNode = this.curNode.next;
         }
 
@@ -245,36 +248,40 @@ public class TreeReader {
     }
 
     /**
-     * Propagates class value to all children and right siblings of the current node.
+     * Sets the class value for the current node and propagates it to all children and right siblings of the current node.
      * @param value the class value to be propagated
      */
-    void classToCurrentNeighborhood(String value){
+    @Override
+    public void setCurrentClass(double value){
+
+        String stringVal = this.origData.classAttribute().value((int) value);
+        this.origData.get(this.curNode.instance).setClassValue(value);
 
         if (this.binMode){
             for (Node child : this.curNode.children){
-                this.setBinaryValue(child.instance, this.headClass, value);
+                this.setBinaryValue(child.instance, this.headClass, stringVal);
             }
             if (this.curNode.rightSibling != null){
                 
                 Node right = this.curNode.rightSibling;
-                this.setBinaryValue(right.instance, this.leftClass, value);
+                this.setBinaryValue(right.instance, this.leftClass, stringVal);
 
                 while (right != null){
-                    this.addBinaryValue(right.instance, this.leftClasses, value);
+                    this.addBinaryValue(right.instance, this.leftClasses, stringVal);
                     right = right.rightSibling;
                 }
             }
         }
         else {
             for (Node child : this.curNode.children){
-                this.setNominalValue(child.instance, this.origData.attribute(this.headClass), value);
+                this.setNominalValue(child.instance, this.origData.attribute(this.headClass), stringVal);
             }
             if (this.curNode.rightSibling != null){
                 Node right = this.curNode.rightSibling;
-                this.setNominalValue(this.curNode.rightSibling.instance, this.origData.attribute(this.leftClass), value);
+                this.setNominalValue(this.curNode.rightSibling.instance, this.origData.attribute(this.leftClass), stringVal);
 
                 while (right != null){
-                    this.addNominalValue(right.instance, this.origData.attribute(this.leftClasses), value);
+                    this.addNominalValue(right.instance, this.origData.attribute(this.leftClasses), stringVal);
                     right = right.rightSibling;
                 }
             }
@@ -442,7 +449,7 @@ public class TreeReader {
 
 
     /**
-     * Tree representation of sentence, used in DFS searches.
+     * Tree representation of one sentence, used in DFS searches.
      */
     private class Node {
 

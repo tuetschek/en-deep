@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010 Ondrej Dusek
+ *  Copyright (c) 2010-2011 Ondrej Dusek
  *  All rights reserved.
  * 
  *  Redistribution and use in source and binary forms, with or without modification, 
@@ -29,7 +29,11 @@ package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.computation.wekaclassifier.LinearSequence;
+import en_deep.mlprocess.computation.wekaclassifier.Sequence;
+import en_deep.mlprocess.computation.wekaclassifier.TreeReader;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -83,6 +87,9 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String LOAD_MODEL = "load_model";
     /** Pattern to match input files and create output files */
     private static final String PATTERN = "pattern";
+
+    /** {@link TreeReader} parameter name */
+    private static final String TREE_READER = "tree_reader";
 
     /* DATA */
 
@@ -142,10 +149,12 @@ public class WekaClassifier extends GeneralClassifier {
      * and binarization settings are then taken from this file as well (i.e. all attributes except <tt>prob_dist</tt>
      * are ignored).</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
-     * additional output at the end of the outputs specification) for later use<tt></li>
+     * additional output at the end of the outputs specification) for later use.</li>
      * <li><tt>pattern</tt> -- if the parameter is set and the (first) output is a pattern,
      * this is assumed to be a pattern matching the input evaluation files, so that replacements may be created
      * on the output for every one of them.</li>
+     * <li><tt>tree_reader</tt> -- if set, the data is not classified sequentially, but in a DFS order of syntactic
+     * trees. See {@link TreeReader#TreeReader(String, Instances, String)} for the required parameter values.</li>
      * </ul>
      * <p>
      * Parameters <tt>select_args</tt> and <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
@@ -279,46 +288,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         for (int fileNo = 0; evalFiles != null && fileNo < evalFiles.size(); ++fileNo){
 
-            // read the evaluation data and find out the target class
-            Logger.getInstance().message(this.id + ": reading " + evalFiles.get(fileNo) + "...", Logger.V_DEBUG);
-            Instances eval = FileUtils.readArff(evalFiles.get(fileNo));
-            Instances outData; // a copy w/o attribute preselection for output
-
-            // set the class feature in eval
-            this.setClassFeature(this.trainDataFormat, eval);
-            outData = new Instances(eval);
-
-            // remove selected attributes in eval
-            this.removeSelected(eval, this.attribsToRemove);
-            if (this.binarize){
-                Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")",
-                        Logger.V_DEBUG);
-                eval = this.sparseNominalToBinary(eval);
-            }
-
-            Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
-            // use the classifier and store the results
-            double [][] distributions = this.probabilities ? new double [eval.numInstances()][] : null;
-
-            for (int i = 0; i < eval.numInstances(); ++i){
-
-                if (!this.probabilities){ // just set the most likely class
-                    double val = this.classif.classifyInstance(eval.get(i));
-                    outData.get(i).setClassValue(val);
-                }
-                 else { // save the probability distribution aside
-                    distributions[i] = this.classif.distributionForInstance(eval.get(i));
-                }
-            }
-
-            // store the probability distributions, if supposed to
-            if (this.probabilities){
-                this.addDistributions(outData, distributions);
-            }
-
-            // write the output
-            Logger.getInstance().message(this.id + ": saving results to " + outFiles.get(fileNo) + ".", Logger.V_DEBUG);
-            FileUtils.writeArff(outFiles.get(fileNo), outData);
+            classifyFile(evalFiles.get(fileNo), outFiles.get(fileNo));
         }
 
         if (this.modelOutputFile != null){
@@ -327,6 +297,65 @@ public class WekaClassifier extends GeneralClassifier {
         // clean up
         this.classif = null;
     }
+
+    /**
+     * Classify data in one ARFF file (must be compatible with the model).
+     *
+     * @param evalFile the data file to be classified
+     * @param outFile the output file
+     * @throws TaskException
+     * @throws Exception
+     */
+    private void classifyFile(String evalFile, String outFile) throws TaskException, Exception {
+
+        // read the evaluation data and find out the target class
+        Logger.getInstance().message(this.id + ": reading " + evalFile + "...", Logger.V_DEBUG);
+        Instances eval = FileUtils.readArff(evalFile);
+        Instances outData; // a copy w/o attribute preselection for output
+
+        // set the class feature in eval
+        this.setClassFeature(this.trainDataFormat, eval);
+        outData = new Instances(eval);
+
+        // remove selected attributes in eval
+        this.removeSelected(eval, this.attribsToRemove);
+        
+        // binarize, if supposed to
+        if (this.binarize) {
+            Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")", Logger.V_DEBUG);
+            eval = this.sparseNominalToBinary(eval);
+        }
+
+        Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
+
+        // use the classifier and store the results
+        double[][] distributions = this.probabilities ? new double[eval.numInstances()][] : null;
+        Sequence seq = this.hasParameter(TREE_READER)
+                ? new TreeReader(this.id, outData, this.getParameterVal(TREE_READER)) : new LinearSequence(outData);
+
+        for (int i = seq.getNextInstance(); i > 0; i = seq.getNextInstance()) {
+
+            if (!this.probabilities) {
+                // just set the most likely class
+                double val = this.classif.classifyInstance(eval.get(i));
+                seq.setCurrentClass(val);
+
+            } else {
+                // save the probability distribution aside
+                distributions[i] = this.classif.distributionForInstance(eval.get(i));
+                seq.setCurrentClass(MathUtils.findMax(distributions[i]));
+            }
+        }
+
+        // store the probability distributions, if supposed to
+        if (this.probabilities) {
+            this.addDistributions(outData, distributions);
+        }
+
+        Logger.getInstance().message(this.id + ": saving results to " + outFile + ".", Logger.V_DEBUG);
+        FileUtils.writeArff(outFile, outData);
+    }
+
 
     /**
      * This selects only the given attributes if there is a {@link #SELECT_ARGS}/{@link #ARGS_FILE} setting and
@@ -642,7 +671,6 @@ public class WekaClassifier extends GeneralClassifier {
 
         out.close();
     }
-
 
 
 }
