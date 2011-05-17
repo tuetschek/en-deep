@@ -55,15 +55,9 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
     private static final String MERGE_INPUTS = "merge_inputs";
     /** The name of the "remove" parameter */
     private static final String REMOVE = "remove";
+    /** The name of the "ranking" parameter */
+    private static final String RANKING = "ranking";
 
-    /* DATA */
-
-    /** The list of attributes to be preserved */
-    private HashSet<String> preserveAttribs;
-    /** The list of attributes that need to be removed */
-    private HashSet<String> removeAttribs;
-    /** Should inputs be merged before they're considered? */
-    private boolean mergeInputs;
 
     /**
      * Possible conditions for removal (unary attribute,
@@ -72,7 +66,8 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
     private enum Condition {
         PRESELECTED,
         UNARY,
-        NON_IDENTICAL;
+        NON_IDENTICAL,
+        LOW_RANKING;
 
         @Override
         public String toString() {
@@ -83,11 +78,29 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                     return "unary";
                 case NON_IDENTICAL:
                     return "non_identical";
+                case LOW_RANKING:
+                    return "low-ranked";
             }
             return "";
         }
     }
 
+    /** Conditions for removal to be applied with ranking */
+    private Condition [] RANKING_CONDS = { Condition.PRESELECTED, Condition.LOW_RANKING };
+    /** Conditions for removal to be applied in normal mode, without ranking */
+    private Condition [] USUAL_CONDS = { Condition.PRESELECTED, Condition.UNARY, Condition.NON_IDENTICAL };
+
+    /* DATA */
+
+    /** The list of attributes to be preserved */
+    private HashSet<String> preserveAttribs;
+    /** The list of attributes that need to be removed */
+    private HashSet<String> removeAttribs;
+    /** The list of attributes that meet the ranking requirement */
+    private HashSet<String> goodRankings;
+
+    /** Attribute rankings -- the number of attributes to be used */
+    private int rankMaxAttribs;
 
     /* METHODS */
 
@@ -105,8 +118,17 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last outputs(s) are considered to be output files where the processing info about this filtering
      * is saved for later use.</tt>
+     * <li><tt>ranking</tt> -- if set, the number of inputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
+     * and the last input(s) are considered to contain a list of attribute rankings. The number specified in the parameter
+     * value is the number of attributes that are to be preserved (additional to those listed in <tt>preserve</tt>).
+     * All other causes for removal but {@link Condition#PRESELECTED} are ignored in this mode.
      * </ul>
-     * The number of inputs must be the same as the number of outputs.
+     * <p>
+     * <tt>info_file</tt> and <tt>ranking</tt> are mutually exclusive.
+     * </p>
+     * <p>
+     * The number of inputs must be the same as the number of outputs (if not specified otherwise in the parameters).
+     * </p>
      *
      * @param id
      * @param parameters
@@ -118,6 +140,20 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
             Vector<String> output) throws TaskException {
         
         super(id, parameters, input, output);
+
+        if (this.hasParameter(INFO_FILE) && this.hasParameter(RANKING)){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameters "
+                    + INFO_FILE + " and " + RANKING + " are mutually exclusive.");
+        }
+
+        if (this.hasParameter(RANKING)){
+            this.infoFilesIn = this.getInfoFiles(this.input);
+            this.rankMaxAttribs = this.getIntParameterVal(RANKING);
+            if (this.rankMaxAttribs == 0){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Number of kept ranked parameters"
+                        + " must be greater than 0.");
+            }
+        }
 
         // check the number of inputs and outputs
         if (this.input.isEmpty()){
@@ -133,8 +169,6 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
         // check the parameters
         this.preserveAttribs = this.saveToHashSet(this.parameters.get(PRESERVE));
         this.removeAttribs = this.saveToHashSet(this.parameters.get(REMOVE));
-
-        this.mergeInputs = this.getBooleanParameterVal(MERGE_INPUTS);
     }
 
 
@@ -144,6 +178,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * @param info the input information about removed attributes
      * @return list of removed attributes
      */
+    @Override
     protected String processData(Instances [] data, String info) throws Exception {
 
         // check data compatibility
@@ -157,17 +192,24 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
             }
         }
 
-        if (info != null){ // just remove the attributes that were given in the info
+        // processing information: just remove the attributes that were given in the info
+        if (this.rankMaxAttribs == 0 && info != null){
             this.removeAttributes(data, Arrays.asList(info.split("\\s+")), Condition.PRESELECTED);
             return info;
         }
+        // ranking information: 
+        else if (info != null){
+            this.readRankings(data[0], StringUtils.readListOfInts(info));
+        }
 
-        // remove the attributes, whatever the cause
-        Condition [] allConds = Condition.values();
+        // remove the attributes
+        Condition [] conds = this.rankMaxAttribs == 0 ? USUAL_CONDS : RANKING_CONDS;
+
         Vector<String> removedAttributes = new Vector<String>();
-        for (int i = 0; i < allConds.length; ++i){
-            Vector<String> selected = this.selectForRemoval(data, allConds[i]);
-            this.removeAttributes(data, selected, allConds[i]);
+
+        for (int i = 0; i < conds.length; ++i){
+            Vector<String> selected = this.selectForRemoval(data, conds[i]);
+            this.removeAttributes(data, selected, conds[i]);
             removedAttributes.addAll(selected);
         }
         return StringUtils.join(removedAttributes, " ");
@@ -203,6 +245,12 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                         
                     case PRESELECTED:
                         if (this.removeAttribs.contains(attr.name())){
+                            forRemoval.add(attr.name());
+                        }
+                        break;
+
+                    case LOW_RANKING:
+                        if (!this.goodRankings.contains(attr.name())){
                             forRemoval.add(attr.name());
                         }
                         break;
@@ -314,5 +362,27 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
         return ret;
     }
 
+    /**
+     * Read rankings data and save the {@link #rankMaxAttribs} best attributes to be preserved (excluding those that
+     * are to be preserved or removed in any case).
+     *
+     * @param data one of the data files, just for the data format
+     * @param rankings the n-best list of attributes
+     */
+    private void readRankings(Instances data, int[] rankings) {
+        
+        int i = 0;
+        this.goodRankings = new HashSet<String>(this.rankMaxAttribs);
+
+        while (i < rankings.length && this.goodRankings.size() < this.rankMaxAttribs){
+
+            String attName = data.attribute(rankings[i]).name();
+            
+            if (!this.preserveAttribs.contains(attName) && !this.removeAttribs.contains(attName)){
+                this.goodRankings.add(attName);
+            }
+            i++;
+        }
+    }
 
 }

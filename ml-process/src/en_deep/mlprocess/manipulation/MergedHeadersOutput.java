@@ -52,7 +52,7 @@ public abstract class MergedHeadersOutput extends Task {
     /** The output_info parameter name */
     private static final String OUTPUT_INFO = "output_info";
     /** The info_file parameter name */
-    private static final String INFO_FILE = "info_file";
+    protected static final String INFO_FILE = "info_file";
     
     /* CONSTANTS */
 
@@ -63,7 +63,7 @@ public abstract class MergedHeadersOutput extends Task {
     /** Should inputs be merged ? */
     private boolean mergeInputs;
     /** The input files with processing info */
-    private String [] infoFilesIn;
+    protected String [] infoFilesIn;
     /** The output files with processing info */
     private String [] infoFilesOut;
 
@@ -94,7 +94,7 @@ public abstract class MergedHeadersOutput extends Task {
      * @param files the input or output of the task
      * @return a list of input or output info files needed for the task
      */
-    private String [] getInfoFiles(Vector<String> files) {
+    protected String [] getInfoFiles(Vector<String> files) {
         
         String [] ret;
 
