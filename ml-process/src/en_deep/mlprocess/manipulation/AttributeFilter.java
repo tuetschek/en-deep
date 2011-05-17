@@ -125,9 +125,13 @@ public class AttributeFilter extends MergedHeadersOutput {
      * exactly as instructed in the file.</li>
      * <li><tt>output_info</tt> -- if set, the number of outputs must be one/twice bigger (depends on <tt>merge_inputs</tt>)
      * and the last outputs(s) are considered to be output files where the processing info about this filtering
-     * is saved for later use.</tt>
-     * <li><tt>add_other_val</tt> -- adds {@link #OTHER_VALUE} to the list of acceptable values for all attributes
+     * is saved for later use.</tt></li>
+     * <li><tt>add_other_val</tt> -- adds {@link #OTHER_VALUE} to the list of acceptable values for all attributes</li>
      * </ul>
+     * <p>
+     * TODO: more meaningful add_other_val -- first see if the filtering has had some effect, then add other value
+     * only if it's needed, or if it's forced
+     * </p>
      */
     public AttributeFilter(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException {
