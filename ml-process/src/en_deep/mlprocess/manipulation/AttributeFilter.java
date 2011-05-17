@@ -617,13 +617,13 @@ public class AttributeFilter extends MergedHeadersOutput {
                 AddValues filter = new AddValues();
                 filter.setLabels(OTHER_VALUE);
                 filter.setAttributeIndex(Integer.toString(attr.index()+1));
-                Logger.getInstance().message("Attribute: " + attr.name(), Logger.V_DEBUG);
+                Logger.getInstance().message("Adding " + OTHER_VALUE + " to attribute: " + attr.name(), Logger.V_INFO);
                 filter.setInputFormat(data[0]);
 
                 for (int i = 0; i < data.length; ++i){
 
                     String oldName = data[i].relationName();
-                    Filter.useFilter(data[i], filter);
+                    data[i] = Filter.useFilter(data[i], filter);
                     data[i].setRelationName(oldName);
                 }
             }
