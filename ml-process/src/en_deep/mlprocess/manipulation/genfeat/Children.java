@@ -58,7 +58,7 @@ public class Children extends ParametrizedFeature {
             data[i] = this.getFields(children[i]);
         }
 
-        return StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
+        return StringUtils.join(StringUtils.nGrams(data, this.attrPos.length, SEP), ",", true);
     }
 
 

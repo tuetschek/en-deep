@@ -386,24 +386,27 @@ public class StringUtils {
         bigrams[0] = left;
         bigrams[1] = right;
 
-        return nGrams(bigrams, sep);
+        return nGrams(bigrams, Math.max(left.length, right.length), sep);
     }
 
     /**
      * Given a list of information about each member of an n-gram, this joins the
      * individual information types together for the whole n-gram, separated by the given separator.
      *
-     * @param data an array of data for each word of an n-gram
+     * @param data an array of data for each word of an n-gram (cannot be used with "0-grams"!)
+     * @param infoLen the number of the different information types for each n-gram member
      * @param sep data separator
      * @return n-grams for each input information type
      */
-    public static String [] nGrams(String [] [] data, String sep){
+    public static String [] nGrams(String [] [] data, int infoLen, String sep){
 
-        String [] results = new String [data[0].length];
+        String [] results = new String [infoLen];
 
-        for (int i = 0; i < data.length; ++i){
-            for (int j = 0; j < data[i].length; ++j){
-                results[j] = (results[j] == null ? "" : results[j] + sep) + data[i][j];
+        if (data != null){
+            for (int i = 0; i < data.length; ++i){
+                for (int j = 0; j < data[i].length; ++j){
+                    results[j] = (results[j] == null ? "" : results[j] + sep) + data[i][j];
+                }
             }
         }
 

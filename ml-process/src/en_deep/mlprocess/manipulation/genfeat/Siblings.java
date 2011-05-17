@@ -76,7 +76,7 @@ public class Siblings extends ParametrizedFeature {
                 for (int i = 0; i < data.length; ++i){
                     data[i] = this.getFields(siblings[i]);
                 }
-                left = StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
+                left = StringUtils.join(StringUtils.nGrams(data, this.attrPos.length, SEP), ",", true);
             }
             if (leftLen < siblings.length - 1){ // there are some right siblings
                 String [] [] data = new String [siblings.length - leftLen - 1] [];
@@ -84,15 +84,15 @@ public class Siblings extends ParametrizedFeature {
                 for (int i = 0; i < data.length; ++i){
                     data[i] = this.getFields(siblings[leftLen + i + 1]);
                 }
-                right = StringUtils.join(StringUtils.nGrams(data, SEP), ",", true);
+                right = StringUtils.join(StringUtils.nGrams(data, this.attrPos.length, SEP), ",", true);
             }
         }
         // dummy values if there are no such siblings
         if (left == null){
-            left = StringUtils.join(StringUtils.nGrams(new String [this.attrPos.length] [], SEP), ",", true);
+            left = StringUtils.join(StringUtils.nGrams(null, this.attrPos.length, SEP), ",", true);
         }
         if (right == null){
-            right = StringUtils.join(StringUtils.nGrams(new String [this.attrPos.length] [], SEP), ",", true);
+            right = StringUtils.join(StringUtils.nGrams(null, this.attrPos.length, SEP), ",", true);
         }
 
         return StringUtils.join(this.getFields(this.reader.getSibling(wordNo, Direction.LEFT)), ",", true)
