@@ -175,7 +175,7 @@ public class FileUtils{
 
     /**
      * Filter a data set: keep only some of the attributes. Only the attributes whose bit is
-     * set to true are kept.
+     * set to true are kept. If the
      * @param data the data to be filtered
      * @param mask attributes bit mask
      * @return the filtered data set
@@ -191,6 +191,9 @@ public class FileUtils{
         }
 
         Instances ret = new Instances(data.relationName(), atts, data.numInstances());
+        if (data.classIndex() >= 0 && mask.get(data.classIndex())){
+            ret.setClass(data.classAttribute());
+        }
         Enumeration<Instance> insts = data.enumerateInstances();
 
         while (insts.hasMoreElements()){

@@ -146,8 +146,8 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
      * used attributes will be output</li>
      * <li><tt>load_model</tt> -- if set, the first input is considered to be ready-trained model file. Preselection
-     * and binarization settings are then taken from this file as well (i.e. all attributes except <tt>prob_dist</tt>
-     * are ignored).</li>
+     * and binarization settings are then taken from this file as well (i.e. all arguments except <tt>prob_dist</tt>,
+     * <tt>pattern</tt> and <tt>tree_reader</tt> are ignored).</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
      * additional output at the end of the outputs specification) for later use.</li>
      * <li><tt>pattern</tt> -- if the parameter is set and the (first) output is a pattern,
@@ -315,9 +315,9 @@ public class WekaClassifier extends GeneralClassifier {
 
         // set the class feature in eval
         this.setClassFeature(this.trainDataFormat, eval);
-        outData = new Instances(eval);
 
         // remove selected attributes in eval
+        outData = new Instances(eval);
         eval = this.removeSelected(eval, this.attribsToRemove);
         
         // binarize, if supposed to

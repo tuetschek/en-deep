@@ -34,8 +34,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import weka.core.Attribute;
 import weka.core.Instances;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.Reorder;
 
 /**
  * A {@link Sequence} that browses through the ARFF data containing syntactic trees in a DFS order, tree-by-tree,
@@ -50,13 +48,6 @@ public class TreeReader implements Sequence {
     /** Binary mode name */
     private static final String BINARY = "bin";
 
-    /** Index of the sentence id parameter in the {@link #idxData} member */
-    private static final int SENTID_IDX = 0;
-    /** Index of the word id parameter in the {@link #idxData} member */
-    private static final int WORDID_IDX = 1;
-    /** Index of the syntactic head parameter in the {@link #idxData} member */
-    private static final int HEAD_IDX = 2;
-
     /** Possible fillers for missing nominal values */
     private static final String [] FILLERS = { "[OTHER]", "" };
 
@@ -68,10 +59,8 @@ public class TreeReader implements Sequence {
     /** The current task id */
     private String taskId;
 
-    /** The data set (original) */
-    private Instances origData;
-    /** The index data set (just word id, sentence id, head) - in case they get ignored */
-    private Instances idxData;
+    /** The data set (original, with no filtered attributes) */
+    private Instances data;
 
     /** Are we working with binary attributes ? */
     private boolean binMode;
@@ -92,6 +81,13 @@ public class TreeReader implements Sequence {
     private String leftClass;
     /** Name of the attribute with class values of all the current node left siblings */
     private String leftClasses;
+
+    /** The word ID attribute index */
+    private int wordIdOrd;
+    /** The sentence ID attribute index */
+    private int sentIdOrd;
+    /** The syntactic attribute index */
+    private int headOrd;
 
     /* METHODS */
 
@@ -115,7 +111,7 @@ public class TreeReader implements Sequence {
      * </ul>
      *
      * @param taskId the current task id
-     * @param data the input ARFF data file
+     * @param data the input ARFF data file (with no filtered attributes, to be used as classification output)
      * @param params parameters: format -- mode wordId sentId head headClass leftClass leftClasses
      */
     public TreeReader(String taskId, Instances data, String params) throws TaskException, Exception {
@@ -123,15 +119,14 @@ public class TreeReader implements Sequence {
         this.taskId = taskId;
         String [] paramArr = params.split("\\s+");
 
-        if (paramArr.length != 6){
+        if (paramArr.length != 7){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.taskId, "Invalid parameters for a TreeReader class!");
         }
 
         this.binMode = paramArr[0].equals(BINARY);
 
-        this.origData = data;
-        this.idxData = new Instances(data);
-        this.filterIdxData(paramArr[1], paramArr[2], paramArr[3]);
+        this.data = data;
+        this.findIdxAttributes(paramArr[1], paramArr[2], paramArr[3]);
 
         this.headClass = paramArr[4];
         this.leftClass = paramArr[5];
@@ -148,16 +143,18 @@ public class TreeReader implements Sequence {
         
         this.curSentBase += this.curSentLen; // first call: 0 + 0 = 0 and the further search begins
 
-        if (this.curSentBase > this.idxData.numInstances()){
+        if (this.curSentBase >= this.data.numInstances()){
             return -1;
         }
 
         this.curSentLen = 0;
-        int curSentId = (int) this.idxData.get(this.curSentBase).value(SENTID_IDX);
+        int curSentId = (int) this.data.get(this.curSentBase).value(this.sentIdOrd);
         int root = -1;
 
-        while ((int) this.idxData.get(this.curSentBase + this.curSentLen).value(SENTID_IDX) == curSentId){
-            if (this.idxData.get(this.curSentBase + this.curSentLen).value(HEAD_IDX) == 0){
+        while (this.curSentBase + this.curSentLen < this.data.numInstances()
+                && (int) this.data.get(this.curSentBase + this.curSentLen).value(this.sentIdOrd) == curSentId){
+
+            if (this.data.get(this.curSentBase + this.curSentLen).value(this.headOrd) == 0){
                 root = this.curSentBase + this.curSentLen;
             }
             this.curSentLen++;
@@ -165,6 +162,7 @@ public class TreeReader implements Sequence {
 
         this.curRoot = this.exploreSubtree(root, null);
         this.curNode = null;
+
         return root;
     }
 
@@ -182,7 +180,7 @@ public class TreeReader implements Sequence {
         n.subtreeLast = n;
         
         int [] childrenInst = this.getChildren(n.instance);
-        if (childrenInst != null){
+        if (childrenInst != null && childrenInst.length > 0){
 
             n.children = new Node [childrenInst.length];
 
@@ -212,7 +210,10 @@ public class TreeReader implements Sequence {
         int [] childrenArr;
 
         for (int i = 0; i < this.curSentLen; ++i){
-            if (this.idxData.get(this.curSentBase + i).value(HEAD_IDX) == this.idxData.get(instance).value(WORDID_IDX)){
+            
+            if (this.data.get(this.curSentBase + i).value(this.headOrd)
+                    == this.data.get(instance).value(this.wordIdOrd)){
+
                 children.add(this.curSentBase + i);
             }
         }
@@ -254,62 +255,63 @@ public class TreeReader implements Sequence {
     @Override
     public void setCurrentClass(double value){
 
-        String stringVal = this.origData.classAttribute().value((int) value);
-        this.origData.get(this.curNode.instance).setClassValue(value);
+        String stringVal = this.data.classAttribute().value((int) value);
+        this.data.get(this.curNode.instance).setClassValue(value);
 
         if (this.binMode){
-            for (Node child : this.curNode.children){
-                this.setBinaryValue(child.instance, this.headClass, stringVal);
-            }
-            if (this.curNode.rightSibling != null){
-                
-                Node right = this.curNode.rightSibling;
-                this.setBinaryValue(right.instance, this.leftClass, stringVal);
+            if (this.curNode.children != null){
+                for (Node child : this.curNode.children){
+                    this.setBinaryValue(child.instance, this.headClass, stringVal);
+                }
+                if (this.curNode.rightSibling != null){
 
-                while (right != null){
-                    this.addBinaryValue(right.instance, this.leftClasses, stringVal);
-                    right = right.rightSibling;
+                    Node right = this.curNode.rightSibling;
+                    this.setBinaryValue(right.instance, this.leftClass, stringVal);
+
+                    while (right != null){
+                        this.addBinaryValue(right.instance, this.leftClasses, stringVal);
+                        right = right.rightSibling;
+                    }
                 }
             }
         }
         else {
-            for (Node child : this.curNode.children){
-                this.setNominalValue(child.instance, this.origData.attribute(this.headClass), stringVal);
-            }
-            if (this.curNode.rightSibling != null){
-                Node right = this.curNode.rightSibling;
-                this.setNominalValue(this.curNode.rightSibling.instance, this.origData.attribute(this.leftClass), stringVal);
+            if (this.curNode.children != null){
+                for (Node child : this.curNode.children){
+                    this.setNominalValue(child.instance, this.data.attribute(this.headClass), stringVal);
+                }
+                if (this.curNode.rightSibling != null){
+                    Node right = this.curNode.rightSibling;
+                    this.setNominalValue(this.curNode.rightSibling.instance, this.data.attribute(this.leftClass), stringVal);
 
-                while (right != null){
-                    this.addNominalValue(right.instance, this.origData.attribute(this.leftClasses), stringVal);
-                    right = right.rightSibling;
+                    while (right != null){
+                        this.addNominalValue(right.instance, this.data.attribute(this.leftClasses), stringVal);
+                        right = right.rightSibling;
+                    }
                 }
             }
         }
     }
 
     /**
-     * This takes the {@link #idxData} and filters out all unnecessary attributes, leaving only
-     * those specified in parameters.
+     * This finds the necessary word ID, sentence ID and syntactic head attributes in the input data
+     * and throws an exception if they are not present.
+     *
      * @param wordId name of the word id parameter
      * @param sentId name of the sentence id parameter
      * @param head name of the syntactic head parameter
      */
-    private void filterIdxData(String wordId, String sentId, String head) throws TaskException, Exception {
+    private void findIdxAttributes(String wordId, String sentId, String head) throws TaskException {
 
-        if (this.idxData.attribute(wordId) == null || this.idxData.attribute(sentId) == null
-                || this.idxData.attribute(head) == null){
+        if (this.data.attribute(wordId) == null || this.data.attribute(sentId) == null
+                || this.data.attribute(head) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.taskId, "TreeReader:"
-                    + "wordId, sentId or head not found in the ARFF data");
+                    + "wordId, sentId or head attribute not found in the ARFF data");
         }
 
-        int wordIdOrd = this.idxData.attribute(wordId).index();
-        int sentIdOrd = this.idxData.attribute(sentId).index();
-        int headOrd = this.idxData.attribute(head).index();
-
-        Reorder filter = new Reorder();
-        filter.setAttributeIndices((wordIdOrd + 1) + "," + (sentIdOrd + 1) + "," + (headOrd + 1));
-        this.idxData = Filter.useFilter(this.idxData, filter);
+        this.wordIdOrd = this.data.attribute(wordId).index();
+        this.sentIdOrd = this.data.attribute(sentId).index();
+        this.headOrd = this.data.attribute(head).index();
     }
 
     /**
@@ -327,13 +329,11 @@ public class TreeReader implements Sequence {
         }
 
         try {
-            this.origData.get(instanceNo).setValue(attr, value);
+            this.data.get(instanceNo).setValue(attr, value);
         }
         catch (IllegalArgumentException e){
 
-            if (this.origData.get(instanceNo).isMissing(attr)){
-                Logger.getInstance().message("Instance " + instanceNo + ": value " + value + " missing in attribute "
-                        + attr.name() + ", replacing with a filler.", Logger.V_INFO);
+            if (this.data.get(instanceNo).isMissing(attr)){
 
                 int filler = -1;
                 int i = 0;
@@ -342,7 +342,7 @@ public class TreeReader implements Sequence {
                     filler = attr.indexOfValue(FILLERS[i++]);
                 }
                 if (filler != -1){
-                    this.origData.get(instanceNo).setValue(attr, filler);
+                    this.data.get(instanceNo).setValue(attr, filler);
                 }
             }
         }
@@ -363,19 +363,16 @@ public class TreeReader implements Sequence {
 
         this.makeZero(instanceNo, attrName + "=");
 
-        if ((attr = this.origData.attribute(attrName + "=" + value)) != null){
-            this.origData.get(instanceNo).setValue(attr, 1);
+        if ((attr = this.data.attribute(attrName + "=" + value)) != null){
+            this.data.get(instanceNo).setValue(attr, 1);
         }
         else {
-            Logger.getInstance().message("Instance " + instanceNo + ": value " + value + " missing in attribute "
-                    + attrName + ", replacing with a filler.", Logger.V_INFO);
-
             int i = 0;
             while (attr == null && i < FILLERS.length){
-                attr = this.origData.attribute(attrName + "=" + FILLERS[i++]);
+                attr = this.data.attribute(attrName + "=" + FILLERS[i++]);
             }
             if (attr != null){
-                this.origData.get(instanceNo).setValue(attr, 1);
+                this.data.get(instanceNo).setValue(attr, 1);
             }
         }
     }
@@ -395,8 +392,8 @@ public class TreeReader implements Sequence {
 
         this.makeZero(instanceNo, attrName + ">");
 
-        if ((attr = this.origData.attribute(attrName + ">" + value)) != null){
-            this.origData.get(instanceNo).setValue(attr, 1);
+        if ((attr = this.data.attribute(attrName + ">" + value)) != null){
+            this.data.get(instanceNo).setValue(attr, 1);
         }
     }
 
@@ -414,13 +411,13 @@ public class TreeReader implements Sequence {
             return;
         }
 
-        String origValue = this.origData.get(instanceNo).stringValue(attr);
+        String origValue = this.data.get(instanceNo).stringValue(attr);
 
         // value is just a filler -> keep it out
         if (origValue != null){
             for (String filler : FILLERS){
                 if (origValue.equals(filler)){
-                    this.origData.get(instanceNo).setMissing(attr);
+                    this.data.get(instanceNo).setMissing(attr);
                     origValue = null;
                     break;
                 }
@@ -445,12 +442,12 @@ public class TreeReader implements Sequence {
      */
     private void makeZero(int instanceNo, String prefix) {
 
-        Enumeration<Attribute> attribs = this.origData.enumerateAttributes();
+        Enumeration<Attribute> attribs = this.data.enumerateAttributes();
         while (attribs.hasMoreElements()){
             Attribute attrib = attribs.nextElement();
             
-            if (attrib.name().startsWith(prefix) && this.origData.get(instanceNo).isMissing(attrib)){
-                this.origData.get(instanceNo).setValue(attrib, 0);
+            if (attrib.name().startsWith(prefix) && this.data.get(instanceNo).isMissing(attrib)){
+                this.data.get(instanceNo).setValue(attrib, 0);
             }
         }
     }
@@ -483,6 +480,21 @@ public class TreeReader implements Sequence {
          */
         private Node(int instance) {
             this.instance = instance;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(instance);
+            if (this.children != null){
+                sb.append("(");
+                for (Node child : this.children){
+                    sb.append(" ");
+                    sb.append(child);
+                }
+                sb.append(" )");
+            }
+            return sb.toString();
         }
     }
 }
