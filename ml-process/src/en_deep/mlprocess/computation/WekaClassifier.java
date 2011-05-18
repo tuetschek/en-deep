@@ -318,7 +318,7 @@ public class WekaClassifier extends GeneralClassifier {
         outData = new Instances(eval);
 
         // remove selected attributes in eval
-        this.removeSelected(eval, this.attribsToRemove);
+        eval = this.removeSelected(eval, this.attribsToRemove);
         
         // binarize, if supposed to
         if (this.binarize) {
@@ -359,12 +359,13 @@ public class WekaClassifier extends GeneralClassifier {
 
     /**
      * This selects only the given attributes if there is a {@link #SELECT_ARGS}/{@link #ARGS_FILE} setting and
-     * removes all the attributes specified in the {@link #IGNORE_ATTRIBS} setting.
+     * removes all the attributes specified in the {@link #IGNORE_ATTRIBS} setting. The names of the removed
+     * attributes are saved to {@link #attribsToRemove}.
      * 
      * @param train the training data
-     * @return list of removed attributes' names
+     * @return the filtered training data
      */
-    private String [] attributesPreselection(Instances train) throws TaskException, IOException {
+    private Instances attributesPreselection(Instances train) throws TaskException, IOException {
 
         BitSet selectionMask = new BitSet(train.numAttributes());
 
@@ -390,22 +391,23 @@ public class WekaClassifier extends GeneralClassifier {
             this.removeIgnoredAttributes(train, selectionMask);
         }
 
-        String [] removedAttrNames = new String [selectionMask.length()-selectionMask.cardinality()];
+        this.attribsToRemove = new String [selectionMask.length()-selectionMask.cardinality()];
         int pos = 0;
-        // remove the not-selected attributes
+        // mark the names of the removed attributes
         for (int i = selectionMask.length()-1; i >= 0; --i){
             if (!selectionMask.get(i)){
-
-                removedAttrNames[pos++] = train.attribute(i).name();
-                train.deleteAttributeAt(i);
+                this.attribsToRemove[pos++] = train.attribute(i).name();
             }
         }
-
         // write the settings to a file, if needed
         if (this.attribsOutputFile != null){
             this.writeAttribs(selectionMask);
         }
-        return removedAttrNames;
+
+        // remove all the selected attributes
+        train = FileUtils.filterAttributes(train, selectionMask);
+
+        return train;
     }
 
     /**
@@ -590,7 +592,10 @@ public class WekaClassifier extends GeneralClassifier {
      * @param data the data set to be processed
      * @param toRemove names of attributes to be removed
      */
-    private void removeSelected(Instances data, String[] toRemove) {
+    private Instances removeSelected(Instances data, String[] toRemove) {
+
+        BitSet removeMask = new BitSet(data.numAttributes());
+        removeMask.set(0, data.numAttributes());
 
         for (int i = 0; i < toRemove.length; ++i){
             int idx = data.attribute(toRemove[i]).index();
@@ -600,9 +605,10 @@ public class WekaClassifier extends GeneralClassifier {
                         + " the removed attribute " + toRemove[i], Logger.V_WARNING);
             }
             else {
-                data.deleteAttributeAt(idx);
+                removeMask.clear(idx);
             }
         }
+        return FileUtils.filterAttributes(data, removeMask);
     }
 
     /**
@@ -625,7 +631,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         // pre-select the attributes
         Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
-        this.attribsToRemove = this.attributesPreselection(train);
+        train = this.attributesPreselection(train);
 
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);

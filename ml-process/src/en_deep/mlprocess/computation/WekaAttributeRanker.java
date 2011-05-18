@@ -116,6 +116,7 @@ public class WekaAttributeRanker extends GeneralClassifier {
         this.ignoredIdxs = new HashSet<Integer>();
         if (this.hasParameter(NUM_SELECTED)){
             this.numSelected = this.getIntParameterVal(NUM_SELECTED);
+            this.parameters.remove(NUM_SELECTED);
         }
         else {
             this.numSelected = -1;

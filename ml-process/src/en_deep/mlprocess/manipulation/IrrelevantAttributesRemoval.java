@@ -29,8 +29,10 @@ package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
+import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -199,6 +201,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
         }
         // ranking information: 
         else if (info != null){
+            info = info.split("\\r?\\n", 2)[0];
             this.readRankings(data[0], StringUtils.readListOfInts(info));
         }
 
@@ -279,14 +282,21 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                     Logger.V_DEBUG);
             return;
         }
-        for (String attrName : forRemoval) {
-            for (int i = 0; i < data.length; ++i) {
+
+        for (int i = 0; i < data.length; ++i) {
+
+            BitSet bm = new BitSet(data[i].numAttributes());
+            bm.set(0, data[i].numAttributes());
+
+            for (String attrName : forRemoval) {
                 if (data[i].attribute(attrName) == null){
                     throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Attribute " + attrName
                             + " not found in " + data[i].relationName());
                 }
-                data[i].deleteAttributeAt(data[i].attribute(attrName).index());
+                bm.clear(data[i].attribute(attrName).index());
             }
+
+            data[i] = FileUtils.filterAttributes(data[i], bm);
         }
     }
 

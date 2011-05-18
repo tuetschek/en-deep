@@ -29,8 +29,15 @@ package en_deep.mlprocess.utils;
 
 import en_deep.mlprocess.Process;
 import java.io.*;
+import java.lang.reflect.Constructor;
 import java.nio.channels.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Enumeration;
 import java.util.Scanner;
+import weka.core.Attribute;
+import weka.core.DenseInstance;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
@@ -164,6 +171,50 @@ public class FileUtils{
         in = null;
 
         return data;
+    }
+
+    /**
+     * Filter a data set: keep only some of the attributes. Only the attributes whose bit is
+     * set to true are kept.
+     * @param data the data to be filtered
+     * @param mask attributes bit mask
+     * @return the filtered data set
+     */
+    public static Instances filterAttributes(Instances data, BitSet mask){
+    
+        ArrayList<Attribute> atts = new ArrayList<Attribute> (mask.cardinality());
+
+        for (int i = 0; i < mask.size(); ++i){
+            if (mask.get(i)){
+                atts.add(data.attribute(i));
+            }
+        }
+
+        Instances ret = new Instances(data.relationName(), atts, data.numInstances());
+        Enumeration<Instance> insts = data.enumerateInstances();
+
+        while (insts.hasMoreElements()){
+
+            Instance inst = insts.nextElement();
+            double [] oldValues = inst.toDoubleArray();
+            double [] newValues = new double [mask.cardinality()];
+            int pos = 0;
+            for (int i = 0; i < mask.size(); ++i){
+                if (mask.get(i)){
+                    newValues[pos++] = oldValues[i];
+                }
+            }
+
+            try {
+                Constructor constructor = inst.getClass().getConstructor(double.class, double[].class);
+                ret.add((Instance) constructor.newInstance(inst.weight(), newValues));
+            }
+            catch (Exception e){
+                ret.add(new DenseInstance(inst.weight(), newValues));
+            }
+        }
+
+        return ret;
     }
 
 
