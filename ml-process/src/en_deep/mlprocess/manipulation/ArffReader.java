@@ -315,7 +315,7 @@ public class ArffReader extends DataReader {
     @Override
     void setInputFile(String fileName) throws IOException {
 
-        Logger.getInstance().message("Reading file :" + fileName, Logger.V_DEBUG);
+        Logger.getInstance().message("Reading file: " + fileName, Logger.V_DEBUG);
 
         try {
             this.input = FileUtils.readArff(fileName);

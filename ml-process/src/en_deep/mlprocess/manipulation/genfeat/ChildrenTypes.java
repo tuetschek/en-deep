@@ -29,6 +29,7 @@ package en_deep.mlprocess.manipulation.genfeat;
 
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.DataReader;
+import en_deep.mlprocess.manipulation.DataReader.FeatType;
 import en_deep.mlprocess.manipulation.DataReader.WordInfo;
 import en_deep.mlprocess.manipulation.StToArff;
 import en_deep.mlprocess.utils.StringUtils;
@@ -38,7 +39,7 @@ import en_deep.mlprocess.utils.StringUtils;
  * preposition, particle -- according to the configuration) + features for their total number.
  * @author Ondrej Dusek
  */
-public class ChildrenTypes extends Feature {
+public class ChildrenTypes extends ParametrizedFeature {
 
     /* CONSTANTS */
 
@@ -69,7 +70,7 @@ public class ChildrenTypes extends Feature {
      */
     public ChildrenTypes(DataReader reader) throws TaskException {
 
-        super(reader);
+        super(reader, FeatType.SYNT);
 
         if (reader.getTaskParameter(CHILDREN_TYPES) == null){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, reader.getTaskId(),
@@ -90,7 +91,7 @@ public class ChildrenTypes extends Feature {
      * @param suffix
      */
     private String getHeaderText(String suffix){
-        return DataReader.ATTRIBUTE + " ChildrenType_" + suffix + " " + DataReader.STRING + LF
+        return this.getParametrizedHeader("ChildrenType_" + suffix, DataReader.STRING) + LF
                 + DataReader.ATTRIBUTE + " ChildrenTypeNum_" + suffix + " " + DataReader.INTEGER;
     }
 
@@ -113,28 +114,33 @@ public class ChildrenTypes extends Feature {
 
         int [] children = this.reader.getChildren(wordNo);
         String [] pos = this.reader.getWordsInfo(children, WordInfo.POS);
-        String [] words = this.reader.getWordsInfo(children, WordInfo.FORM);
+        String [] [] data = new String [children.length] [];
+
+        for (int i = 0; i < children.length; ++i){
+            data[i] = this.getFields(children[i]);
+        }
+
         StringBuilder out = new StringBuilder();
 
         for (int j = 0; j < patterns.length; j++) {
 
+            // find and count matching children
             int num = 0;
+            String [] [] matching = new String [children.length] [];
 
-            if (j > 0){
-                out.append(",");
-            }
-            out.append("\"");
             for (int i = 0; i < pos.length; i++) {
-
                 if (pos[i].matches(patterns[j])){
-                    if (num > 0){
-                        out.append(SEP);
-                    }
-                    out.append(StringUtils.escape(words[i]));
+                    matching[i] = data[i];
                     num++;
                 }
             }
-            out.append("\",").append(num);
+            // add them to the data
+            out.append(StringUtils.join(StringUtils.nGrams(matching, this.attrPos.length, SEP), ",", true));
+            out.append(",").append(num);
+
+            if (j < patterns.length-1){
+                out.append(",");
+            }
         }
         
         return out.toString();
