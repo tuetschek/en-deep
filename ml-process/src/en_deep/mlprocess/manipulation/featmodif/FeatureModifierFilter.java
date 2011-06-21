@@ -434,6 +434,9 @@ public class FeatureModifierFilter
       } else {
           // store new string values, make double values "missing" for now (if some string
           // values are missing, the double values will remain missing)
+          if (instance.value(0) == 12 && instance.value(1) == 9 && att.name().equals("sempos")){
+              attSoFar = attSoFar;
+          }
           attSoFar += getAttributeOutputValue(att, instance.value(j), vals, stringVals, attSoFar);
       }
     }
@@ -533,8 +536,7 @@ public class FeatureModifierFilter
             valArr[offset] = attVal;
             offset++;
         }
-
-        String [] outVals = this.m_OperClass.getOutputValues(att.value((int) attVal));
+        String [] outVals = this.m_OperClass.getOutputValues(Utils.isMissingValue(attVal) ? null : att.value((int) attVal));
         System.arraycopy(outVals, 0, stringValArr, offset, outVals.length);
 
         for (int i = 0; i < outVals.length; ++i){
