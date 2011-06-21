@@ -191,7 +191,9 @@ public abstract class Task implements Serializable {
 
     /**
      * This returns the integer value of a parameter. It returns null if the value is null,
-     * it throws an exception if the value is set and is not numeric.
+     * 1 if the value is set but empty, it throws an exception if the value is set and is
+     * not numeric.
+     * 
      * @param paramName the name of the parameter
      * @return the numeric value of the parameter
      * @throws TaskException if the value is set, but not numeric
@@ -199,6 +201,10 @@ public abstract class Task implements Serializable {
     public Integer getIntParameterVal(String paramName) throws TaskException {
 
         if (this.parameters.get(paramName) != null){
+
+            if (this.parameters.get(paramName).equals("")){ // set and empty -> return 1
+                return 1;
+            }
             try {
                 return Integer.parseInt(this.parameters.get(paramName));
             }
@@ -207,7 +213,7 @@ public abstract class Task implements Serializable {
                         + paramName + " must be numeric.");
             }
         }
-        else {
+        else { // not set -> return null
             return null;
         }
     }

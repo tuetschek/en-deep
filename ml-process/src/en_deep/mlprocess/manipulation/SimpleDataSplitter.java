@@ -58,11 +58,15 @@ public class SimpleDataSplitter extends MultipleOutputsTask {
     private static final String ATTR_REL = "attr_rel";
     /** The remove_attr parameter name */
     private static final String REMOVE_ATTR = "remove_attr";
+    /** The suppress_name parameter name */
+    private static final String SUPPRESS_NAME = "suppress_name";
 
     /* DATA */
 
     /** The selected value, if one_vs_others is set */
     private String selectedVal;
+    /** Suppress the name of the attribute in the created files if using the 'by_attribute' mode ? */
+    private boolean suppressName;
 
     /* METHODS */
 
@@ -110,6 +114,12 @@ public class SimpleDataSplitter extends MultipleOutputsTask {
             }
             else {
                 Logger.getInstance().message("Parameter " + ONE_VS_OTHERS + " is meaningless.", Logger.V_WARNING);
+            }
+        }
+        if (this.hasParameter(SUPPRESS_NAME)){
+            this.suppressName = true;
+            if (!this.hasParameter(BY_ATTRIBUTE)){
+                Logger.getInstance().message("Parameter " + SUPPRESS_NAME + " is meaningless.", Logger.V_WARNING);
             }
         }
 
@@ -161,7 +171,8 @@ public class SimpleDataSplitter extends MultipleOutputsTask {
             }
             else {  // normal case
                 subset.setRelationName(oldName);
-                outputFile = StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-" + value);
+                outputFile = StringUtils.replace(outputPattern, this.outPrefix +
+                        FileUtils.fileNameEncode((this.suppressName ? "" : splitAttrib.name() + "-") + value));
             }
             if (this.getBooleanParameterVal(REMOVE_ATTR)){
                 subset.deleteAttributeAt(splitAttrib.index());
@@ -209,12 +220,12 @@ public class SimpleDataSplitter extends MultipleOutputsTask {
         Logger.getInstance().message(this.id + ": splitting " + inputFile + " in two ...", Logger.V_DEBUG);
 
         if (!positive.isEmpty()){
-            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-"
-                    + this.selectedVal), positive);
+            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix 
+                    + (this.suppressName ? "" : splitAttrib.name() + "-") + this.selectedVal), positive);
         }
         if (!negative.isEmpty()){
-            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix + splitAttrib.name() + "-other"),
-                    negative);
+            FileUtils.writeArff(StringUtils.replace(outputPattern, this.outPrefix
+                    + (this.suppressName ? "" : splitAttrib.name() + "-") + "other"), negative);
         }
 
     }
