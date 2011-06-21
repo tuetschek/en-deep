@@ -49,6 +49,7 @@ import java.util.Vector;
 import weka.core.AttributeLocator;
 import weka.core.RelationalLocator;
 import weka.core.StringLocator;
+import weka.filters.unsupervised.attribute.NominalToBinary;
 
 /**
  <!-- globalinfo-start -->
@@ -70,37 +71,35 @@ import weka.core.StringLocator;
  * <pre> -V
  *  Invert matching sense of column indexes.</pre>
  *
- * <pre> -O
- *  Operating class name.</pre>
+ * <pre> -M &lt;repl&gt;
+ *  Replacement value -- "(missing)" is the default.</pre>
+ *
  *
  <!-- options-end -->
  *
  */
-public class FeatureModifierFilter
+public class ReplaceMissing
   extends Filter
   implements UnsupervisedFilter, OptionHandler {
 
   /** Stores which columns to act on */
   protected Range m_Columns = new Range();
 
-  /** The name of the operating class */
-  private String m_OperClassName = null;
+  /** The replacement value */
+  private String m_ReplVal = "(missing)";
 
   /** The actual operating class */
   private FeatureModifier m_OperClass = null;
 
-  /** Preserve original columns */
-  private boolean m_PreserveOriginals = false;
-
   /** List of source string attributes, excluding the affected ones */
-  private AttributeLocator m_StringToCopySrc = null;
+  private AttributeLocator m_StringToCopy = null;
   /** List of target string attributes, excluding the affected ones */
   private AttributeLocator m_StringToCopyDst = null;
 
 
 
   /** Constructor - initialises the filter */
-  public FeatureModifierFilter() {
+  public ReplaceMissing() {
 
     setAttributeIndices("first-last");
   }
@@ -154,9 +153,6 @@ public class FeatureModifierFilter
     super.setInputFormat(instanceInfo);
 
     m_Columns.setUpper(instanceInfo.numAttributes() - 1);
-    if (this.m_OperClassName == null || (this.m_OperClass = FeatureModifier.createHandler(m_OperClassName)) == null){
-        throw new Exception("The operating class must be set and a name of an existing filter class.");
-    }
     setOutputFormat();
     return true;
   }
@@ -203,13 +199,7 @@ public class FeatureModifierFilter
 	"\tInvert matching sense of column indexes.",
 	"V", 0, "-V"));
 
-    newVector.addElement(new Option(
-        "\tThe requested operation (class).",
-        "O", 1, "-O <class_name>"));
-
-    newVector.addElement(new Option(
-	"\tPreserve original columns as well.",
-	"P", 0, "-P"));
+    newVector.addElement(new Option("\tThe replacement value", "O", 1, "-M <repl>"));
 
     return newVector.elements();
   }
@@ -229,11 +219,9 @@ public class FeatureModifierFilter
    * <pre> -V
    *  Invert matching sense of column indexes.</pre>
    *
-   * <pre> -O &lt;class_name&gt;
-   *  Operating class name.</pre>
+   * <pre> -M &lt;repl&gt;
+   *  Replacement value -- "(missing)" is the default.</pre>
    *
-   * <pre> -P
-   *  Preserve original columns.</pre>
    *
    <!-- options-end -->
    *
@@ -250,9 +238,7 @@ public class FeatureModifierFilter
     }
     setInvertSelection(Utils.getFlag('V', options));
 
-    setOperClass(Utils.getOption('O', options));
-
-    setPreserveOriginal(Utils.getFlag('P', options));
+    setReplacementValue(Utils.getOption('M', options));
 
     if (getInputFormat() != null)
       setInputFormat(getInputFormat());
@@ -276,12 +262,8 @@ public class FeatureModifierFilter
       options[current++] = "-V";
     }
 
-    if (getOperClass() != null){
-        options[current++] = "-S"; options[current++] = getOperClass();
-    }
-
-    if (getPreserveOriginals()){
-        options[current++] = "-P";
+    if (getReplacementValue() != null){
+        options[current++] = "-M"; options[current++] = getReplacementValue();
     }
 
     while (current < options.length) {
@@ -368,50 +350,47 @@ public class FeatureModifierFilter
   private void setOutputFormat() {
 
     FastVector newAtts;
-    int newClassIndex;
     Instances outputFormat;
 
-    newClassIndex = getInputFormat().classIndex();
     newAtts = new FastVector();
 
-    BitSet attrSrc = new BitSet(), attrDest = new BitSet();
-
-    int attSoFar = 0;
+    BitSet attrSrc = new BitSet();
 
     for (int j = 0; j < getInputFormat().numAttributes(); j++) {
 
-      Attribute att = getInputFormat().attribute(j);
+      Attribute att = null;
+      Attribute srcAtt = getInputFormat().attribute(j);
 
-      if (!m_Columns.isInRange(j)) {
-	newAtts.addElement(att.copy());
-
-        attrSrc.set(j);
-        attrDest.set(attSoFar++);
-
-      } else {
-
-          ArrayList<Attribute> valueAttrs = getAttributeOutputFormat(att);
-
-          if (newClassIndex >= 0 && j < getInputFormat().classIndex()) {
-	    newClassIndex += valueAttrs.size() - 1;
-	  }
-          newAtts.addAll(valueAttrs);
-
-          if (m_PreserveOriginals){
-              attrSrc.set(j);
-              attrDest.set(attSoFar);
-          }
-          attSoFar += valueAttrs.size();
+      if (!m_Columns.isInRange(j) || srcAtt.indexOfValue(m_ReplVal) >= 0) {
+          att = (Attribute) srcAtt.copy();
       }
+      else if (srcAtt.isNominal()){
+
+          Enumeration<String> valsEnum = srcAtt.enumerateValues();
+          ArrayList<String> valsList = new ArrayList<String>();
+
+          while (valsEnum.hasMoreElements()){
+              valsList.add(valsEnum.nextElement());
+          }
+          valsList.add(m_ReplVal);
+
+          att = new Attribute(srcAtt.name(), valsList);
+      }
+      else { // string attributes
+          att = (Attribute) srcAtt.copy();
+          att.addStringValue(m_ReplVal);
+      }
+
+      newAtts.addElement(att);
+      attrSrc.set(j);
     }
 
-    outputFormat = new Instances(getInputFormat().relationName(),
-				 newAtts, 0);
-    outputFormat.setClassIndex(newClassIndex);    
+    outputFormat = new Instances(getInputFormat().relationName(),newAtts, 0);
+    outputFormat.setClassIndex(getInputFormat().classIndex());
+
     setOutputFormat(outputFormat);
 
-    m_StringToCopySrc = new AttributeLocator(getInputFormat(), Attribute.STRING, MathUtils.findTrue(attrSrc));
-    m_StringToCopyDst = new AttributeLocator(outputFormat, Attribute.STRING, MathUtils.findTrue(attrDest));
+    m_StringToCopy = new AttributeLocator(getInputFormat(), Attribute.STRING, MathUtils.findTrue(attrSrc));
   }
 
   /**
@@ -422,43 +401,42 @@ public class FeatureModifierFilter
    */
   private void convertInstance(Instance instance) {
 
-    double [] vals = new double [outputFormatPeek().numAttributes()];
-    String [] stringVals = new String [vals.length];
-    int attSoFar = 0;
+    // create a copy of the input instance
+    Instance inst = null;
 
-    for(int j = 0; j < getInputFormat().numAttributes(); j++) {
+    if (instance instanceof SparseInstance) {
+      inst = new SparseInstance(instance.weight(), instance.toDoubleArray());
+    } else {
+      inst = new DenseInstance(instance.weight(), instance.toDoubleArray());
+    }
+
+    // copy the string values from this instance as well (only the existing ones)
+    inst.setDataset(getOutputFormat());
+    copyValues(inst, false, instance.dataset(), getOutputFormat()); // beware of weird behavior of this function (see source)!!
+    inst.setDataset(getOutputFormat());
+
+    // find the missing values to be filled + the double values for the new "missing" label and store it
+    double [] vals = instance.toDoubleArray();
+
+    for (int j = 0; j < getInputFormat().numAttributes(); j++) {
+
       Attribute att = instance.attribute(j);
-      if (!m_Columns.isInRange(j)) {
-	vals[attSoFar] = instance.value(j);
-	attSoFar++;
-      } else {
-          // store new string values, make double values "missing" for now (if some string
-          // values are missing, the double values will remain missing)
-          if (instance.value(0) == 12 && instance.value(1) == 9 && att.name().equals("sempos")){
-              attSoFar = attSoFar;
+
+      if (m_Columns.isInRange(j) && instance.isMissing(j)) {
+          // find the "missing" value in the output nominal attribute
+          if (att.isNominal()){
+            vals[j] = inst.dataset().attribute(j).indexOfValue(m_ReplVal);
           }
-          attSoFar += getAttributeOutputValue(att, instance.value(j), vals, stringVals, attSoFar);
+          // add a string value for the new "missing" label
+          else if (att.isString()){
+            vals[j] = inst.dataset().attribute(j).addStringValue(m_ReplVal);
+          }
       }
     }
-    Instance inst = null;
-    if (instance instanceof SparseInstance) {
-      inst = new SparseInstance(instance.weight(), vals);
-    } else {
-      inst = new DenseInstance(instance.weight(), vals);
-    }
 
-    inst.setDataset(getOutputFormat());
-    copyValues(inst, false, instance.dataset(), getOutputFormat());
-
-    // add new string values to the output data set and to the instance
-    for (int i = 0; i < stringVals.length; ++i){ 
-        if (stringVals[i] != null){
-            vals[i] = inst.dataset().attribute(i).addStringValue(stringVals[i]);
-        }
-    }
+    // fill in the missing values found
     inst.replaceMissingValues(vals);
 
-    inst.setDataset(getOutputFormat());
     push(inst);
   }
 
@@ -478,96 +456,23 @@ public class FeatureModifierFilter
    * use -h for help
    */
   public static void main(String [] argv) {
-    runFilter(new FeatureModifierFilter(), argv);
+    runFilter(new ReplaceMissing(), argv);
   }
 
     /**
-     * Returns the operating class name.
-     * @return the currently set operating class name
+     * Returns the replacement for missing values.
+     * @return the currently set replacement value
      */
-    public String getOperClass() {
-        return m_OperClassName;
+    public String getReplacementValue() {
+        return m_ReplVal;
     }
 
 
     /**
-     * Sets a new operating class name.
+     * Sets a new replacement for missing values.
      */
-    public void setOperClass(String className) {
-        m_OperClassName = className;
+    public void setReplacementValue(String replVal) {
+        m_ReplVal = replVal;
     }
 
-    /**
-     * Return a list of new attributes for the given attribute, when the filter class will be applied to it.
-     *
-     * @param att the attribute to be converted
-     * @return a list of output attributes for this attribute
-     */
-    private ArrayList<Attribute> getAttributeOutputFormat(Attribute att){
-
-        ArrayList newAtts = new ArrayList<Attribute>();
-
-        if (this.m_PreserveOriginals){
-            newAtts.add(att.copy());
-        }
-
-        String [] outputNames = this.m_OperClass.getOutputFeatsList(att.name());
-
-        for (int i = 0; i < outputNames.length; ++i){
-            newAtts.add(new Attribute(outputNames[i], (List<String>) null));
-        }
-
-        return newAtts;
-    }
-
-    /**
-     * Retrieves the values for all output attributes relating to the given source attribute.
-     * 
-     * @param att the source attribute
-     * @param attVal the attribute value
-     * @param stringValArr the field where the double values are to be set to missing
-     * @param stringValArr the field where the string values are to be stored
-     * @param offset the offset where the values for this attribute should begin
-     * @return the number of attribute values written
-     */
-    private int getAttributeOutputValue(Attribute att, double attVal, double [] valArr, String [] stringValArr, int offset) {
-
-        if (this.m_PreserveOriginals){
-            valArr[offset] = attVal;
-            offset++;
-        }
-        String [] outVals = this.m_OperClass.getOutputValues(Utils.isMissingValue(attVal) ? null : att.value((int) attVal));
-        System.arraycopy(outVals, 0, stringValArr, offset, outVals.length);
-
-        for (int i = 0; i < outVals.length; ++i){
-            valArr[offset + i] = Utils.missingValue();
-        }
-
-        return outVals.length + (this.m_PreserveOriginals ? 1 : 0);
-    }
-
-    @Override
-    protected void copyValues(Instance instance, boolean instSrcCompat, Instances srcDataset, Instances destDataset) {
-        
-        RelationalLocator.copyRelationalValues(instance, instSrcCompat, srcDataset, m_InputRelAtts,
-                destDataset, m_OutputRelAtts);
-
-        StringLocator.copyStringValues(instance, instSrcCompat, srcDataset, m_StringToCopySrc, destDataset, m_StringToCopyDst);
-    }
-
-    /**
-     * Set the new policy on preserving original columns.
-     * @param preserveOriginals true if original columns should be preserved
-     */
-    private void setPreserveOriginal(boolean preserveOriginals) {
-        this.m_PreserveOriginals = preserveOriginals;
-    }
-
-    /**
-     * Returns the current setting regarding preservation of original columns.
-     * @return true if original columns are to be preserved
-     */
-    private boolean getPreserveOriginals() {
-        return this.m_PreserveOriginals;
-    }
 }
