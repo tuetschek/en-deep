@@ -718,6 +718,26 @@ public class StringUtils {
     }
 
     /**
+     * This finds all files that match the given ("*"-only) pattern in the given list of files. They are
+     * returned in a hashtable with their pattern expansions as keys.
+     * 
+     * @param files a list of files (paths)
+     * @param pattern a file (path) pattern, using a single "*" only
+     * @return the matching files, keyed under the pattern expansions
+     */
+    public static Hashtable<String, String> findMatchingFiles(Vector<String> files, String pattern) {
+
+        Hashtable<String, String> ret = new Hashtable<String, String>();
+        for (String file : files){
+            String key = matches(file, pattern);
+            if (key != null){
+                ret.put(key, file);
+            }
+        }
+        return ret;
+    }
+
+    /**
      * A special class for comparing the {@link #first} parts of {@link String} {@link Pair}s with respect
      * to numerical suffixes, i.e\. in the same order Windows Explorer does. This means e.g.
      * that <tt>abc12</tt> is greater than <tt>abc2</tt>.

@@ -72,7 +72,7 @@ public class FileUtils{
 
     /**
      * This copies the given file to the given location (both names must be valid).
-     * (modified after <a href="http://www.rgagnon.com/javadetails/java-0064.html">this. webpage</a>.)
+     * (modified after <a href="http://www.rgagnon.com/javadetails/java-0064.html">this webpage</a>.)
      *
      * @param source the source file
      * @param destination the destination file
@@ -186,13 +186,13 @@ public class FileUtils{
 
         for (int i = 0; i < mask.size(); ++i){
             if (mask.get(i)){
-                atts.add(data.attribute(i));
+                atts.add((Attribute) data.attribute(i).copy());
             }
         }
 
         Instances ret = new Instances(data.relationName(), atts, data.numInstances());
         if (data.classIndex() >= 0 && mask.get(data.classIndex())){
-            ret.setClass(data.classAttribute());
+            ret.setClass(ret.attribute(data.classAttribute().name()));
         }
         Enumeration<Instance> insts = data.enumerateInstances();
 

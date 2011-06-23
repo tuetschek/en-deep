@@ -87,14 +87,19 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String LOAD_MODEL = "load_model";
     /** Pattern to match input files and create output files */
     private static final String PATTERN = "pattern";
+    /** Name of the 'model_sel_attr' parameter */
+    private static final String MODEL_SEL_ATTR = "model_sel_attr";
+    /** Name of the 'model_sel_pattern' parameter */
+    private static final String MODEL_SEL_PATTERN = "model_sel_pattern";
 
     /** {@link TreeReader} parameter name */
     private static final String TREE_READER = "tree_reader";
 
+    /** Key for the default model in the hash table */
+    private static final String DEFAULT = "";
+
     /* DATA */
 
-    /** The WEKA classifier object */
-    private AbstractClassifier classif;
     /** Output probability distribution instead of classification ? */
     private boolean probabilities;
     /** Should the nominal attributes be binarized before classification ? */
@@ -103,12 +108,16 @@ public class WekaClassifier extends GeneralClassifier {
     private String attribsOutputFile;
     /** The name of the file where the preselected attribute indexes are */
     private String preselectedAttribFile;
-    /** List of attributes for removal */
-    private String [] attribsToRemove;
     /** Name of the file where the model should be written, or null */
     private String modelOutputFile;
-    /** The data format of the training file */
-    private Instances trainDataFormat;
+
+    /** The models (possibly multiple for the various values of the deciding attribute) */
+    private Hashtable<String, Model> models;
+    /** Model input data files */
+    private Hashtable<String, String> modelFiles;
+    /** Name of the attribute that decides which model will be used */
+    private String modelSelectionAttribute;
+    private Instances eval;
 
     /* METHODS */
  
@@ -117,8 +126,10 @@ public class WekaClassifier extends GeneralClassifier {
      * check. 
      * <p>
      * There must be no patterns in the input and output specifications, the number of inputs
-     * must min. 2, the number of outputs must be one less and there are no patterns allowed in inputs and outputs.
-     * The first input is used as training data and all the remaining ones as evaluation data.
+     * must be &gt;= 2. The number of outputs must be the same as the number of classified data sets (i.e.
+     * inputs - models). The first input is either the training data, or the stored model to be loaded
+     * (in that case, also some further inputs may be used for further stored models). The remaining inputs
+     * are the data to be classified.
      * </p>
      * <p>
      * There is one compulsory parameter:
@@ -145,9 +156,12 @@ public class WekaClassifier extends GeneralClassifier {
      * sparse matrix to represent the result.</li>
      * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
      * used attributes will be output</li>
-     * <li><tt>load_model</tt> -- if set, the first input is considered to be ready-trained model file. Preselection
-     * and binarization settings are then taken from this file as well (i.e. all arguments except <tt>prob_dist</tt>,
-     * <tt>pattern</tt> and <tt>tree_reader</tt> are ignored).</li>
+     * <li><tt>load_model</tt> -- if set, the first input(s) is(are) considered to be ready-trained model file(s).
+     * Preselection and binarization settings are then taken from this file as well (i.e. all arguments except
+     * <tt>prob_dist</tt>, <tt>pattern</tt> and <tt>tree_reader</tt> are ignored).</li>
+     * <li><tt>model_sel_attr</tt> and <tt>model_sel_pattern</tt> -- if set, multiple models are extracted from the input
+     * according to the pattern and used for classification whenever the value of the selection attribute for the current
+     * instance matches their pattern expansion.</li>
      * <li><tt>save_model</tt> -- if set, the trained model is saved to a file (there must be an
      * additional output at the end of the outputs specification) for later use.</li>
      * <li><tt>pattern</tt> -- if the parameter is set and the (first) output is a pattern,
@@ -183,7 +197,7 @@ public class WekaClassifier extends GeneralClassifier {
         super(id, parameters, input, output);
 
         // check for parameters
-        if (!this.hasParameter(WEKA_CLASS) && !this.getBooleanParameterVal(LOAD_MODEL)){
+        if (!this.hasParameter(WEKA_CLASS) && !this.hasParameter(LOAD_MODEL)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
@@ -245,6 +259,10 @@ public class WekaClassifier extends GeneralClassifier {
     private void initClassifier() throws TaskException {
 
         String classifName = this.parameters.remove(WEKA_CLASS);
+        Model model = new Model();
+        // put the (single) model to a default place
+        this.models = new Hashtable<String, Model>(1);
+        this.models.put(DEFAULT, model);
 
         // try to create the classifier corresponding to the given WEKA class name
         try {
@@ -252,7 +270,7 @@ public class WekaClassifier extends GeneralClassifier {
             Constructor classifConstructor = null;
             classifClass = Class.forName(classifName);
             classifConstructor = classifClass.getConstructor();
-            this.classif = (AbstractClassifier) classifConstructor.newInstance();
+            model.classif = (AbstractClassifier) classifConstructor.newInstance();
         }
         catch (Exception e) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
@@ -262,7 +280,7 @@ public class WekaClassifier extends GeneralClassifier {
         String [] classifParams = StringUtils.getWekaOptions(this.parameters);
 
         try {
-            this.classif.setOptions(classifParams);
+            model.classif.setOptions(classifParams);
         }
         catch (Exception e){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Could not set classifier parameters.");
@@ -278,10 +296,20 @@ public class WekaClassifier extends GeneralClassifier {
      */
     protected void classify(String trainFile, List<String> evalFiles, List<String> outFiles) throws Exception {
 
-        // get the classifier model, somehow
+        // load the classifier model from file
         if (this.getBooleanParameterVal(LOAD_MODEL)){
-            this.loadModel(trainFile);
+            
+            this.models = new Hashtable<String, Model>();
+            if (this.modelFiles != null){ // multiple models -- load them all
+                for (String param : this.modelFiles.keySet()){
+                    this.models.put(param, new Model(this.id, this.modelFiles.get(param)));
+                }                
+            }
+            else {  // just a single model
+                this.models.put(DEFAULT, new Model(this.id, trainFile));
+            }
         }
+        // train a new model
         else {
             this.trainModel(trainFile);
         }
@@ -292,10 +320,12 @@ public class WekaClassifier extends GeneralClassifier {
         }
 
         if (this.modelOutputFile != null){
-            this.saveModel();
+            this.models.get(DEFAULT).save(this.id, this.modelOutputFile);
         }
+
         // clean up
-        this.classif = null;
+        this.models = null;
+        this.modelFiles = null;
     }
 
     /**
@@ -311,49 +341,41 @@ public class WekaClassifier extends GeneralClassifier {
         // read the evaluation data and find out the target class
         Logger.getInstance().message(this.id + ": reading " + evalFile + "...", Logger.V_DEBUG);
         Instances eval = FileUtils.readArff(evalFile);
-        Instances outData; // a copy w/o attribute preselection for output
-
-        // set the class feature in eval
-        this.setClassFeature(this.trainDataFormat, eval);
-
-        // remove selected attributes in eval
-        outData = new Instances(eval);
-        eval = this.removeSelected(eval, this.attribsToRemove);
-        
-        // binarize, if supposed to
-        if (this.binarize) {
-            Logger.getInstance().message(this.id + ": binarizing... (" + eval.relationName() + ")", Logger.V_DEBUG);
-            eval = this.sparseNominalToBinary(eval);
-        }
+        this.eval = eval;
+        Hashtable<String, Instances> modelInputs = this.prepareModelInputs(eval);
 
         Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
 
         // use the classifier and store the results
         double[][] distributions = this.probabilities ? new double[eval.numInstances()][] : null;
         Sequence seq = this.hasParameter(TREE_READER)
-                ? new TreeReader(this.id, outData, this.getParameterVal(TREE_READER)) : new LinearSequence(outData);
+                ? new TreeReader(this.id, eval, this.getParameterVal(TREE_READER)) : new LinearSequence(eval);
 
         for (int i = seq.getNextInstance(); i >= 0; i = seq.getNextInstance()) {
 
+            String key = this.selectModel(eval, i);
+            Model model = this.models.get(key);
+            Instance modelInput = modelInputs.get(key).get(i);
+
             if (!this.probabilities) {
                 // just set the most likely class
-                double val = this.classif.classifyInstance(eval.get(i));
+                double val = model.classif.classifyInstance(modelInput);
                 seq.setCurrentClass(val);
-
-            } else {
+            }
+            else {
                 // save the probability distribution aside
-                distributions[i] = this.classif.distributionForInstance(eval.get(i));
+                distributions[i] = model.classif.distributionForInstance(modelInput);
                 seq.setCurrentClass(MathUtils.findMax(distributions[i]));
             }
         }
 
         // store the probability distributions, if supposed to
         if (this.probabilities) {
-            this.addDistributions(outData, distributions);
+            this.addDistributions(eval, distributions);
         }
 
         Logger.getInstance().message(this.id + ": saving results to " + outFile + ".", Logger.V_DEBUG);
-        FileUtils.writeArff(outFile, outData);
+        FileUtils.writeArff(outFile, eval);
     }
 
 
@@ -391,12 +413,12 @@ public class WekaClassifier extends GeneralClassifier {
             this.removeIgnoredAttributes(train, selectionMask);
         }
 
-        this.attribsToRemove = new String [selectionMask.length()-selectionMask.cardinality()];
+        this.models.get(DEFAULT).attribsToRemove = new String [train.numAttributes()-selectionMask.cardinality()];
         int pos = 0;
         // mark the names of the removed attributes
-        for (int i = selectionMask.length()-1; i >= 0; --i){
+        for (int i = train.numAttributes()-1; i >= 0; --i){
             if (!selectionMask.get(i)){
-                this.attribsToRemove[pos++] = train.attribute(i).name();
+                this.models.get(DEFAULT).attribsToRemove[pos++] = train.attribute(i).name();
             }
         }
         // write the settings to a file, if needed
@@ -515,7 +537,7 @@ public class WekaClassifier extends GeneralClassifier {
 
     /**
      * This not only checks the number of inputs and outputs, but also handles output '**' patterns,
-     * if there are some.
+     * if there are any, and multiple input models, if applicable.
      * @throws TaskException
      */
     @Override
@@ -543,6 +565,12 @@ public class WekaClassifier extends GeneralClassifier {
         int numOut = this.output.size();
         if (this.getBooleanParameterVal(OUT_ATTRIBS) || this.getBooleanParameterVal(SAVE_MODEL)){
             numOut--;
+        }
+        // if there are multiple models to load, find them and count them
+        if (this.hasParameter(MODEL_SEL_PATTERN)){
+            this.modelFiles = StringUtils.findMatchingFiles(this.input, StringUtils.getPath(MODEL_SEL_PATTERN));
+            this.input.removeAll(this.modelFiles.values());
+            numIn = this.input.size();
         }
 
         if (numIn != numOut){
@@ -627,7 +655,7 @@ public class WekaClassifier extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
         Instances train = FileUtils.readArff(trainFile);
         this.findClassFeature(train);
-        this.trainDataFormat = new Instances(train, 0);
+        this.models.get(DEFAULT).dataFormat = new Instances(train, 0);
 
         // pre-select the attributes
         Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
@@ -640,43 +668,124 @@ public class WekaClassifier extends GeneralClassifier {
 
         Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
         // train the classifier
-        this.classif.buildClassifier(train);
+        this.models.get(DEFAULT).classif.buildClassifier(train);
     }
 
     /**
-     * This loads the trained model from the given file. It also loads the attribute preselection settings
-     * and the original data format of the train file (with the class attribute set up).
-     * @param modelFile the name of the file that contains the model and other settings.
+     * Prepare the actual input to the individual classification models (for single or multiple models)
+     * by setting the target class, binarizing and removing unneeded attributes.
+     *
+     * @param eval the evaluation data
+     * @return the input data to the individual models (contains a single entry keyed under {@link #DEFAULT} if there's \
+     *         only one model)
      */
-    private void loadModel(String modelFile) throws IOException, ClassNotFoundException {
+    private Hashtable<String, Instances> prepareModelInputs(Instances eval) throws TaskException, Exception {
 
-        Logger.getInstance().message(this.id + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
-        ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
+        Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
+        Model defaultModel = this.models.elements().nextElement();
 
-        this.classif = (AbstractClassifier) oin.readObject();
-        this.attribsToRemove = (String []) oin.readObject();
-        this.trainDataFormat = (Instances) oin.readObject();
-        this.binarize = oin.readBoolean();
+        // set the class feature in eval (must be same for all if multiple models are used)
+        this.setClassFeature(defaultModel.dataFormat, eval);
 
-        oin.close();
+        for (String key : this.models.keySet()){
+
+            // check if the class feature is the same for all models
+            if (!this.models.get(key).dataFormat.classAttribute().name()
+                    .equals(defaultModel.dataFormat.classAttribute().name())){
+
+                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Class attribute is not the same"
+                        + " for all the models.");
+            }
+
+            // create copies of evaluation data for all models and prepare them
+            Instances modelInput = new Instances(eval);
+            modelInput = this.removeSelected(modelInput, this.models.get(key).attribsToRemove);
+
+            // binarize, if supposed to
+            if (this.models.get(key).binarize){
+                Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
+                modelInput = this.sparseNominalToBinary(modelInput);
+            }
+
+            modelInputs.put(key, modelInput);
+        }
+
+        return modelInputs;
     }
 
     /**
-     * This saves the trained classifier model to the {@link #modelOutputFile}, including the attribute preselection
-     * and binarization settings and the original training data format.
+     * For multiple models, select the right model for the current instance based on the value of the deciding attribute.
+     * For single model, always return the same.
+     *
+     * @param inst the data set to be classified
+     * @param index index of the actual instance to be classified
+     * @return the right key to the {@link #models} table for the current instance
      */
-    private void saveModel() throws IOException {
+    private String selectModel(Instances inst, int index) {
 
-        Logger.getInstance().message(this.id + ": saving the model to " + this.modelOutputFile + " ...", Logger.V_DEBUG);
-        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(this.modelOutputFile));
-
-        out.writeObject(this.classif);
-        out.writeObject(this.attribsToRemove);
-        out.writeObject(this.trainDataFormat);
-        out.writeBoolean(this.binarize);
-
-        out.close();
+        if (this.modelSelectionAttribute != null){
+            return inst.get(index).stringValue(inst.attribute(this.modelSelectionAttribute));
+        }
+        else {
+            return DEFAULT;
+        }
     }
 
+    /**
+     * This comprises all the required fields for a classification model.
+     */
+    private class Model {
 
+        /** The classifier */
+        AbstractClassifier classif;
+        /** The attributes preselection setting */
+        String [] attribsToRemove;
+        /** The training data format */
+        Instances dataFormat;
+        /** Binarize the data set for classification ? */
+        boolean binarize;
+
+        /** Default empty constructor */
+        Model(){
+        }
+
+        /**
+         * This loads the trained model from the given file. It also loads the attribute preselection settings
+         * and the original data format of the train file (with the class attribute set up).
+         *
+         * @param taskId used only for error messages
+         * @param modelFile the name of the file that contains the model and other settings.
+         */
+        Model(String taskId, String modelFile) throws IOException, ClassNotFoundException {
+
+            Logger.getInstance().message(taskId + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
+            ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
+
+            this.classif = (AbstractClassifier) oin.readObject();
+            this.attribsToRemove = (String []) oin.readObject();
+            this.dataFormat = (Instances) oin.readObject();
+            this.binarize = oin.readBoolean();
+
+            oin.close();
+        }
+
+        /**
+         * This saves the trained classifier model to a file.
+         *
+         * @param taskId used only for error messages
+         * @param the output file
+         */
+        private void save(String taskId, String modelFile) throws IOException {
+
+            Logger.getInstance().message(taskId + ": saving the model to " + modelFile + " ...", Logger.V_DEBUG);
+            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(modelFile));
+
+            out.writeObject(this.classif);
+            out.writeObject(this.attribsToRemove);
+            out.writeObject(this.dataFormat);
+            out.writeBoolean(this.binarize);
+
+            out.close();
+        }
+    }
 }
