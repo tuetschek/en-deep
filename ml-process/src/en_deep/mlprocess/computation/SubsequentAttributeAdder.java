@@ -213,7 +213,7 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         PrintStream out = new PrintStream(outFile);
         String [] attributeOrder = this.readAttributeOrder();
         int paramNum = (this.start < attributeOrder.length ? Math.max(this.start, 1) : attributeOrder.length)
-                + settingNos.get(0);
+                + settingNos.get(0) * this.step;
 
         out.println(StringUtils.join(attributeOrder, 0, paramNum, " "));
         out.close();
