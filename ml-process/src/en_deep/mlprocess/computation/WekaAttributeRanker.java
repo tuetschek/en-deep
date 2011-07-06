@@ -235,6 +235,9 @@ public class WekaAttributeRanker extends GeneralClassifier {
             if (rankerName != null){                
                 if (evalName == null){
                     this.ranker = (RankedOutputSearch) this.initWekaAS(rankerName, rankerParams, data);
+                    if (this.numSelected != -1){
+                        this.ranker.setNumToSelect(this.numSelected);
+                    }
                 }
                 else {
                     this.searcherEval = this.initWekaAS(evalName, evalParams, data);
