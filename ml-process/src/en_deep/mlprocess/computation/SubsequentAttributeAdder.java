@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess.computation;
 
+import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;
@@ -215,6 +216,9 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
         int paramNum = (this.start < attributeOrder.length ? Math.max(this.start, 1) : attributeOrder.length)
                 + settingNos.get(0) * this.step;
 
+        Logger.getInstance().message("Best setting:" + settingNos.get(0) + " step: " + this.step +
+                " start: " + this.start + " params: " + paramNum, Logger.V_DEBUG);
+
         out.println(StringUtils.join(attributeOrder, 0, paramNum, " "));
         out.close();
     }
@@ -224,6 +228,7 @@ public class SubsequentAttributeAdder extends WekaSettingTrials {
 
         Hashtable<String, String> evalParams = super.getEvalParams();
         evalParams.put(START, Integer.toString(this.start));
+        evalParams.put(STEP, Integer.toString(this.step));
         evalParams.put(ATTRIB_ORDER_FILE, this.attributeOrderFile);
         return evalParams;
     }
