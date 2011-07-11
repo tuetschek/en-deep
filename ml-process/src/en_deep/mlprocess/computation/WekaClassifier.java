@@ -664,6 +664,7 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
             train = this.sparseNominalToBinary(train);
+            this.models.get(DEFAULT).binarize = true;
         }
 
         Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
