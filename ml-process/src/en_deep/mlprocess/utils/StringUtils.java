@@ -805,6 +805,9 @@ public class StringUtils {
          */
         private int getNumPos(String str) {
 
+            if (str == null || str.isEmpty()){
+                return -1;
+            }
             if (!Character.isDigit(str.charAt(str.length()-1))){
                 return -1;
             }
