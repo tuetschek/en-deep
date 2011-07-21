@@ -731,7 +731,7 @@ public class StringUtils {
         for (String file : files){
             String key = matches(file, pattern);
             if (key != null){
-                ret.put(key, file);
+                ret.put(FileUtils.fileNameDecode(key), file);
             }
         }
         return ret;

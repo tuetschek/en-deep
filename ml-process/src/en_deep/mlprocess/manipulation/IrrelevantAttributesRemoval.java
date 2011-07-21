@@ -270,7 +270,7 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
      * @condition reason of removal
      */
     private void removeAttributes(Instances [] data, List<String> forRemoval, Condition condition)
-            throws TaskException{
+            throws Exception {
 
         if (forRemoval != null && !forRemoval.isEmpty() && 
                 !(forRemoval.size() == 1 && (forRemoval.get(0) == null || forRemoval.get(0).equals("")))){

@@ -41,6 +41,7 @@ import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.Reorder;
 import weka.filters.unsupervised.attribute.StringToNominal;
 
 /**
@@ -175,49 +176,26 @@ public class FileUtils{
 
     /**
      * Filter a data set: keep only some of the attributes. Only the attributes whose bit is
-     * set to true are kept. If the
+     * set to true are kept. Uses the WEKA {@link Reorder} filter to perform the removal.
+     * 
      * @param data the data to be filtered
      * @param mask attributes bit mask
      * @return the filtered data set
      */
-    public static Instances filterAttributes(Instances data, BitSet mask){
+    public static Instances filterAttributes(Instances data, BitSet mask) throws Exception{
     
-        ArrayList<Attribute> atts = new ArrayList<Attribute> (mask.cardinality());
-
+        int [] attrib = new int [mask.cardinality()];
+        int pos = 0;
         for (int i = 0; i < mask.size(); ++i){
             if (mask.get(i)){
-                atts.add((Attribute) data.attribute(i).copy());
+                attrib[pos++] = i;
             }
         }
 
-        Instances ret = new Instances(data.relationName(), atts, data.numInstances());
-        if (data.classIndex() >= 0 && mask.get(data.classIndex())){
-            ret.setClass(ret.attribute(data.classAttribute().name()));
-        }
-        Enumeration<Instance> insts = data.enumerateInstances();
-
-        while (insts.hasMoreElements()){
-
-            Instance inst = insts.nextElement();
-            double [] oldValues = inst.toDoubleArray();
-            double [] newValues = new double [mask.cardinality()];
-            int pos = 0;
-            for (int i = 0; i < mask.size(); ++i){
-                if (mask.get(i)){
-                    newValues[pos++] = oldValues[i];
-                }
-            }
-
-            try {
-                Constructor constructor = inst.getClass().getConstructor(double.class, double[].class);
-                ret.add((Instance) constructor.newInstance(inst.weight(), newValues));
-            }
-            catch (Exception e){
-                ret.add(new DenseInstance(inst.weight(), newValues));
-            }
-        }
-
-        return ret;
+        Reorder reorder = new Reorder();
+        reorder.setAttributeIndicesArray(attrib);
+        reorder.setInputFormat(data);
+        return Filter.useFilter(data, reorder);
     }
 
 

@@ -105,6 +105,7 @@ public class TreeReader implements Sequence {
      * <li><tt>mode</tt> is <tt>bin</tt> or <tt>nom</tt>, i.e. working with binary or nominal attributes</li>
      * <li><tt>wordId</tt> is the word id attribute name</li>
      * <li><tt>sentId</tt> is the sentence id attribute name</li>
+     * <li><tt>head</tt> is the attribute name for the word id of this node's head</li>
      * <li><tt>headClass</tt> is the attribute name for the class value of the head of the current node</li>
      * <li><tt>leftClass</tt> is the attribute name for the class value of the nearest left sibling of the current node</li>
      * <li><tt>leftClasses</tt> is the attribute name for the class values all left siblings of the current node</li>

@@ -204,8 +204,8 @@ public class WekaClassifier extends GeneralClassifier {
         this.binarize = this.parameters.remove(BINARIZE) != null;
 
         if (this.hasParameter(SELECT_ARGS) && this.getBooleanParameterVal(ARGS_FILE)){
-            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be"
-                    + " set at the same time!");
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be "
+                    + "set at the same time!");
         }
         if (this.getBooleanParameterVal(ARGS_FILE)){
             this.preselectedAttribFile = this.input.remove(this.input.size()-1);
@@ -222,6 +222,15 @@ public class WekaClassifier extends GeneralClassifier {
         if (this.getBooleanParameterVal(SAVE_MODEL)){
             this.modelOutputFile = this.output.remove(this.output.size()-1);
             this.parameters.remove(SAVE_MODEL);
+        }
+        // multiple model parameters
+        if ((this.hasParameter(MODEL_SEL_ATTR) ^ this.hasParameter(MODEL_SEL_PATTERN)) == true
+                || (this.hasParameter(MODEL_SEL_PATTERN) && !this.hasParameter(LOAD_MODEL))){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Load_model must be set if model_sel_pattern "
+                    + "and model_sel_attr are set; model_sel_pattern and model_sel_attr must be set together.");
+        }
+        if (this.hasParameter(MODEL_SEL_ATTR)){
+            this.modelSelectionAttribute = this.getParameterVal(MODEL_SEL_ATTR);
         }
     }
 
@@ -294,6 +303,7 @@ public class WekaClassifier extends GeneralClassifier {
      * @param evalFiles the evaluation data file names
      * @param outFiles the output file names
      */
+    @Override
     protected void classify(String trainFile, List<String> evalFiles, List<String> outFiles) throws Exception {
 
         // load the classifier model from file
@@ -303,7 +313,7 @@ public class WekaClassifier extends GeneralClassifier {
             if (this.modelFiles != null){ // multiple models -- load them all
                 for (String param : this.modelFiles.keySet()){
                     this.models.put(param, new Model(this.id, this.modelFiles.get(param)));
-                }                
+                }
             }
             else {  // just a single model
                 this.models.put(DEFAULT, new Model(this.id, trainFile));
@@ -315,7 +325,7 @@ public class WekaClassifier extends GeneralClassifier {
         }
 
         // classify each data file
-        for (int fileNo = 0; evalFiles != null && fileNo < evalFiles.size(); ++fileNo){
+        for (int fileNo = 0; fileNo < evalFiles.size(); ++fileNo){
             classifyFile(evalFiles.get(fileNo), outFiles.get(fileNo));
         }
 
@@ -387,7 +397,7 @@ public class WekaClassifier extends GeneralClassifier {
      * @param train the training data
      * @return the filtered training data
      */
-    private Instances attributesPreselection(Instances train) throws TaskException, IOException {
+    private Instances attributesPreselection(Instances train) throws TaskException, IOException, Exception {
 
         BitSet selectionMask = new BitSet(train.numAttributes());
 
@@ -568,7 +578,8 @@ public class WekaClassifier extends GeneralClassifier {
         }
         // if there are multiple models to load, find them and count them
         if (this.hasParameter(MODEL_SEL_PATTERN)){
-            this.modelFiles = StringUtils.findMatchingFiles(this.input, StringUtils.getPath(MODEL_SEL_PATTERN));
+            this.modelFiles = StringUtils.findMatchingFiles(this.input, 
+                    StringUtils.getPath(this.getParameterVal(MODEL_SEL_PATTERN)));
             this.input.removeAll(this.modelFiles.values());
             numIn = this.input.size();
         }
@@ -620,7 +631,7 @@ public class WekaClassifier extends GeneralClassifier {
      * @param data the data set to be processed
      * @param toRemove names of attributes to be removed
      */
-    private Instances removeSelected(Instances data, String[] toRemove) {
+    private Instances removeSelected(Instances data, String[] toRemove) throws Exception {
 
         BitSet removeMask = new BitSet(data.numAttributes());
         removeMask.set(0, data.numAttributes());
@@ -729,6 +740,26 @@ public class WekaClassifier extends GeneralClassifier {
         }
         else {
             return DEFAULT;
+        }
+    }
+
+    @Override
+    protected List<String> getEvalFiles() {
+        if (this.modelFiles != null){
+            return this.input;
+        }
+        else {
+            return super.getEvalFiles();
+        }
+    }
+
+    @Override
+    protected String getTrainFile(){
+        if (this.modelFiles != null){
+            return null;
+        }
+        else {
+            return super.getTrainFile();
         }
     }
 

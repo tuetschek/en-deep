@@ -147,8 +147,7 @@ public abstract class GeneralClassifier extends Task {
     @Override
     public final void perform() throws TaskException {
         try {
-            List<String> evalFiles = this.input.size() > 1 ? this.input.subList(1, this.input.size()) : null;
-            this.classify(this.input.get(0), evalFiles, this.output);
+            this.classify(this.getTrainFile(), this.getEvalFiles(), this.output);
         }
         catch (TaskException e) {
             throw e;
@@ -157,6 +156,22 @@ public abstract class GeneralClassifier extends Task {
             Logger.getInstance().logStackTrace(e, Logger.V_DEBUG);
             throw new TaskException(TaskException.ERR_IO_ERROR, this.id, e.getMessage());
         }
+    }
+
+    /**
+     * Returns a list of files that should be classified by this classifier (may be empty)
+     * @return
+     */
+    protected List<String> getEvalFiles() {
+        return this.input.size() > 1 ? this.input.subList(1, this.input.size()) : new Vector<String>();
+    }
+
+    /**
+     * Returns the file that should be used for training the classifier.
+     * @return
+     */
+    protected String getTrainFile(){
+        return this.input.get(0);
     }
 
 
