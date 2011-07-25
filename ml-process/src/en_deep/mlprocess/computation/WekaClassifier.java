@@ -28,6 +28,7 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.computation.wekaclassifier.LinearSequence;
 import en_deep.mlprocess.computation.wekaclassifier.Sequence;
@@ -49,6 +50,7 @@ import java.util.List;
 import java.util.Vector;
 import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
+import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.SparseInstance;
@@ -365,7 +367,7 @@ public class WekaClassifier extends GeneralClassifier {
 
             String key = this.selectModel(eval, i);
             Model model = this.models.get(key);
-            Instance modelInput = modelInputs.get(key).get(i);
+            Instance modelInput = this.rewriteNeighborhood(modelInputs.get(key).get(i), model, seq.getCurNeighborhood());
 
             if (!this.probabilities) {
                 // just set the most likely class
@@ -764,6 +766,30 @@ public class WekaClassifier extends GeneralClassifier {
     }
 
     /**
+     * Rewrite the values of all attributes containing the class value for the neighborhood, given
+     * a list of value portions to change.
+     *
+     * @param in the input instance to be rewritten
+     * @param model the model used to classify this instance
+     * @param curNeighborhood the neighborhood class values for the current instance
+     * @return the input instance, with neighborhood class values rewritten
+     */
+    private Instance rewriteNeighborhood(Instance in, Model model, List<Pair<Integer, double[]>> curNeighborhood) {
+        
+        double [] vals = in.toDoubleArray();
+        for (Pair<Integer, double[]> rewrite : curNeighborhood){
+           for (int i = 0; i < rewrite.second.length; ++i){
+               if (model.attribsMask[rewrite.first + i] != -1){
+                   vals[model.attribsMask[rewrite.first + i]] = rewrite.second[i];
+               }
+           }
+        }
+        Instance ret = new DenseInstance(1.0, vals);
+        ret.setDataset(in.dataset());
+        return ret;
+    }
+
+    /**
      * This comprises all the required fields for a classification model.
      */
     private class Model {
@@ -772,6 +798,8 @@ public class WekaClassifier extends GeneralClassifier {
         AbstractClassifier classif;
         /** The attributes preselection setting */
         String [] attribsToRemove;
+        /** The attributes preselection mask: -1 for removed attributes, the actual position for others */
+        int [] attribsMask;
         /** The training data format */
         Instances dataFormat;
         /** Binarize the data set for classification ? */
@@ -798,7 +826,26 @@ public class WekaClassifier extends GeneralClassifier {
             this.dataFormat = (Instances) oin.readObject();
             this.binarize = oin.readBoolean();
 
+            this.initAttribsMask();
+
             oin.close();
+        }
+
+        /**
+         * Initialize the used attributes mask (with the new positions of the used ones and -1 for unused ones).
+         */
+        void initAttribsMask(){
+
+            BitSet bs = new BitSet(this.dataFormat.numAttributes());
+            for (String attrId : this.attribsToRemove){
+                bs.set(this.dataFormat.attribute(attrId).index());
+            }
+            this.attribsMask = new int [this.dataFormat.numAttributes()];
+            int pos = 0; // count new positions here
+
+            for (int i = 0; i < this.attribsMask.length; ++i){
+                this.attribsMask[i] = bs.get(i) ? -1 : pos++;
+            }
         }
 
         /**
@@ -807,7 +854,7 @@ public class WekaClassifier extends GeneralClassifier {
          * @param taskId used only for error messages
          * @param the output file
          */
-        private void save(String taskId, String modelFile) throws IOException {
+        void save(String taskId, String modelFile) throws IOException {
 
             Logger.getInstance().message(taskId + ": saving the model to " + modelFile + " ...", Logger.V_DEBUG);
             ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(modelFile));

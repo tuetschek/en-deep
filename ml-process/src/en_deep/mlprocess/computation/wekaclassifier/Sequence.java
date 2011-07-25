@@ -27,6 +27,9 @@
 
 package en_deep.mlprocess.computation.wekaclassifier;
 
+import en_deep.mlprocess.Pair;
+import java.util.List;
+
 /**
  * An interface providing a meaningful sequence of all data over a given dataset.
  * @author Ondrej Dusek
@@ -40,8 +43,16 @@ public interface Sequence {
     public int getNextInstance();
 
     /**
+     * Returns the values of attributes describing the node's neighborhood which should be rewritten
+     * according to the current information.
+     *
+     * @return a list of starting indexes + fields of new values (may be null)
+     */
+    public List<Pair<Integer, double[]>> getCurNeighborhood();
+
+    /**
      * Set the class value for the current instance (and possibly its neighborhood).
      * @param value the current class value
      */
-    void setCurrentClass(double value);
+    public void setCurrentClass(double value);
 }

@@ -28,16 +28,25 @@
 package en_deep.mlprocess.computation.wekaclassifier;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.manipulation.genfeat.Feature;
+import en_deep.mlprocess.utils.StringUtils;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.List;
 import weka.core.Attribute;
 import weka.core.Instances;
 
 /**
  * A {@link Sequence} that browses through the ARFF data containing syntactic trees in a DFS order, tree-by-tree,
  * propagating the newly set class values to the syntactic neighborhood of the current node.
+ * <p>
+ * The class is able to work either with nominal or binary attributes. In nominal mode, the neighborhood class values must
+ * be stored each in one attribute; in binary mode, a continuous field of binary attributes for all possible values is assumed.
+ * </p>
  *
  * @author Ondrej Dusek
  */
@@ -75,12 +84,14 @@ public class TreeReader implements Sequence {
     /** Length of the current sentence in the data file */
     private int curSentLen;
 
-    /** Name of the attribute with the head of the current node's class value */
-    private String headClass;
-    /** Name of the attribute with the left sibling of the current node's class value */
-    private String leftClass;
-    /** Name of the attribute with class values of all the current node left siblings */
-    private String leftClasses;
+    /** Attribute(s) with the head of the current node's class value */
+    private NeighborhoodAttribute headClass;
+    /** Attribute(s) with the left sibling of the current node's class value */
+    private NeighborhoodAttribute leftClass;
+    /** Attribute(s) with class values of all the current node left siblings */
+    private NeighborhoodAttribute leftClasses;
+    /** In binary mode, attributes with class values of all the current node left siblings, set-aware mode */
+    private NeighborhoodAttribute leftClassesSet;
 
     /** The word ID attribute index */
     private int wordIdOrd;
@@ -88,6 +99,7 @@ public class TreeReader implements Sequence {
     private int sentIdOrd;
     /** The syntactic attribute index */
     private int headOrd;
+
 
     /* METHODS */
 
@@ -129,9 +141,15 @@ public class TreeReader implements Sequence {
         this.data = data;
         this.findIdxAttributes(paramArr[1], paramArr[2], paramArr[3]);
 
-        this.headClass = paramArr[4];
-        this.leftClass = paramArr[5];
-        this.leftClasses = paramArr[6];
+        this.headClass = new NeighborhoodAttribute(paramArr[4] + (this.binMode ? "=" : ""),
+                this.data, this.binMode, this.taskId);
+        this.leftClass = new NeighborhoodAttribute(paramArr[5] + (this.binMode ? "=" : ""),
+                this.data, this.binMode, this.taskId);
+        this.leftClasses = new NeighborhoodAttribute(paramArr[6] + (this.binMode ? "=" : ""),
+                this.data, this.binMode, this.taskId);
+        if (this.binMode){
+            this.leftClassesSet = new NeighborhoodAttribute(paramArr[6] + ">", this.data, this.binMode, this.taskId);
+        }
     }
 
     /**
@@ -232,12 +250,12 @@ public class TreeReader implements Sequence {
     @Override
     public int getNextInstance(){
 
-        // usual case
+        // this holds always, except for the first call
         if (this.curNode != null){
-            this.curNode = this.curNode.next;
+            this.curNode = this.curNode.next; // this yields null at the end of the tree
         }
 
-        // end of a tree -- move to next one if possible
+        // first call / end of a tree -- move to next tree if possible
         if (this.curNode == null){
             if (this.getNextTree() >= 0){
                 this.curNode = this.curRoot;
@@ -259,39 +277,6 @@ public class TreeReader implements Sequence {
         String stringVal = this.data.classAttribute().value((int) value);
         this.data.get(this.curNode.instance).setClassValue(value);
 
-        if (this.binMode){
-            if (this.curNode.children != null){
-                for (Node child : this.curNode.children){
-                    this.setBinaryValue(child.instance, this.headClass, stringVal);
-                }
-                if (this.curNode.rightSibling != null){
-
-                    Node right = this.curNode.rightSibling;
-                    this.setBinaryValue(right.instance, this.leftClass, stringVal);
-
-                    while (right != null){
-                        this.addBinaryValue(right.instance, this.leftClasses, stringVal);
-                        right = right.rightSibling;
-                    }
-                }
-            }
-        }
-        else {
-            if (this.curNode.children != null){
-                for (Node child : this.curNode.children){
-                    this.setNominalValue(child.instance, this.data.attribute(this.headClass), stringVal);
-                }
-                if (this.curNode.rightSibling != null){
-                    Node right = this.curNode.rightSibling;
-                    this.setNominalValue(this.curNode.rightSibling.instance, this.data.attribute(this.leftClass), stringVal);
-
-                    while (right != null){
-                        this.addNominalValue(right.instance, this.data.attribute(this.leftClasses), stringVal);
-                        right = right.rightSibling;
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -315,142 +300,42 @@ public class TreeReader implements Sequence {
         this.headOrd = this.data.attribute(head).index();
     }
 
-    /**
-     * Sets a nominal value of a given attribute for the given instance. If the nominal value is not found in
-     * the list of possible values and a current value is missing, it is replaced by {@link #FILLERS}.
-     *
-     * @param instanceNo number of the instance in question
-     * @param attr the attribute to be set
-     * @param value the value to be set
-     */
-    private void setNominalValue(int instanceNo, Attribute attr, String value) {
+    @Override
+    public List<Pair<Integer, double[]>> getCurNeighborhood() {
 
-        if (attr == null){
-            return;
-        }
+        ArrayList ret = new ArrayList<Pair<Integer, double[]>>(4);
 
-        try {
-            this.data.get(instanceNo).setValue(attr, value);
-        }
-        catch (IllegalArgumentException e){
-
-            if (this.data.get(instanceNo).isMissing(attr)){
-
-                int filler = -1;
-                int i = 0;
-
-                while (filler == -1 && i < FILLERS.length){
-                    filler = attr.indexOfValue(FILLERS[i++]);
-                }
-                if (filler != -1){
-                    this.data.get(instanceNo).setValue(attr, filler);
-                }
-            }
-        }
-    }
-
-    /**
-     * Sets a binary value for a given original nominal attribute name. Sets all other possible values
-     * of this original attribute to zero. If the given nominal value is not found, it is replaced by {@link #FILLERS}.
-     *
-     * @param instanceNo number of the instance in question
-     * @param attrName the name of the original nominal attribute (now expected to be binarized)
-     * @param value the value of the original nominal attribute (now expected to be one of the attributes with
-     *  the name <tt>attrName=value</tt>)
-     */
-    private void setBinaryValue(int instanceNo, String attrName, String value) {
-
-        Attribute attr;
-
-        this.makeZero(instanceNo, attrName + "=");
-
-        if ((attr = this.data.attribute(attrName + "=" + value)) != null){
-            this.data.get(instanceNo).setValue(attr, 1);
+        // head class
+        if (this.curNode.head != null){
+            ret.add(this.headClass.getValues(this.data.get(this.curNode.head.instance).stringValue(this.data.classIndex())));
         }
         else {
-            int i = 0;
-            while (attr == null && i < FILLERS.length){
-                attr = this.data.attribute(attrName + "=" + FILLERS[i++]);
+            ret.add(this.headClass.getValues("")); // root node - no head formeme
+        }
+
+        // left siblings classes
+        if (this.curNode.leftSibling != null){
+
+            Node cur = this.curNode.leftSibling;
+            ArrayDeque<String> vals = new ArrayDeque<String>();
+
+            // the first left sibling
+            vals.push(this.data.get(cur.instance).stringValue(this.data.classIndex()));
+            ret.add(this.leftClass.getValues(vals.peek()));
+
+            // all left siblings
+            cur = cur.leftSibling;
+            while (cur != null){
+                vals.push(this.data.get(cur.instance).stringValue(this.data.classIndex()));
+                cur = cur.leftSibling;
             }
-            if (attr != null){
-                this.data.get(instanceNo).setValue(attr, 1);
-            }
-        }
-    }
 
-    /**
-     * Sets a binary value for the given nominal attribute set. All possible values of this set will be zeroed.
-     * If the given nominal value is not found, nothing is set.
-     * 
-     * @param instanceNo number of the instance in question
-     * @param attrName the name of the original nominal set attribute (now expected to be binarized)
-     * @param value a member of the original nominal set attribute (now expected to be one of the attributes with
-     *  the name <tt>attrName&gt;value</tt>)
-     */
-    private void addBinaryValue(int instanceNo, String attrName, String value) {
-
-        Attribute attr;
-
-        this.makeZero(instanceNo, attrName + ">");
-
-        if ((attr = this.data.attribute(attrName + ">" + value)) != null){
-            this.data.get(instanceNo).setValue(attr, 1);
-        }
-    }
-
-    /**
-     * Adds a value to the set for a nominal set attribute. If the combination of the current value + the
-     * new value is not in the list of possible values, nothing is done.
-     *
-     * @param instanceNo number of the instance in question
-     * @param attr the nominal set attribute to be modified
-     * @param addedValue the new value to be added to the set
-     */
-    private void addNominalValue(int instanceNo, Attribute attr, String addedValue) {
-
-        if (attr == null){
-            return;
-        }
-
-        String origValue = this.data.get(instanceNo).stringValue(attr);
-
-        // value is just a filler -> keep it out
-        if (origValue != null){
-            for (String filler : FILLERS){
-                if (origValue.equals(filler)){
-                    this.data.get(instanceNo).setMissing(attr);
-                    origValue = null;
-                    break;
-                }
+            ret.add(this.leftClasses.getValues(StringUtils.join(vals, SEP))); // not set-aware
+            if (this.binMode){
+                ret.add(this.leftClassesSet.getValuesSet(vals.toArray(new String[0]))); // set-aware
             }
         }
-
-        // first value in the set
-        if (origValue == null){
-            this.setNominalValue(instanceNo, attr, addedValue);
-        }
-        // further values
-        else {
-            this.setNominalValue(instanceNo, attr, origValue + SEP + addedValue);
-        }
-    }
-
-    /**
-     * Set all attributes with the given prefix to zero, if their values are missing for the
-     * given instance.
-     * @param instanceNo the number of the instance in question
-     * @param prefix the prefix for attribute names
-     */
-    private void makeZero(int instanceNo, String prefix) {
-
-        Enumeration<Attribute> attribs = this.data.enumerateAttributes();
-        while (attribs.hasMoreElements()){
-            Attribute attrib = attribs.nextElement();
-            
-            if (attrib.name().startsWith(prefix) && this.data.get(instanceNo).isMissing(attrib)){
-                this.data.get(instanceNo).setValue(attrib, 0);
-            }
-        }
+        return ret;
     }
 
 
@@ -496,6 +381,111 @@ public class TreeReader implements Sequence {
                 sb.append(" )");
             }
             return sb.toString();
+        }
+    }
+
+
+    private class NeighborhoodAttribute {
+
+        /** The index of the first attribute in the data set */
+        int index;
+        /** Length of this group of attributes, if binary mode is used, 0 otherwise */
+        int binLength;
+        /** The one attribute for nominal mode */
+        Attribute nomAttrib;
+        /** All the attributes for binary mode */
+        Hashtable<String,Attribute> binAttribs;
+
+        /**
+         * This sets the initial values -- finds the attribute in the data set.
+         * @param name the name/prefix of the attribute(s)
+         * @param data the data set where the attribute is to be found
+         * @param binMode use one nominal attribute or a set of binary ones?
+         * @param taskId the current task id, just for error messages
+         */
+        NeighborhoodAttribute(String name, Instances data, boolean binMode, String taskId) throws TaskException{
+
+            if (binMode){
+                Enumeration<Attribute> attribs = data.enumerateAttributes();
+                Attribute attrib = attribs.nextElement();
+
+                // find the first corresponding attribute
+                while (attribs.hasMoreElements() && !attrib.name().startsWith(name)){
+                    attrib = attribs.nextElement();
+                }
+
+                this.index = attrib.index();
+                this.binAttribs = new Hashtable<String, Attribute>();
+
+                // find all possible attributes relating to this value
+                while (attribs.hasMoreElements() && attrib.name().startsWith(name)){
+                    this.binLength++;
+                    this.binAttribs.put(attrib.name().substring(name.length()), attrib);
+                    attrib = attribs.nextElement();
+                }
+            }
+            else {
+                this.index = data.attribute(name).index();
+                this.nomAttrib = data.attribute(name);
+            }
+
+            // throw an exception, if the attribute(s) has/ve not been found
+            if (this.binLength == 0 && this.nomAttrib == null){
+                throw new TaskException(TaskException.ERR_INVALID_DATA, taskId, "Cannot find attribute "
+                        + name + " in the data set " + data.relationName() + ".");
+            }
+        }
+
+        /**
+         * Return an array of values given the string value for this attribute.
+         * @param strVal the string value to be set
+         * @return
+         */
+        Pair<Integer,double []> getValues(String strVal){
+
+            double [] numVals = new double [this.binLength != 0 ? this.binLength : 1];
+
+            // nominal mode - return just one value
+            if (this.binLength == 0){
+                numVals[0] = this.nomAttrib.indexOfValue(strVal);
+
+                if (numVals[0] == -1){
+                    int i = 0;
+
+                    while (numVals[0] == -1 && i < FILLERS.length){
+                        numVals[0] = this.nomAttrib.indexOfValue(FILLERS[i++]);
+                    }
+                }
+            }
+            // binary mode -- make a bunch of 0's with one 1
+            else {
+                Attribute attr;
+
+                if ((attr = this.binAttribs.get(strVal)) != null){
+                    numVals[attr.index()-this.index] = 1;
+                }
+            }
+
+            return new Pair<Integer, double []>(this.index, numVals);
+        }
+
+        /**
+         * Return an array of values given the string value set for this attribute (binary mode only).
+         * @param value the string value to be set
+         * @return
+         */
+        Pair<Integer, double []> getValuesSet(String [] strVals){
+
+            double [] numVals = new double [this.binLength != 0 ? this.binLength : 1];
+
+            for (String strVal : strVals){
+                Attribute attr;
+
+                if ((attr = this.binAttribs.get(strVal)) != null){
+                    numVals[attr.index()-this.index] = 1;
+                }
+            }
+            return new Pair<Integer, double []>(this.index, numVals);
         }
     }
 }

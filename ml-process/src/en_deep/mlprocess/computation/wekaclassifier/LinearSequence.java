@@ -27,6 +27,8 @@
 
 package en_deep.mlprocess.computation.wekaclassifier;
 
+import en_deep.mlprocess.Pair;
+import java.util.List;
 import weka.core.Instances;
 
 /**
@@ -71,6 +73,15 @@ public class LinearSequence implements Sequence {
     public void setCurrentClass(double value) {
 
         this.data.get(this.curPos).setClassValue(value);
+    }
+
+    /**
+     * Do not require a rewrite of any neighborhood information.
+     * @return null
+     */
+    @Override
+    public List<Pair<Integer, double[]>> getCurNeighborhood() {
+        return null;
     }
 
 }
