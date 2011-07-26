@@ -777,6 +777,10 @@ public class WekaClassifier extends GeneralClassifier {
      */
     private Instance rewriteNeighborhood(Instance in, Model model, List<Pair<Integer, double[]>> curNeighborhood) {
         
+        if (curNeighborhood == null){
+            return in;
+        }
+        
         double [] vals = in.toDoubleArray();
         for (Pair<Integer, double[]> rewrite : curNeighborhood){
            for (int i = 0; i < rewrite.second.length; ++i){

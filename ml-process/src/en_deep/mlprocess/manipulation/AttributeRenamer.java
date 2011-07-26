@@ -184,7 +184,6 @@ public class AttributeRenamer extends Task {
             listLen = this.toRenameIdxs.length;
         }   
         this.newNames = this.getParameterVal(NEW_NAMES).split("\\s+");
-        Logger.getInstance().message("LEN: " + listLen + " " + this.newNames.length, Logger.V_DEBUG);
 
         if (listLen == 0 || listLen != this.newNames.length){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "The lists of attribute names"
