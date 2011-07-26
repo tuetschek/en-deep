@@ -28,7 +28,7 @@
 package en_deep.mlprocess.manipulation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.util.Collections;

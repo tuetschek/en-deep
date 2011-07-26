@@ -27,6 +27,7 @@
 
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.utils.Pair;
 import com.google.common.collect.HashMultimap;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.StringUtils;

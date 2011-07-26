@@ -25,7 +25,7 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package en_deep.mlprocess;
+package en_deep.mlprocess.utils;
 
 /**
  * A simple pair holding two elements.

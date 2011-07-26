@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.utils.MathUtils;
 import java.util.Arrays;
 import java.util.Hashtable;

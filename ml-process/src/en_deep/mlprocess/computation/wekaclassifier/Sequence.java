@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.computation.wekaclassifier;
 
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import java.util.List;
 
 /**

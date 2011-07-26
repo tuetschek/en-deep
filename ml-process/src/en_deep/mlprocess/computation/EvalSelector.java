@@ -27,7 +27,7 @@
 
 package en_deep.mlprocess.computation;
 
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;

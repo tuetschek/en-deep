@@ -28,7 +28,7 @@
 package en_deep.mlprocess.evaluation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;

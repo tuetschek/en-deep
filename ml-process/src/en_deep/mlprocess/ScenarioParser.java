@@ -1,5 +1,6 @@
 package en_deep.mlprocess;
 
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.DataException;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.IOException;

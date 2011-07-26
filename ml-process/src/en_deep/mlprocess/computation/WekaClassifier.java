@@ -28,7 +28,7 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.computation.wekaclassifier.LinearSequence;
 import en_deep.mlprocess.computation.wekaclassifier.Sequence;
@@ -673,6 +673,7 @@ public class WekaClassifier extends GeneralClassifier {
         // pre-select the attributes
         Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
         train = this.attributesPreselection(train);
+        this.models.get(DEFAULT).initAttribsMask();
 
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
@@ -825,8 +826,13 @@ public class WekaClassifier extends GeneralClassifier {
             this.attribsToRemove = (String []) oin.readObject();
             this.dataFormat = (Instances) oin.readObject();
             this.binarize = oin.readBoolean();
-
-            this.initAttribsMask();
+            
+            if (oin.available() > 0){ // support models with or without the attribute mask saved 
+                this.attribsMask = (int []) oin.readObject();
+            }
+            else {
+                this.initAttribsMask();
+            }
 
             oin.close();
         }
@@ -863,6 +869,7 @@ public class WekaClassifier extends GeneralClassifier {
             out.writeObject(this.attribsToRemove);
             out.writeObject(this.dataFormat);
             out.writeBoolean(this.binarize);
+            out.writeObject(this.attribsMask);
 
             out.close();
         }
