@@ -172,6 +172,7 @@ public class TreeDataToArff extends StLikeConvertor {
             this.reader = (DataReader) readerConstructor.newInstance(this);
         }
         catch (Exception ex){
+            ex.printStackTrace();
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Could not initialize reader class.");
         }
     }

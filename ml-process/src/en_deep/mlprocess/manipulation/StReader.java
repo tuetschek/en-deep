@@ -183,7 +183,7 @@ public class StReader extends DataReader {
      *
      * @param task the StToArff task for this conversion
      */
-    StReader(Task task) throws IOException {
+    public StReader(Task task) throws IOException {
 
         super(task);
 
@@ -631,7 +631,7 @@ public class StReader extends DataReader {
 
         if (attributeNumber < HEADER.length){
 
-            String header = HEADER[attributeNumber].replaceFirst("[^ ]+ ([^ ]+) .*", "\\1");
+            String header = HEADER[attributeNumber].replaceFirst("[^ ]+ ([^ ]+) .*", "$1");
 
             if (header.equals("")){
                 return "A" + attributeNumber;

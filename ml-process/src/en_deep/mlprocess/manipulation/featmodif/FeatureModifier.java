@@ -41,9 +41,9 @@ import java.lang.reflect.InvocationTargetException;
 public abstract class FeatureModifier {
 
     /** Feature name prefix for golden feature values */
-    public static final String PREFIX_GOLD = "feat_";
+    public static final String PREFIX_GOLD = "feat";
     /** Feature name prefix for predicted feature values */
-    protected static final String PREFIX_PRED = "pfeat_";
+    protected static final String PREFIX_PRED = "pfeat";
     /** Empty feature value (any string that is never used in the features values themselves) */
     protected static final String EMPTY = "-";
 

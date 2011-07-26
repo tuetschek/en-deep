@@ -31,8 +31,10 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
+import en_deep.mlprocess.utils.StringUtils;
 import java.util.Hashtable;
 import java.util.Vector;
+import weka.core.Attribute;
 import weka.core.Instances;
 
 /**
@@ -45,12 +47,16 @@ public class AttributeRenamer extends Task {
     
     /** The name of the 'attribs' parameter */
     private static final String ATTRIBS = "attribs";
+    /** The name of the 'numbers' parameter */
+    private static final String NUMBERS = "numbers";
 
     /** The name of the 'new_names' parameter */
     private static final String NEW_NAMES = "new_names";
 
-    /** List of parameters to be renamed */
-    private String[] toRename;
+    /** Name list of parameters to be renamed */
+    private String[] toRenameNames;
+    /** Index list of parameters to be renamed */
+    private int [] toRenameIdxs;
     /** List of new parameter names */
     private String[] newNames;
 
@@ -61,16 +67,23 @@ public class AttributeRenamer extends Task {
      * and outputs (non-empty, no patterns, same number) and the following parameters:
      * <ul>
      * <li><tt>attribs</tt> -- names of the attributes to be renamed (space-separated)</li>
+     * <li><tt>numbers</tt> -- numbers of the attributes to be renamed (space-separated, 1-based)</li>
      * <li><tt>new_names</tt> -- a list of corresponding new names (space-separated)</li>
      * </ul>
+     * <p>
+     * Just one of the <tt>attribs</tt> and <tt>numbers</tt> parameters must be set.
+     * </p>
      */
     public AttributeRenamer(String id, Hashtable<String, String> parameters, Vector<String> input, Vector<String> output)
             throws TaskException {
             
         super(id, parameters, input, output);
-
-        this.requireParameter(ATTRIBS);
+        
         this.requireParameter(NEW_NAMES);
+        if ((this.hasParameter(ATTRIBS) ^ this.hasParameter(NUMBERS)) == false){
+            throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Just one of " + ATTRIBS + ", "
+                    + NUMBERS + " parameters must be set.");
+        }
 
         this.eliminatePatterns(this.input);
         this.eliminatePatterns(this.output);
@@ -113,28 +126,67 @@ public class AttributeRenamer extends Task {
 
         Instances data = FileUtils.readArff(inFile);
 
-        for (int i = 0; i < this.toRename.length; ++i){
-            if (data.attribute(this.toRename[i]) == null){
-                Logger.getInstance().message("Attribute " + this.toRename[i] + " not found in data " + inFile, Logger.V_WARNING);
+        if (this.toRenameNames != null){
+            
+            this.toRenameIdxs = new int [this.toRenameNames.length];
+            
+            for (int i = 0; i < this.toRenameNames.length; ++i){
+                
+                Attribute attr = data.attribute(this.toRenameNames[i]);
+                
+                if (attr == null){
+                    this.toRenameIdxs[i] = -1;
+                    Logger.getInstance().message("Attribute " + this.toRenameNames[i] + 
+                            " not found in data file " + inFile, Logger.V_WARNING);
+                }
+                else {
+                    this.toRenameIdxs[i] = attr.index();                    
+                }
             }
-            data.renameAttribute(data.attribute(this.toRename[i]), this.newNames[i]);
+        }
+                
+        for (int i = 0; i < this.newNames.length; ++i){
+            
+            
+            
+            if (this.toRenameIdxs[i] < 0 || this.toRenameIdxs[i] >= data.numAttributes()){
+                Logger.getInstance().message("Did not perform the " + i + "th rename -- attribute index out of range"
+                        + " in data file " + inFile, Logger.V_WARNING);
+                continue;
+            }
+            data.renameAttribute(this.toRenameIdxs[i], this.newNames[i]);
         }
 
         FileUtils.writeArff(outFile, data);
     }
 
     /**
-     * This retrieves the lists of attribute old / new names from the corresponding parameter and
+     * This retrieves the lists of attribute old / new names (or indexes) from the corresponding parameter and
      * checks if their numbers match.
      * 
      * @throws TaskException if the numbers of old and new parameters do not match or there are no names given
      */
     private void parseAttributeNames() throws TaskException {
 
-        this.toRename = this.getParameterVal(ATTRIBS).split("\\s+");
+        int listLen = 0;
+        
+        // parse old names
+        if (this.hasParameter(ATTRIBS)){
+            this.toRenameNames = this.getParameterVal(ATTRIBS).split("\\s+");
+            listLen = this.toRenameNames.length;
+        }
+        // parse the indexes
+        else {
+            this.toRenameIdxs = StringUtils.readListOfInts(this.getParameterVal(NUMBERS));
+            for (int i = 0; i < this.toRenameIdxs.length; ++i){ // 1-based to zero-based
+                this.toRenameIdxs[i]--;
+            }
+            listLen = this.toRenameIdxs.length;
+        }   
         this.newNames = this.getParameterVal(NEW_NAMES).split("\\s+");
+        Logger.getInstance().message("LEN: " + listLen + " " + this.newNames.length, Logger.V_DEBUG);
 
-        if (this.toRename.length == 0 || this.toRename.length != this.newNames.length){
+        if (listLen == 0 || listLen != this.newNames.length){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "The lists of attribute names"
                     + " must be non-empty and of the same length.");
         }
