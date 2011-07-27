@@ -302,7 +302,7 @@ public class ArffReader extends DataReader {
         BitSet used = new BitSet();
 
         // add all usual fields, if they are present
-        sb.append(",").append(Integer.toString(wordNo));
+        sb.append(",").append(this.getWordInfoProtect(wordNo, this.wordIdAttr));
         used.set(this.sentIdAttr); // skip this, since it's printed somewhere else
         used.set(this.wordIdAttr);
 
