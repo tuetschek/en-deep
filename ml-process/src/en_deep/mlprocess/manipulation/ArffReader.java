@@ -160,7 +160,8 @@ public class ArffReader extends DataReader {
     public String getWordInfo(int word, int attributeNumber) {
 
         if (attributeNumber < 0 || attributeNumber >= this.input.numAttributes()
-                || word < 0 || word >= this.getSentenceLength()){
+                || word < 0 || word >= this.getSentenceLength() 
+                || this.input.instance(this.curSentStart + word).isMissing(attributeNumber)){
             return "";
         }
         if (this.input.attribute(attributeNumber).isNumeric()){
@@ -168,6 +169,30 @@ public class ArffReader extends DataReader {
                     .replaceFirst("\\.0$", "");
         }
         return this.input.instance(this.curSentStart + word).stringValue(attributeNumber);
+    }
+    
+    /**
+     * Returns the given information about the given word in the current sentence, preserving
+     * missing attributes and enclosing all string attributes in quotes.
+     * 
+     * Same as {@link #getWordInfo(int, int) }, but not protected against out-of-range errors. On the other
+     * hand, this preserves missing attributes (it is not desired with the other method, since these attributes
+     * may be used for generating others).
+     * 
+     * @param word the current word number
+     * @param attributeNumber the desired attribute number
+     * @return the information at the given position for the given word
+     */
+    public String getWordInfoProtect(int word, int attributeNumber) {
+
+        if (this.input.instance(this.curSentStart + word).isMissing(attributeNumber)){
+            return "?";
+        }
+        if (this.input.attribute(attributeNumber).isNumeric()){
+            return Double.toString(this.input.instance(this.curSentStart + word).value(attributeNumber))
+                    .replaceFirst("\\.0$", "");
+        }
+        return StringUtils.protect(this.input.instance(this.curSentStart + word).stringValue(attributeNumber));
     }
 
     
@@ -277,35 +302,35 @@ public class ArffReader extends DataReader {
         BitSet used = new BitSet();
 
         // add all usual fields, if they are present
-        sb.append(",").append(Integer.toString((int) word.value(this.wordIdAttr)));
+        sb.append(",").append(Integer.toString(wordNo));
         used.set(this.sentIdAttr); // skip this, since it's printed somewhere else
         used.set(this.wordIdAttr);
 
         if (this.formAttr >= 0){
-            sb.append(",").append(StringUtils.protect(word.stringValue(this.formAttr)));
+            sb.append(",").append(this.getWordInfoProtect(wordNo, this.formAttr));
             used.set(this.formAttr);
         }
         if (this.lemmaAttr >= 0){
-            sb.append(",").append(StringUtils.protect(word.stringValue(this.lemmaAttr)));
+            sb.append(",").append(this.getWordInfoProtect(wordNo, this.lemmaAttr));
             used.set(this.lemmaAttr);
         }
         if (this.posAttr >= 0){
-            sb.append(",").append(StringUtils.protect(word.stringValue(this.posAttr)));
+            sb.append(",").append(this.getWordInfoProtect(wordNo, this.posAttr));
             used.set(this.posAttr);
         }
         if (this.headAttr >= 0){
-            sb.append(",").append(Integer.toString((int) word.value(this.headAttr)));
+            sb.append(",").append(this.getWordInfoProtect(wordNo, this.headAttr));
             used.set(this.headAttr);
         }
         if (this.syntRelAttr >= 0){
-            sb.append(",").append(StringUtils.protect(word.stringValue(this.syntRelAttr)));
+            sb.append(",").append(this.getWordInfoProtect(wordNo, this.syntRelAttr));
             used.set(this.syntRelAttr);
         }
       
         // add other fields in the data (mask already used)
         for (int i = 0; i < this.input.numAttributes(); ++i){
             if (!used.get(i)){
-                sb.append(",").append(StringUtils.protect(this.getWordInfo(wordNo, i)));
+                sb.append(",").append(this.getWordInfoProtect(wordNo, i));
             }
         }
         
