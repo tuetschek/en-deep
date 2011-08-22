@@ -182,18 +182,10 @@ public class FileUtils{
      * @param mask attributes bit mask
      * @return the filtered data set
      */
-    public static Instances filterAttributes(Instances data, BitSet mask) throws Exception{
+    public static Instances filterAttributes(Instances data, int [] attribs) throws Exception{
     
-        int [] attrib = new int [mask.cardinality()];
-        int pos = 0;
-        for (int i = 0; i < mask.size(); ++i){
-            if (mask.get(i)){
-                attrib[pos++] = i;
-            }
-        }
-
         Reorder reorder = new Reorder();
-        reorder.setAttributeIndicesArray(attrib);
+        reorder.setAttributeIndicesArray(attribs);
         reorder.setInputFormat(data);
         return Filter.useFilter(data, reorder);
     }

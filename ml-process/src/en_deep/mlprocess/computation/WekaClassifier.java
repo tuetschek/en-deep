@@ -43,6 +43,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -401,12 +402,14 @@ public class WekaClassifier extends GeneralClassifier {
      */
     private Instances attributesPreselection(Instances train) throws TaskException, IOException, Exception {
 
-        BitSet selectionMask = new BitSet(train.numAttributes());
+        BitSet selectionMask = new BitSet(train.numAttributes()); // mask of selected (retained) attributes
 
+        // if there are no preselected attributes, set all to true
         if (!this.hasParameter(SELECT_ARGS) && this.preselectedAttribFile == null){
-            selectionMask.set(0, train.numAttributes()); // if there are no preselected attributes, set all to true
+            selectionMask.set(0, train.numAttributes()); 
         }
-        else { // otherwise, find only the preselected attributes and set their indexes to true
+        // otherwise, find only the preselected attributes and set their indexes to true
+        else { 
             int [] selectNos = this.getSelectedAttribs();
 
             for (int i = 0; i < selectNos.length; ++i){
@@ -421,25 +424,27 @@ public class WekaClassifier extends GeneralClassifier {
             }
             selectionMask.set(train.classIndex());
         }
-        if (this.hasParameter(IGNORE_ATTRIBS)){ // set the ignored attributes to false
+        
+        // set the ignored attributes to false
+        if (this.hasParameter(IGNORE_ATTRIBS)){ 
             this.removeIgnoredAttributes(train, selectionMask);
         }
-
-        this.models.get(DEFAULT).attribsToRemove = new String [train.numAttributes()-selectionMask.cardinality()];
+        
+        int [] retained = new int [selectionMask.cardinality()];
         int pos = 0;
-        // mark the names of the removed attributes
-        for (int i = train.numAttributes()-1; i >= 0; --i){
-            if (!selectionMask.get(i)){
-                this.models.get(DEFAULT).attribsToRemove[pos++] = train.attribute(i).name();
-            }
+        for (int i = selectionMask.nextSetBit(0); i != -1; i = selectionMask.nextSetBit(i+1)){
+            retained[pos++] = i;
         }
+
+        this.models.get(DEFAULT).selectedAttributes = retained;
+
         // write the settings to a file, if needed
         if (this.attribsOutputFile != null){
             this.writeAttribs(selectionMask);
         }
 
         // remove all the selected attributes
-        train = FileUtils.filterAttributes(train, selectionMask);
+        train = FileUtils.filterAttributes(train, retained);
 
         return train;
     }
@@ -629,30 +634,6 @@ public class WekaClassifier extends GeneralClassifier {
     }
 
     /**
-     * This removes the attributes with the given names from the given data set.
-     * @param data the data set to be processed
-     * @param toRemove names of attributes to be removed
-     */
-    private Instances removeSelected(Instances data, String[] toRemove) throws Exception {
-
-        BitSet removeMask = new BitSet(data.numAttributes());
-        removeMask.set(0, data.numAttributes());
-
-        for (int i = 0; i < toRemove.length; ++i){
-            int idx = data.attribute(toRemove[i]).index();
-
-            if (idx == -1){
-                Logger.getInstance().message(this.id + ": data set " + data.relationName() + " didn't contain"
-                        + " the removed attribute " + toRemove[i], Logger.V_WARNING);
-            }
-            else {
-                removeMask.clear(idx);
-            }
-        }
-        return FileUtils.filterAttributes(data, removeMask);
-    }
-
-    /**
      * This trains the classifier model on the given training file. It also handles the attribute preselection
      * and saves its settings to {@link #attribsToRemove}. The original training data file format (not subject
      * to attribute removal or binarization, but with the class attribute set up) is then saved
@@ -668,12 +649,13 @@ public class WekaClassifier extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
         Instances train = FileUtils.readArff(trainFile);
         this.findClassFeature(train);
-        this.models.get(DEFAULT).dataFormat = new Instances(train, 0);
+        this.models.get(DEFAULT).classAttrib = train.classIndex();
 
         // pre-select the attributes
+        int maxAttrib = train.numAttributes();
         Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
         train = this.attributesPreselection(train);
-        this.models.get(DEFAULT).initAttribsMask();
+        this.models.get(DEFAULT).initAttribsMask(maxAttrib);
 
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
@@ -697,24 +679,14 @@ public class WekaClassifier extends GeneralClassifier {
     private Hashtable<String, Instances> prepareModelInputs(Instances eval) throws TaskException, Exception {
 
         Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
-        Model defaultModel = this.models.elements().nextElement();
 
-        // set the class feature in eval (must be same for all if multiple models are used)
-        this.setClassFeature(defaultModel.dataFormat, eval);
-
+        eval.setClassIndex(this.models.elements().nextElement().classAttrib);
+        
         for (String key : this.models.keySet()){
 
-            // check if the class feature is the same for all models
-            if (!this.models.get(key).dataFormat.classAttribute().name()
-                    .equals(defaultModel.dataFormat.classAttribute().name())){
-
-                throw new TaskException(TaskException.ERR_INVALID_DATA, this.id, "Class attribute is not the same"
-                        + " for all the models.");
-            }
-
             // create copies of evaluation data for all models and prepare them
-            Instances modelInput = new Instances(eval);
-            modelInput = this.removeSelected(modelInput, this.models.get(key).attribsToRemove);
+            Instances modelInput = FileUtils.filterAttributes(eval, this.models.get(key).selectedAttributes);
+            modelInput.setClassIndex(this.models.get(key).attribsMask[this.models.get(key).classAttrib]);
 
             // binarize, if supposed to
             if (this.models.get(key).binarize){
@@ -801,12 +773,12 @@ public class WekaClassifier extends GeneralClassifier {
 
         /** The classifier */
         AbstractClassifier classif;
-        /** The attributes preselection setting */
-        String [] attribsToRemove;
+        /** Attribute preselection setting */
+        int [] selectedAttributes;
         /** The attributes preselection mask: -1 for removed attributes, the actual position for others */
         int [] attribsMask;
-        /** The training data format */
-        Instances dataFormat;
+        /** The class attribute number */
+        int classAttrib;
         /** Binarize the data set for classification ? */
         boolean binarize;
 
@@ -827,34 +799,27 @@ public class WekaClassifier extends GeneralClassifier {
             ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
 
             this.classif = (AbstractClassifier) oin.readObject();
-            this.attribsToRemove = (String []) oin.readObject();
-            this.dataFormat = (Instances) oin.readObject();
+            this.selectedAttributes = (int []) oin.readObject();
+            this.classAttrib = (Integer) oin.readObject();
             this.binarize = oin.readBoolean();
             
-            if (oin.available() > 0){ // support models with or without the attribute mask saved 
-                this.attribsMask = (int []) oin.readObject();
-            }
-            else {
-                this.initAttribsMask();
-            }
+            this.attribsMask = (int []) oin.readObject();
 
             oin.close();
         }
 
         /**
          * Initialize the used attributes mask (with the new positions of the used ones and -1 for unused ones).
+         * 
+         * @param maxAttribs the number of attributes before feature pre-selection
          */
-        void initAttribsMask(){
-
-            BitSet bs = new BitSet(this.dataFormat.numAttributes());
-            for (String attrId : this.attribsToRemove){
-                bs.set(this.dataFormat.attribute(attrId).index());
-            }
-            this.attribsMask = new int [this.dataFormat.numAttributes()];
-            int pos = 0; // count new positions here
-
-            for (int i = 0; i < this.attribsMask.length; ++i){
-                this.attribsMask[i] = bs.get(i) ? -1 : pos++;
+        void initAttribsMask(int maxAttribs){
+            
+            this.attribsMask = new int [maxAttribs];
+            
+            Arrays.fill(this.attribsMask, -1);
+            for (int i = 0; i < this.selectedAttributes.length; ++i){
+                this.attribsMask[this.selectedAttributes[i]] = i;
             }
         }
 
@@ -870,8 +835,8 @@ public class WekaClassifier extends GeneralClassifier {
             ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(modelFile));
 
             out.writeObject(this.classif);
-            out.writeObject(this.attribsToRemove);
-            out.writeObject(this.dataFormat);
+            out.writeObject(this.selectedAttributes);
+            out.writeObject(new Integer(this.classAttrib));
             out.writeBoolean(this.binarize);
             out.writeObject(this.attribsMask);
 

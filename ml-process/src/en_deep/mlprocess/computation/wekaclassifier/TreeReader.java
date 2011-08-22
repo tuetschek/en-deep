@@ -274,9 +274,8 @@ public class TreeReader implements Sequence {
     @Override
     public void setCurrentClass(double value){
 
-        String stringVal = this.data.classAttribute().value((int) value);
         this.data.get(this.curNode.instance).setClassValue(value);
-
+        
     }
 
     /**

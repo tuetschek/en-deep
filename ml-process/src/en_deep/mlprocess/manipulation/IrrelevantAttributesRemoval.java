@@ -295,8 +295,12 @@ public class IrrelevantAttributesRemoval extends MergedHeadersOutput {
                 }
                 bm.clear(data[i].attribute(attrName).index());
             }
-
-            data[i] = FileUtils.filterAttributes(data[i], bm);
+            int [] indexes = new int [bm.cardinality()];
+            int pos = 0;
+            for (int j = bm.nextSetBit(0); j != -1; j = bm.nextSetBit(j+1)){
+                indexes[pos++] = j;
+            }
+            data[i] = FileUtils.filterAttributes(data[i], indexes);
         }
     }
 
