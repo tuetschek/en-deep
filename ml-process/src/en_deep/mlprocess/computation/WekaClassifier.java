@@ -355,7 +355,7 @@ public class WekaClassifier extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": reading " + evalFile + "...", Logger.V_DEBUG);
         Instances eval = FileUtils.readArff(evalFile);
         this.eval = eval;
-        Hashtable<String, Instances> modelInputs = this.prepareModelInputs(eval);
+        Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
 
         Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
 
@@ -368,6 +368,11 @@ public class WekaClassifier extends GeneralClassifier {
 
             String key = this.selectModel(eval, i);
             Model model = this.models.get(key);
+            
+            if (model.classif == null){
+                model.load();
+                modelInputs.put(key, this.prepareModelInputs(eval, key));
+            }
             Instance modelInput = this.rewriteNeighborhood(modelInputs.get(key).get(i), model, seq.getCurNeighborhood());
 
             if (!this.probabilities) {
@@ -673,31 +678,26 @@ public class WekaClassifier extends GeneralClassifier {
      * by setting the target class, binarizing and removing unneeded attributes.
      *
      * @param eval the evaluation data
-     * @return the input data to the individual models (contains a single entry keyed under {@link #DEFAULT} if there's \
-     *         only one model)
+     * @param key the model name to be used (@{link #DEFAULT} if one model only)
+     * @return the input data to the given model
      */
-    private Hashtable<String, Instances> prepareModelInputs(Instances eval) throws TaskException, Exception {
+    private Instances prepareModelInputs(Instances eval, String key) throws TaskException, Exception {
 
-        Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
-
-        eval.setClassIndex(this.models.elements().nextElement().classAttrib);
+        Model model = this.models.get(key);
         
-        for (String key : this.models.keySet()){
+        eval.setClassIndex(model.classAttrib);       
+        
+        // create copies of evaluation data for all models and prepare them
+        Instances modelInput = FileUtils.filterAttributes(eval, model.selectedAttributes);
+        modelInput.setClassIndex(model.attribsMask[model.classAttrib]);
 
-            // create copies of evaluation data for all models and prepare them
-            Instances modelInput = FileUtils.filterAttributes(eval, this.models.get(key).selectedAttributes);
-            modelInput.setClassIndex(this.models.get(key).attribsMask[this.models.get(key).classAttrib]);
-
-            // binarize, if supposed to
-            if (this.models.get(key).binarize){
-                Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-                modelInput = this.sparseNominalToBinary(modelInput);
-            }
-
-            modelInputs.put(key, modelInput);
+        // binarize, if supposed to
+        if (model.binarize){
+            Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
+            modelInput = this.sparseNominalToBinary(modelInput);
         }
 
-        return modelInputs;
+        return modelInput;
     }
 
     /**
@@ -781,31 +781,24 @@ public class WekaClassifier extends GeneralClassifier {
         int classAttrib;
         /** Binarize the data set for classification ? */
         boolean binarize;
+        /** The current task ID */
+        private String taskId;
+        /** The specified model file used for loading */
+        private String modelFile;
 
         /** Default empty constructor */
         Model(){
         }
 
         /**
-         * This loads the trained model from the given file. It also loads the attribute preselection settings
-         * and the original data format of the train file (with the class attribute set up).
+         * This just prepares the model to be loaded using {@link #load() }.
          *
          * @param taskId used only for error messages
          * @param modelFile the name of the file that contains the model and other settings.
          */
-        Model(String taskId, String modelFile) throws IOException, ClassNotFoundException {
-
-            Logger.getInstance().message(taskId + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
-            ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
-
-            this.classif = (AbstractClassifier) oin.readObject();
-            this.selectedAttributes = (int []) oin.readObject();
-            this.classAttrib = (Integer) oin.readObject();
-            this.binarize = oin.readBoolean();
-            
-            this.attribsMask = (int []) oin.readObject();
-
-            oin.close();
+        Model(String taskId, String modelFile) {
+            this.taskId = taskId;
+            this.modelFile = modelFile;
         }
 
         /**
@@ -841,6 +834,28 @@ public class WekaClassifier extends GeneralClassifier {
             out.writeObject(this.attribsMask);
 
             out.close();
+        }
+
+        /**
+         * This loads the trained model from the given file. It also loads the attribute preselection settings
+         * and the class attribute and binarization setting.
+         * 
+         * @throws IOException
+         * @throws ClassNotFoundException 
+         */
+        private void load() throws IOException, ClassNotFoundException {
+
+            Logger.getInstance().message(taskId + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
+            ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
+
+            this.classif = (AbstractClassifier) oin.readObject();
+            this.selectedAttributes = (int []) oin.readObject();
+            this.classAttrib = (Integer) oin.readObject();
+            this.binarize = oin.readBoolean();
+            
+            this.attribsMask = (int []) oin.readObject();
+
+            oin.close();
         }
     }
 }
