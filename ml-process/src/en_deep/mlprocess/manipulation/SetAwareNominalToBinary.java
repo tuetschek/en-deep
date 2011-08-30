@@ -101,6 +101,9 @@ public class SetAwareNominalToBinary
 
   /** Dual mode (set-aware and normal output) */
   private boolean m_DualMode = false;
+  
+  /** Apply set mode only on the attributes with the given prefix */
+  private String m_SetOnlyPrefix = null;
 
   /** The separator string for set values */
   private String m_Separator = defaultSeparator;
@@ -227,6 +230,11 @@ public class SetAwareNominalToBinary
     newVector.addElement(new Option(
 	"\tDual mode (non-set-aware and set-aware).",
 	"D", 0, "-D"));
+    
+    newVector.addElement(new Option(
+        "\tIf non-empty, only the attributes whose name starts with the"
+        + "given string will be affected by the set-aware mode.",
+        "P", 1, "-P <prefix>"));
 
     return newVector.elements();
   }
@@ -281,6 +289,8 @@ public class SetAwareNominalToBinary
     setDualMode(Utils.getFlag('D', options));
 
     setSeparator(Utils.getOption('S', options));
+    
+    setSetOnlyPrefix(Utils.getOption('P', options));
 
     if (getInputFormat() != null)
       setInputFormat(getInputFormat());
@@ -314,6 +324,9 @@ public class SetAwareNominalToBinary
     if (!getSeparator().equals(defaultSeparator)){
       options[current++] = "-S"; options[current++] = getSeparator();
     }
+    if (getSetOnlyPrefix() != null){
+      options[current++] = "-P"; options[current++] = getSetOnlyPrefix();
+    }
     if (getDualMode()){
         options[current++] = "-D";
     }
@@ -345,7 +358,7 @@ public class SetAwareNominalToBinary
   }
 
   /**
-   * Sets if binary attributes are to be treates as nominal ones.
+   * Sets if binary attributes are to be treated as nominal ones.
    *
    * @param bool true if binary attributes are to be treated as nominal ones
    */
@@ -590,7 +603,8 @@ public class SetAwareNominalToBinary
         ArrayList newAtts = new ArrayList<Attribute>();
 
         // In dual mode, use each possible value
-        if (m_DualMode){
+        // Apply this mode also to non-set attributes if set attributes have are marked with a prefix
+        if (m_DualMode || m_SetOnlyPrefix != null && !att.name().startsWith(m_SetOnlyPrefix)){
             for (int k = 0; k < att.numValues(); ++k){
 
                 String attName = att.name() + "=" + att.value(k);
@@ -599,23 +613,25 @@ public class SetAwareNominalToBinary
             }
         }
 
-        // Find all possible set values
-        m_producedAttVals[att.index()] = new HashMap<String, Integer>();
-        
-        for (int k = 0; k < att.numValues(); k++) {
+        // Find all possible set values (for a set-mode attribute)
+        if (m_SetOnlyPrefix == null || att.name().startsWith(m_SetOnlyPrefix)){
+            m_producedAttVals[att.index()] = new HashMap<String, Integer>();
 
-            String [] setVals = att.value(k).split(m_Separator);
+            for (int k = 0; k < att.numValues(); k++) {
 
-            for (String setVal : setVals){
+                String [] setVals = att.value(k).split(m_Separator);
 
-                if (m_producedAttVals[att.index()].containsKey(setVal)){
-                    continue;
+                for (String setVal : setVals){
+
+                    if (m_producedAttVals[att.index()].containsKey(setVal)){
+                        continue;
+                    }
+                    m_producedAttVals[att.index()].put(setVal, m_producedAttVals[att.index()].size());
+
+                    String attName = att.name() + ">" + setVal;
+
+                    newAtts.add(m_Numeric ? new Attribute(attName) : makeNominalAttribute(attName));
                 }
-                m_producedAttVals[att.index()].put(setVal, m_producedAttVals[att.index()].size());
-
-                String attName = att.name() + ">" + setVal;
-
-                newAtts.add(m_Numeric ? new Attribute(attName) : makeNominalAttribute(attName));
             }
         }
 
@@ -636,7 +652,14 @@ public class SetAwareNominalToBinary
 
         String strVal = att.value((int) value);
         String [] setVals = strVal.split(m_Separator);
-        int totalValues = (m_DualMode ? att.numValues() : 0 ) + m_producedAttVals[att.index()].size();
+        int totalValues = 0;
+        
+        if (m_DualMode || m_SetOnlyPrefix != null && !att.name().startsWith(m_SetOnlyPrefix)){
+            totalValues += att.numValues();
+        }
+        if (m_SetOnlyPrefix == null || att.name().startsWith(m_SetOnlyPrefix)){
+            totalValues += m_producedAttVals[att.index()].size();
+        }
 
         if (Utils.isMissingValue(value)){
             for (int i = 0; i < totalValues; ++i){
@@ -645,12 +668,14 @@ public class SetAwareNominalToBinary
             return totalValues;
         }
 
-        if (m_DualMode){
+        if (m_DualMode || m_SetOnlyPrefix != null && !att.name().startsWith(m_SetOnlyPrefix)){
             vals[offset + (int) value] = 1;
             offset += att.numValues();
         }
-        for (String setVal : setVals) {
-            vals[offset + m_producedAttVals[att.index()].get(setVal)] = 1;
+        if (m_SetOnlyPrefix == null || att.name().startsWith(m_SetOnlyPrefix)){
+            for (String setVal : setVals) {
+                vals[offset + m_producedAttVals[att.index()].get(setVal)] = 1;
+            }
         }
         return totalValues;
     }
@@ -684,6 +709,25 @@ public class SetAwareNominalToBinary
         binVals.add("f");
         binVals.add("t");
         return new Attribute(attributeName, binVals);
+    }
+
+    /**
+     * Sets the set-only prefix of attributes.
+     * @param setOnlyPrefix the new value
+     */
+    private void setSetOnlyPrefix(String setOnlyPrefix) {
+        if ("".equals(setOnlyPrefix)){
+            setOnlyPrefix = null;
+        }
+        this.m_SetOnlyPrefix = setOnlyPrefix;      
+    }
+
+    /**
+     * Returns the current the set-only prefix for attributes
+     * @return  the current value of the set-only attribute prefix
+     */
+    private String getSetOnlyPrefix() {
+        return this.m_SetOnlyPrefix;
     }
 
 }
