@@ -574,7 +574,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         if (this.id.indexOf('#') == -1){
             return null;
         }
-        String [] ret = this.id.substring(this.id.indexOf('#')).split("#");
+        String [] ret = this.id.substring(this.id.indexOf('#')).split("#", -1);
         ret[0] = null; // zero field always reserved for listing, not expanding
         return ret;
     }
