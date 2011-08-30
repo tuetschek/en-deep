@@ -592,7 +592,7 @@ public class TaskDescription implements Serializable, Comparable<TaskDescription
         if (this.id.indexOf('#') == -1){
             return null;
         }
-        all = this.id.substring(this.id.indexOf('#')).split("#"); // this creates an empty zero field
+        all = this.id.substring(this.id.indexOf('#')).split("#", -1); // this creates an empty zero field
         sel = new String [idxs.length+1];
         for (int i = 1; i < all.length; ++i){
             if (idxs[i-1] >= all.length || idxs[i-1] <= 0){ // zero field always reserved for listing
