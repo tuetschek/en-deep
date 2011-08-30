@@ -371,6 +371,8 @@ public class WekaClassifier extends GeneralClassifier {
             
             if (model.classif == null){
                 model.load();
+            }
+            if (modelInputs.get(key) == null){
                 modelInputs.put(key, this.prepareModelInputs(eval, key));
             }
             Instance modelInput = this.rewriteNeighborhood(modelInputs.get(key).get(i), model, seq.getCurNeighborhood());
