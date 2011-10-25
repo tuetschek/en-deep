@@ -54,6 +54,7 @@ public class WekaFilter extends Task {
     private static final String FILTER_CLASS = "filter_class";
 
     /* DATA */
+    private String filterName;
 
     /* METHODS */
 
@@ -88,9 +89,10 @@ public class WekaFilter extends Task {
                     + " outputs are not the same.");
         }
 
-        if (this.getParameterVal(FILTER_CLASS) == null){
+        if (!this.hasParameter(FILTER_CLASS)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameter: " + FILTER_CLASS);
         }
+        this.filterName = this.parameters.remove(FILTER_CLASS);
     }
 
     @Override
@@ -98,13 +100,13 @@ public class WekaFilter extends Task {
 
         try {
             Instances [] data = this.readAndCheckData();
-            Filter filter = this.initFilter(data[0]);
-
+            
             for (int i = 0; i < data.length; ++i){
                 String oldName = data[i].relationName();
+                Filter filter = this.initFilter(data[i]);
                 data[i] = Filter.useFilter(data[i], filter);
                 data[i].setRelationName(oldName); // keep the old relation name
-                FileUtils.writeArff(this.output.get(i), data[i]);
+                FileUtils.writeArff(this.output.get(i), data[i]);                
             }
         }
         catch (TaskException e){
@@ -162,10 +164,9 @@ public class WekaFilter extends Task {
     private Filter initFilter(Instances data) throws TaskException {
 
         Filter filter;
-        String filterName = this.parameters.remove(FILTER_CLASS);
 
         try {
-            Class filterClass = Class.forName(filterName);
+            Class filterClass = Class.forName(this.filterName);
             Constructor filterConstructor = filterClass.getConstructor();
             filter = (Filter) filterConstructor.newInstance();
 
@@ -177,7 +178,7 @@ public class WekaFilter extends Task {
         catch (Exception e){
             e.printStackTrace();
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Filter class not found or"
-                    + " invalid: " + filterName);
+                    + " invalid: " + this.filterName);
         }
 
         return filter;

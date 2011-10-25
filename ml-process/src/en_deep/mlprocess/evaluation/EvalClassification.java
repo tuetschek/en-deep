@@ -157,7 +157,8 @@ public class EvalClassification extends AbstractEvaluation {
         Stats unlabeled = this.getStats(goldenValues, testValues, emptyIdx, false);
 
         if (this.produceDiffs){
-            this.printLog(goldFile + " x " + testFile + ":", goldenValues, testValues, labels);
+            this.printLog(goldFile + " x " + testFile + "(acc:" + labeled.getAcc() + " / " + goldenValues.length + "):", 
+                goldenValues, testValues, labels);
         }
 
         return new Pair<Stats, Stats>(labeled, unlabeled);

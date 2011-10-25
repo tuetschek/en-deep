@@ -369,6 +369,9 @@ public class WekaClassifier extends GeneralClassifier {
             String key = this.selectModel(eval, i);
             Model model = this.models.get(key);
             
+            if (model == null){
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id, "Cannot find model for '" + key + "'");
+            }
             if (model.classif == null){
                 model.load();
             }

@@ -67,6 +67,8 @@ public class BigDataSplitter extends Task {
     private static final String BY_ATTRIBUTE = "by_attribute";
     /** The 'string_to_nom' parameter name */
     private static final String STRING_TO_NOM = "string_to_nom";
+    /** The 'keep_string' parameter name */
+    private static final String KEEP_STRING = "keep_string";
 
     /* DATA */
 
@@ -82,6 +84,8 @@ public class BigDataSplitter extends Task {
     private String splitAttribute;
     /** Should all string attributes be converted to nominal ? */
     private boolean stringToNom;
+    /** List of string attributes that should be preserved in the nominal conversion */
+    private String [] keepString;
 
     /* METHODS */
 
@@ -99,9 +103,10 @@ public class BigDataSplitter extends Task {
      * <li><tt>equal_chunks</tt> -- if set, the data will be split into as many chunks as the preset
      * length would cause, but in equal amounts (the last chunk won't be shorter than the previous ones).
      * </ul>
-     * Another optional parameter:
+     * Another optional parameters:
      * <ul>
-     * <li><tt>string_to_nom</tt> -- if set, all string attributes will be converted to nominal ones
+     * <li><tt>string_to_nom</tt> -- if set, all string attributes will be converted to nominal ones</li>
+     * <li><tt>keep_string</tt> -- exceptions for string-to-nominal conversion (list of attribute names</li>
      * </ul>
      * The number of input files must be equal to the number of output patterns.
      *
@@ -111,19 +116,25 @@ public class BigDataSplitter extends Task {
 
         super(id, parameters, input, output);
 
+        // check for compulsory parameters
         if (!this.hasParameter(BY_ATTRIBUTE) && !this.hasParameter(CHUNK_LENGTH) && !this.hasParameter(CHUNKS_NO)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Missing parameters.");
         }
+        // find out the chunk settings
         if (this.hasParameter(BY_ATTRIBUTE)){
             this.splitAttribute = this.getParameterVal(BY_ATTRIBUTE);
         }
-        else if(this.hasParameter(CHUNKS_NO))
-        {
+        else if(this.hasParameter(CHUNKS_NO)){
             this.chunksNo = this.getIntParameterVal(CHUNKS_NO);
             this.chunkLength = -1;
         }
         else {
             this.chunkLength = this.getIntParameterVal(CHUNK_LENGTH);
+        }
+        // test for nominal conversions
+        this.stringToNom = this.getBooleanParameterVal(STRING_TO_NOM);
+        if (this.stringToNom && this.hasParameter(KEEP_STRING)){
+            this.keepString = this.getParameterVal(KEEP_STRING).split("\\s+");
         }
 
         if (this.input.size() != this.output.size()){
@@ -206,8 +217,10 @@ public class BigDataSplitter extends Task {
 
             if (curChunk.numInstances() > 0){
                 // convert string to nominal
-                FileUtils.writeArff(StringUtils.replace(this.output.get(fileNo), Integer.toString(curChunkNo)),
-                        FileUtils.allStringToNominal(curChunk));
+                if (this.stringToNom){
+                    curChunk = FileUtils.stringToNominal(curChunk, this.keepString);
+                }
+                FileUtils.writeArff(StringUtils.replace(this.output.get(fileNo), Integer.toString(curChunkNo)), curChunk);
 
                 Logger.getInstance().message(this.id + ": chunk " + curChunkNo + " written ... ", Logger.V_DEBUG);
                 curChunkNo++;

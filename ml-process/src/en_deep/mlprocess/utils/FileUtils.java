@@ -34,6 +34,7 @@ import java.nio.channels.*;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Scanner;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -185,9 +186,12 @@ public class FileUtils{
     public static Instances filterAttributes(Instances data, int [] attribs) throws Exception{
     
         Reorder reorder = new Reorder();
+        String relationName = data.relationName();
         reorder.setAttributeIndicesArray(attribs);
         reorder.setInputFormat(data);
-        return Filter.useFilter(data, reorder);
+        data = Filter.useFilter(data, reorder);
+        data.setRelationName(relationName);
+        return data;
     }
 
 
@@ -246,14 +250,25 @@ public class FileUtils{
      * @throws Exception
      */
     public static Instances allStringToNominal(Instances data) throws Exception {
+        return stringToNominal(data, null);
+    }
+    
+    public static Instances stringToNominal(Instances data, String [] preserveAttrs) throws Exception {
 
         StringToNominal filter = new StringToNominal();
         StringBuilder toConvert = new StringBuilder();
         String oldName = data.relationName();
+        HashSet<String> preserveAttrsSet = new HashSet<String>();
+        
+        if (preserveAttrs != null){
+            for (String attr : preserveAttrs){
+                preserveAttrsSet.add(attr);
+            }
+        }
 
         // get the list of attributes to be converted
         for (int i = 0; i < data.numAttributes(); ++i) {
-            if (data.attribute(i).isString()) {
+            if (data.attribute(i).isString() && !preserveAttrsSet.contains(data.attribute(i).name())) {
                 if (toConvert.length() != 0) {
                     toConvert.append(",");
                 }
