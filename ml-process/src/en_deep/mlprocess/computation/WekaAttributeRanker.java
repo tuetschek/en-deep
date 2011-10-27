@@ -41,6 +41,7 @@ import weka.attributeSelection.ASEvaluation;
 import weka.attributeSelection.ASSearch;
 import weka.attributeSelection.AttributeEvaluator;
 import weka.attributeSelection.RankedOutputSearch;
+import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 
@@ -373,7 +374,14 @@ public class WekaAttributeRanker extends GeneralClassifier {
         
         for (int i = 0; i < ignoredNames.length; ++i){
             if (data.attribute(ignoredNames[i]) != null){
-                this.ignoredIdxs.add(data.attribute(ignoredNames[i]).index());
+                int idx = data.attribute(ignoredNames[i]).index();
+                this.ignoredIdxs.add(idx);
+                
+                // replace ignored string attributes with dummy ones
+                if (data.attribute(idx).isString()){
+                    data.deleteAttributeAt(idx);
+                    data.insertAttributeAt(new Attribute(ignoredNames[i]), idx);
+                }
             }
             else {
                 Logger.getInstance().message(this.id + ": ignored attribute " + ignoredNames[i] + " not found.",
