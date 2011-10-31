@@ -495,7 +495,7 @@ public class StringUtils {
      */
     public static String [] matchesEx(String string, String pattern){
 
-        String matchPat = pattern.replaceAll("(\\(|\\))", "\\\\$1")
+        String matchPat = pattern.replaceAll("([\\(\\)\\[\\]])", "\\\\$1")
                 .replaceAll("\\$[0-9]", "(.*)").replaceAll("\\*+", "(.*)");
         Pattern p = Pattern.compile(matchPat);
         Matcher m = p.matcher(string);
