@@ -43,6 +43,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Enumeration;
@@ -94,6 +95,8 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String MODEL_SEL_ATTR = "model_sel_attr";
     /** Name of the 'model_sel_pattern' parameter */
     private static final String MODEL_SEL_PATTERN = "model_sel_pattern";
+    /** The name of the 'classes_only' parameter */
+    private static final String CLASSES_ONLY = "classes_only";
 
     /** {@link TreeReader} parameter name */
     private static final String TREE_READER = "tree_reader";
@@ -120,7 +123,8 @@ public class WekaClassifier extends GeneralClassifier {
     private Hashtable<String, String> modelFiles;
     /** Name of the attribute that decides which model will be used */
     private String modelSelectionAttribute;
-    private Instances eval;
+    /** Discard everything but the classes on the output ? */
+    private boolean classesOnly;
 
     /* METHODS */
  
@@ -173,6 +177,7 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>tree_reader</tt> -- if set, the data is not classified sequentially, but in a DFS order of syntactic
      * trees. See {@link TreeReader#TreeReader(String, Instances, String)} for the required parameter values.</li>
      * </ul>
+     * <li><tt>classes_only</tt> -- if set, everything but the classes will be discarded on the output.</li>
      * <p>
      * Parameters <tt>select_args</tt> and <tt>args_file</tt>, also <tt>out_attribs</tt> and <tt>save_model</tt>
      * are mutually exclusive.
@@ -205,6 +210,7 @@ public class WekaClassifier extends GeneralClassifier {
         }
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
         this.binarize = this.parameters.remove(BINARIZE) != null;
+        this.classesOnly = this.parameters.remove(CLASSES_ONLY) != null;
 
         if (this.hasParameter(SELECT_ARGS) && this.getBooleanParameterVal(ARGS_FILE)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be "
@@ -354,7 +360,6 @@ public class WekaClassifier extends GeneralClassifier {
         // read the evaluation data and find out the target class
         Logger.getInstance().message(this.id + ": reading " + evalFile + "...", Logger.V_DEBUG);
         Instances eval = FileUtils.readArff(evalFile);
-        this.eval = eval;
         Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
 
         Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
@@ -390,6 +395,10 @@ public class WekaClassifier extends GeneralClassifier {
                 distributions[i] = model.classif.distributionForInstance(modelInput);
                 seq.setCurrentClass(MathUtils.findMax(distributions[i]));
             }
+        }
+        
+        if (this.classesOnly){
+            eval = extractClassAttribute(eval);
         }
 
         // store the probability distributions, if supposed to
@@ -771,6 +780,24 @@ public class WekaClassifier extends GeneralClassifier {
         return ret;
     }
 
+    /**
+     * This takes a dataset and returns another dataset containing only the class attribute (with all values).
+     * @param eval the dataset to be reduced to the class attribute
+     * @return the reduced dataset
+     */
+    private Instances extractClassAttribute(Instances eval) {
+        ArrayList<Attribute> attInfo = new ArrayList<Attribute>(1);
+        attInfo.add(eval.classAttribute());
+        Instances classes = new Instances(eval.relationName(), attInfo, eval.numInstances());
+        for (Instance inst : eval){
+            double [] val = new double[1];
+            val[0] = inst.classValue();
+            classes.add(new DenseInstance(1.0, val));
+        }
+        return classes;
+    }
+
+    
     /**
      * This comprises all the required fields for a classification model.
      */
