@@ -60,6 +60,7 @@ import java.nio.charset.Charset;
  * <li><tt>--parse_only (-p)</tt> if set, the program will just parse the scenario file, report any problems and end.</li>
  * <li><tt>--workdir (-d)</tt> specifies the working directory (if not the same as that of the plan file).</li>
  * <li><tt>--cleanup (-l)</tt> tries to delete temporary files created by {@link Plan} when the program ends.</li>
+ * <li><tt>--charset (-s)</tt> overrides the default system charset setting.</li>
  * </ul>
  * <p>
  * The verbosity setting looks as follows:
