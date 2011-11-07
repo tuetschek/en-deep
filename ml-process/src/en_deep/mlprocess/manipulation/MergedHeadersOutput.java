@@ -134,6 +134,7 @@ public abstract class MergedHeadersOutput extends Task {
             return;
         }
 
+        // check if attribute types are the same, gather all possible values for nominal attributes
         Enumeration<Attribute> attrs = data[0].enumerateAttributes();
         while (attrs.hasMoreElements()){
             
@@ -161,6 +162,7 @@ public abstract class MergedHeadersOutput extends Task {
                 }
             }
         }
+        // for all nominal attributes, set their values as a union of all possible, recount
         for (int i = 0; i < data.length; ++i){
 
             attrs = data[0].enumerateAttributes();
@@ -169,7 +171,7 @@ public abstract class MergedHeadersOutput extends Task {
 
                 Attribute attr = data[i].attribute(attrName);
 
-                if (attr.isNominal()){ // for all nominal attributes, set their values as a union of all possible, recount
+                if (attr.isNominal()){ 
                     String [] newValues = this.nominalValues.get(attrName).toArray(new String[0]);
                     Arrays.sort(newValues);
                     int [] remap = new int [attr.numValues()];
@@ -182,8 +184,14 @@ public abstract class MergedHeadersOutput extends Task {
                     double [] attData = data[i].attributeToDoubleArray(idx);
                     data[i].deleteAttributeAt(idx);
                     data[i].insertAttributeAt(new Attribute(attrName, Arrays.asList(newValues)), idx);
+                    
                     for (int j = 0; j < data[i].numInstances(); ++j){
-                        data[i].get(j).setValue(idx, remap[(int) attData[j]]);
+                        if (Double.isNaN(attData[j])){ // preserve missing values
+                            data[i].get(j).setMissing(idx);
+                        }
+                        else {
+                            data[i].get(j).setValue(idx, remap[(int) attData[j]]);
+                        }
                     }
                 }
             }
