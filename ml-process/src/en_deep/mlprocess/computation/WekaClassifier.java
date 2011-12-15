@@ -555,7 +555,7 @@ public class WekaClassifier extends GeneralClassifier {
 
     }
 
-    private Instances sparseNominalToBinary(Instances train) throws Exception {
+    static Instances sparseNominalToBinary(Instances train) throws Exception {
 
         NominalToBinary ntb = new NominalToBinary();
 
@@ -801,7 +801,7 @@ public class WekaClassifier extends GeneralClassifier {
     /**
      * This comprises all the required fields for a classification model.
      */
-    private class Model {
+    static class Model {
 
         /** The classifier */
         AbstractClassifier classif;
@@ -875,7 +875,7 @@ public class WekaClassifier extends GeneralClassifier {
          * @throws IOException
          * @throws ClassNotFoundException 
          */
-        private void load() throws IOException, ClassNotFoundException {
+        void load() throws IOException, ClassNotFoundException {
 
             Logger.getInstance().message(taskId + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
             ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));

@@ -29,16 +29,9 @@ package en_deep.mlprocess.utils;
 
 import en_deep.mlprocess.Process;
 import java.io.*;
-import java.lang.reflect.Constructor;
 import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Scanner;
-import weka.core.Attribute;
-import weka.core.DenseInstance;
-import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;

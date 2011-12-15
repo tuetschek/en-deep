@@ -28,7 +28,7 @@
 package en_deep.mlprocess.computation;
 
 import en_deep.mlprocess.Logger;
-import en_deep.mlprocess.Pair;
+import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.Plan;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.TaskDescription;
@@ -75,8 +75,10 @@ public class GreedyAttributeSearch extends EvalSelector {
     private static final String START_OUTOF = "start_outof";
     /** The name of the "end" parameter */
     private static final String END = "end";
-    /** The minimal improvement that is possible */
+    /** The name of the "min_improvement" parameter */
     private static final String MIN_IMPROVEMENT = "min_improvement";
+    /** The name of the "beam_size" parameter */
+    private static final String BEAM_SIZE = "beam_size";
 
     /** CR/LF */
     private static final String LF = System.getProperty("line.separator");
@@ -90,7 +92,7 @@ public class GreedyAttributeSearch extends EvalSelector {
     private String classArg;
 
     /** The file containing the order of the attributes that should be used in evaluation */
-    private String attributeOrderFile;
+    private String attribOrderFile;
 
     /** The starting number of attributes used */
     private int start;
@@ -114,6 +116,10 @@ public class GreedyAttributeSearch extends EvalSelector {
     private int classAttribNum = -1;
     /** A list of attributes the process should start with (if set) */
     private String [] startAttrib;
+    /** The attribute order from the provided attribute order file (or null, if not set) */
+    private int [] attribOrder;
+    /** The specified beam size */
+    private int beamSize = -1;
 
     /* METHODS */
 
@@ -147,8 +153,9 @@ public class GreedyAttributeSearch extends EvalSelector {
      * <li><tt>min_improvement</tt> -- the minimal required improvement in the selected measure for the
      * algorithm to continue (defaults to 0)</li>
      * <li><tt>attrib_order</tt> -- if this parameter is set, the last input file is considered to be
-     * the file with the desired order in which the attributes with the same performance should be added to
-     * the set of used attributes.</li>
+     * the file with the desired order for using attributes with the same performance and using beam search.</li>
+     * <li><tt>beam_size</tt> -- if the <tt>attrib_order</tt> parameter is set, this limits the maximum number
+     * of trials to the first <i>n</i> unused attributes from the attribute order file in each round.</li>
      * <li><tt>start_outof</tt> -- if the <tt>attrib_order</tt> parameter is set, this limits the selection
      * of combinations to the first <i>n</i> attributes from the attribute order file. Must be greater than start.</li>
      * <li><tt>delete_tempfiles</tt> -- deletes all the tempfiles but the best result of each round</li>
@@ -177,6 +184,11 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         // check all round-related compulsory and optional parameters
         this.checkParameters();
+
+        // read attribute order from the attribute order file
+        if (this.attribOrderFile != null){
+            this.attribOrder = this.readAttributeOrder();
+        }
 
         // check the number of inputs and outputs
         if (this.round == this.start && this.input.size() != 2 || this.input.size() < 2 || this.input.size() % 2 != 0){
@@ -216,12 +228,12 @@ public class GreedyAttributeSearch extends EvalSelector {
         // final round -- special case: some parameters are not needed.
         if (this.round > this.end) {
 
-            this.attributeOrderFile = this.getAttributeOrderFile(); // optional parameter
+            this.attribOrderFile = this.getAttributeOrderFile(); // optional parameter
             return;
         }
         
         // normal case: check the compulsory parameters and save them
-        if (this.parameters.get(WEKA_CLASS) == null || this.parameters.get(CLASS_ARG) == null) {
+        if (!this.hasParameter(WEKA_CLASS) || !this.hasParameter(CLASS_ARG)) {
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Some parameters are missing.");
         }
 
@@ -230,32 +242,30 @@ public class GreedyAttributeSearch extends EvalSelector {
 
         // normal case: check the optional parameters
         if (this.parameters.get(MIN_IMPROVEMENT) != null) {
-            try {
-                this.minImprovement = Double.parseDouble(this.parameters.remove(MIN_IMPROVEMENT));
-            }
-            catch (NumberFormatException e) {
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id,
-                        "Parameter " + MIN_IMPROVEMENT + " must be numeric.");
-            }
+            this.getDoubleParameterVal(MIN_IMPROVEMENT);
+            this.parameters.remove(MIN_IMPROVEMENT);
         }
-        this.attributeOrderFile = this.getAttributeOrderFile();
+        this.attribOrderFile = this.getAttributeOrderFile();
         
-        if (this.getParameterVal(START_OUTOF) != null){
-            if (this.attributeOrderFile == null){
+        if (this.hasParameter(START_OUTOF)){
+            if (this.attribOrderFile == null){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot set start_outof if"
                         + "attrib_order is not set.");
             }
-            try {
-                this.startOutOf = Integer.parseInt(this.parameters.remove(START_OUTOF));
-            }
-            catch (NumberFormatException e){
-                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter"
-                        + START_OUTOF + " must be numeric.");
-            }
+            this.startOutOf = this.getIntParameterVal(START_OUTOF);
+            this.parameters.remove(START_OUTOF);
             if (this.startOutOf < this.start){
                 throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter"
                         + START_OUTOF + " must be greater or equal to " + START + ".");
             }
+        }
+        if (this.hasParameter(BEAM_SIZE)){
+            if (this.attribOrderFile == null){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Cannot set beam_size if"
+                        + "attrib_order is not set.");
+            }
+            this.beamSize = this.getIntParameterVal(BEAM_SIZE);
+            this.parameters.remove(BEAM_SIZE);
         }
     }
 
@@ -556,22 +566,32 @@ public class GreedyAttributeSearch extends EvalSelector {
     /**
      * Prepares the parameters for the current round trials, using the last round parameters
      * plus one additional at a time. Marks all the selections in the round statistics file.
-     *
+     * Uses attribute ordering, if provided, and limits the number of trials to the first {@link #beamSize}
+     * attributes, if {@link #beamSize} is set.
+     * 
      * @return the sets of parameters for the current round
      */
     private Hashtable<String, String> [] prepareRoundParams() throws IOException {
 
         Vector<Hashtable<String, String>> paramSets = new Vector<Hashtable<String, String>>();
         PrintStream roundStatsFile = new PrintStream(this.getTempfileName(TempfileTypes.ROUND_STATS, this.round, 0));
+        int trials = 0;
 
         roundStatsFile.println("Last best:" + this.lastBest);
 
         // prepare the parameter sets for the individual trials of this round
         for (int i = 0; i < this.lastBestAttributes.length; ++i) {
-            if (!this.lastBestAttributes[i]) {
-                paramSets.add(this.prepareParamSet(this.lastBestAttributesList + " " + i));
 
+            // work in the attribute ordering, if provided
+            if (!this.lastBestAttributes[this.attribOrder != null ? this.attribOrder[i] : i]) {
+                paramSets.add(this.prepareParamSet(this.lastBestAttributesList + " " + i));
+                trials++;
                 roundStatsFile.println(this.lastBestAttributesList + " " + i);
+            }
+
+            // heed the beam size limitation
+            if (this.beamSize > 0 && trials >= this.beamSize){
+                break;
             }
         }
 
@@ -581,7 +601,7 @@ public class GreedyAttributeSearch extends EvalSelector {
 
 
     /**
-     * Prepares the parameters for the first round, attribList.e. all n-tuples of parameters. Marks the
+     * Prepares the parameters for the first round, i.e. all n-tuples of parameters. Marks the
      * order in the round statistics file.
      *
      * @return sets of parameters for the first round
@@ -598,7 +618,7 @@ public class GreedyAttributeSearch extends EvalSelector {
             combinations.add(startAttribs);
         }
         else if (this.startOutOf > 0){
-            int [] values = Arrays.copyOf(this.readAttributeOrder(), this.startOutOf);
+            int [] values = Arrays.copyOf(this.attribOrder, this.startOutOf);
             combinations = MathUtils.combinations(this.start, values);
         }
         else {
@@ -735,12 +755,11 @@ public class GreedyAttributeSearch extends EvalSelector {
      */
     private int [] getOrderOfConsideration() throws IOException, TaskException {
 
-        if (this.attributeOrderFile == null){
+        if (this.attribOrder == null){
             return null;
         }
 
         int [] order = new int [this.input.size()/2 - 1];
-        int [] orderAll;
         int [] orderSel = new int [this.input.size()/2 -1];
 
         // read the selected attribute order from the stats file
@@ -759,14 +778,13 @@ public class GreedyAttributeSearch extends EvalSelector {
         finally {
             stats.close();
         }
-        orderAll = this.readAttributeOrder();
 
         // create the final order
-        for (int i = 0; i < orderAll.length; ++i){
+        for (int i = 0; i < this.attribOrder.length; ++i){
             int index = -1;
 
             for (int j = 0; j < orderSel.length; ++i){
-                if (orderSel[j] == orderAll[i]){
+                if (orderSel[j] == this.attribOrder[i]){
                     index = j;
                     break;
                 }
@@ -780,18 +798,18 @@ public class GreedyAttributeSearch extends EvalSelector {
     }
 
     /**
-     * This reads the order of attributes from the {@link #attributeOrderFile} and returns it as
+     * This reads the order of attributes from the {@link #attribOrderFile} and returns it as
      * a list of ints.
      *
      * @return the order of attributes as given by the attribute ranker
-     * @throws TaskException if the {@link #attributeOrderFile} is invalid
+     * @throws TaskException if the {@link #attribOrderFile} is invalid
      */
     private int[] readAttributeOrder() throws TaskException {
         
         int[] orderAll;       
 
         try {
-            RandomAccessFile attrOrder = new RandomAccessFile(this.attributeOrderFile, "r");
+            RandomAccessFile attrOrder = new RandomAccessFile(this.attribOrderFile, "r");
             String line = attrOrder.readLine();
             orderAll = StringUtils.readListOfInts(line);
         }
