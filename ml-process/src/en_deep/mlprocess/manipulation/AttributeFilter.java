@@ -415,8 +415,8 @@ public class AttributeFilter extends MergedHeadersOutput {
      * @param newAttr the new attribute
      * @param allowedValues the allowed values of the old attribute
      */
-    private void addFiltered(Instances data, String attrName, Attribute newAttr, Vector<String> allowedValues) {
-
+    private void addFiltered(Instances data, String attrName, Attribute newAttr, Vector<String> allowedValues) throws TaskException {
+       
         Attribute oldAttr = data.attribute(attrName);
         int oldIndex = oldAttr.index();
         HashSet allowedSet = new HashSet<String>(allowedValues);
@@ -439,11 +439,18 @@ public class AttributeFilter extends MergedHeadersOutput {
             }
             int val = (int) data.instance(i).value(oldIndex);
             
-            if (allowedIdxs[val]){
-                data.instance(i).setValue(newAttr, oldAttr.value(val));
+            try {
+                if (allowedIdxs[val]){
+                    data.instance(i).setValue(newAttr, oldAttr.value(val));
+                }
+                else {
+                    data.instance(i).setValue(newAttr, OTHER_VALUE);
+                }
             }
-            else {
-                data.instance(i).setValue(newAttr, OTHER_VALUE);
+            // trying to be more verbose in the error message
+            catch (Exception e){
+                throw new TaskException(TaskException.ERR_IO_ERROR, this.id, 
+                        e.getMessage() + " " + newAttr.name() + ": " + oldAttr.value(val));
             }
         }
     }
