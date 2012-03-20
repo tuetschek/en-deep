@@ -4,6 +4,7 @@
  */
 package en_deep.mlprocess.computation;
 
+import en_deep.mlprocess.computation.wekaclassifier.Model;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
@@ -48,7 +49,7 @@ public class ModelDumper extends Task {
 
     private void dumpModel(String from, String dataFile, String to) throws Exception {
     
-        WekaClassifier.Model model = new WekaClassifier.Model(this.id, from);       
+        Model model = new Model(this.id, from);       
         Instances data = FileUtils.readArff(dataFile);
         
         model.load();

@@ -177,13 +177,13 @@ public class Process {
             while ((c = getter.getopt()) != -1) {
                 switch (c) {
                     case OPTS_INSTANCES:
-                        opts.instances = Process.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
+                        opts.instances = StringUtils.getNumericArgPar(OPTL_INSTANCES, getter.getOptarg());
                         break;
                     case OPTS_THREADS:
-                        opts.threads = Process.getNumericArgPar(OPTL_THREADS, getter.getOptarg());
+                        opts.threads = StringUtils.getNumericArgPar(OPTL_THREADS, getter.getOptarg());
                         break;
                     case OPTS_VERBOSITY:
-                        verbosity = Process.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg());
+                        verbosity = StringUtils.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg());
                         break;
                     case OPTS_WORK_DIR:
                         opts.workDir = getter.getOptarg();
@@ -192,7 +192,7 @@ public class Process {
                         opts.resetTasks = getter.getOptarg();
                         break;
                     case OPTS_RETRIEVE_COUNT:
-                        opts.retrieveCount = Process.getNumericArgPar(OPTL_RETRIEVE_COUNT, getter.getOptarg());
+                        opts.retrieveCount = StringUtils.getNumericArgPar(OPTL_RETRIEVE_COUNT, getter.getOptarg());
                         break;
                     case OPTS_PARSE_ONLY:
                         opts.parseOnly = true;
@@ -262,26 +262,6 @@ public class Process {
             Logger.getInstance().message("Could not create process - " + e.getMessage(), Logger.V_IMPORTANT);
             System.exit(1);
         }        
-    }
-
-    /**
-     * Converts a numeric value of the argument parameter to its integer representation,
-     * throws an exception upon error.
-     *
-     * @param argName  the argument name (just for exceptions)
-     * @param parValue  the value of the parameter
-     * @return the numeric value of the argument parameter
-     * @throws ParamException if the value is not numeric
-     */
-    private static int getNumericArgPar(String argName, String parValue) throws ParamException {
-
-        try {
-            return Integer.parseInt(parValue);
-        } catch (NumberFormatException e) {
-            throw new ParamException(ParamException.ERR_NONNUMARG, argName);
-        } catch (NullPointerException e) {
-            throw new ParamException(ParamException.ERR_INVPAR, argName);
-        }
     }
 
     /**

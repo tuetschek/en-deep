@@ -29,6 +29,7 @@ package en_deep.mlprocess.utils;
 
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Process;
+import en_deep.mlprocess.exception.ParamException;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -736,6 +737,30 @@ public class StringUtils {
         return ret;
     }
 
+    /**
+     * Converts a numeric value of a command-line argument parameter to its integer representation,
+     * throws an exception upon error.
+     *
+     * @param argName  the argument name (just for exceptions)
+     * @param parValue  the value of the parameter
+     * @return the numeric value of the argument parameter
+     * @throws ParamException if the value is not numeric
+     */
+    public static int getNumericArgPar(String argName, String parValue) throws ParamException {
+
+        try {
+            return Integer.parseInt(parValue);
+        } catch (NumberFormatException e) {
+            throw new ParamException(ParamException.ERR_NONNUMARG, argName);
+        } catch (NullPointerException e) {
+            throw new ParamException(ParamException.ERR_INVPAR, argName);
+        }
+    }    
+    
+    
+    /* INNER CLASSES */
+   
+    
     /**
      * A special class for comparing the {@link #first} parts of {@link String} {@link Pair}s with respect
      * to numerical suffixes, i.e\. in the same order Windows Explorer does. This means e.g.

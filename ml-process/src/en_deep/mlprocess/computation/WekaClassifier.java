@@ -27,20 +27,19 @@
 
 package en_deep.mlprocess.computation;
 
+import en_deep.mlprocess.computation.wekaclassifier.Model;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.computation.wekaclassifier.LinearSequence;
 import en_deep.mlprocess.computation.wekaclassifier.Sequence;
 import en_deep.mlprocess.computation.wekaclassifier.TreeReader;
+import en_deep.mlprocess.simple.ClassificationSettings;
+import en_deep.mlprocess.simple.Simple;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.MathUtils;
 import en_deep.mlprocess.utils.StringUtils;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -242,6 +241,29 @@ public class WekaClassifier extends GeneralClassifier {
             this.modelSelectionAttribute = this.getParameterVal(MODEL_SEL_ATTR);
         }
     }
+    
+    /**
+     * A special constructor for stream usage, where the {@link WekaClassifier#perform() } method is not called at
+     * all, only {@link WekaClassifier#classifyInstances(weka.core.Instances)} is called instead.
+     * 
+     * @param id The task id
+     * @throws TaskException 
+     */
+    public WekaClassifier(String id, ClassificationSettings settings) throws TaskException {
+                
+        // feed the superclass with dummy parameters, so that input and output checking are OK
+        super(id, new Hashtable<String, String>(), new Vector<String>(Arrays.asList("", "")), 
+                new Vector<String>(Arrays.asList("")));  
+        
+        // set the parameters
+        this.classesOnly = settings.classesOnly;
+        this.probabilities = settings.probDist;
+        this.modelSelectionAttribute = settings.modelSelAttr;
+
+        // load the models
+        this.models = settings.models;
+    }
+    
 
     /**
      * This adds the features for the various values of the target class -- in order to set the probabilities for
@@ -360,9 +382,27 @@ public class WekaClassifier extends GeneralClassifier {
         // read the evaluation data and find out the target class
         Logger.getInstance().message(this.id + ": reading " + evalFile + "...", Logger.V_DEBUG);
         Instances eval = FileUtils.readArff(evalFile);
-        Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
 
         Logger.getInstance().message(this.id + ": evaluating " + eval.relationName() + "...", Logger.V_DEBUG);
+
+        eval = this.classifyInstances(eval);
+
+        Logger.getInstance().message(this.id + ": saving results to " + outFile + ".", Logger.V_DEBUG);
+        FileUtils.writeArff(outFile, eval);
+    }
+    
+    /**
+     * Classify data from the given {@link Instances} object. Used by 
+     * {@link WekaClassifier#classifyFile(java.lang.String, java.lang.String) } and {@link Simple}.
+     * 
+     * @param eval the data to be classified
+     * @return the classified data set (exact format depends on the settings)
+     * @throws TaskException
+     * @throws Exception 
+     */
+    public Instances classifyInstances(Instances eval) throws TaskException, Exception {
+
+        Hashtable<String, Instances> modelInputs = new Hashtable<String, Instances>();
 
         // use the classifier and store the results
         double[][] distributions = this.probabilities ? new double[eval.numInstances()][] : null;
@@ -406,8 +446,7 @@ public class WekaClassifier extends GeneralClassifier {
             this.addDistributions(eval, distributions);
         }
 
-        Logger.getInstance().message(this.id + ": saving results to " + outFile + ".", Logger.V_DEBUG);
-        FileUtils.writeArff(outFile, eval);
+        return eval;
     }
 
 
@@ -795,99 +834,5 @@ public class WekaClassifier extends GeneralClassifier {
             classes.add(new DenseInstance(1.0, val));
         }
         return classes;
-    }
-
-    
-    /**
-     * This comprises all the required fields for a classification model.
-     */
-    static class Model {
-
-        /** The classifier */
-        AbstractClassifier classif;
-        /** Attribute preselection setting */
-        int [] selectedAttributes;
-        /** The attributes preselection mask: -1 for removed attributes, the actual position for others */
-        int [] attribsMask;
-        /** The class attribute number */
-        int classAttrib;
-        /** Binarize the data set for classification ? */
-        boolean binarize;
-        /** The current task ID */
-        private String taskId;
-        /** The specified model file used for loading */
-        private String modelFile;
-
-        /** Default empty constructor */
-        Model(){
-        }
-
-        /**
-         * This just prepares the model to be loaded using {@link #load() }.
-         *
-         * @param taskId used only for error messages
-         * @param modelFile the name of the file that contains the model and other settings.
-         */
-        Model(String taskId, String modelFile) {
-            this.taskId = taskId;
-            this.modelFile = modelFile;
-        }
-
-        /**
-         * Initialize the used attributes mask (with the new positions of the used ones and -1 for unused ones).
-         * 
-         * @param maxAttribs the number of attributes before feature pre-selection
-         */
-        void initAttribsMask(int maxAttribs){
-            
-            this.attribsMask = new int [maxAttribs];
-            
-            Arrays.fill(this.attribsMask, -1);
-            for (int i = 0; i < this.selectedAttributes.length; ++i){
-                this.attribsMask[this.selectedAttributes[i]] = i;
-            }
-        }
-
-        /**
-         * This saves the trained classifier model to a file.
-         *
-         * @param taskId used only for error messages
-         * @param the output file
-         */
-        void save(String taskId, String modelFile) throws IOException {
-
-            Logger.getInstance().message(taskId + ": saving the model to " + modelFile + " ...", Logger.V_DEBUG);
-            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(modelFile));
-
-            out.writeObject(this.classif);
-            out.writeObject(this.selectedAttributes);
-            out.writeObject(new Integer(this.classAttrib));
-            out.writeBoolean(this.binarize);
-            out.writeObject(this.attribsMask);
-
-            out.close();
-        }
-
-        /**
-         * This loads the trained model from the given file. It also loads the attribute preselection settings
-         * and the class attribute and binarization setting.
-         * 
-         * @throws IOException
-         * @throws ClassNotFoundException 
-         */
-        void load() throws IOException, ClassNotFoundException {
-
-            Logger.getInstance().message(taskId + ": loading the model from " + modelFile + " ...", Logger.V_DEBUG);
-            ObjectInputStream oin = new ObjectInputStream(new FileInputStream(modelFile));
-
-            this.classif = (AbstractClassifier) oin.readObject();
-            this.selectedAttributes = (int []) oin.readObject();
-            this.classAttrib = (Integer) oin.readObject();
-            this.binarize = oin.readBoolean();
-            
-            this.attribsMask = (int []) oin.readObject();
-
-            oin.close();
-        }
     }
 }

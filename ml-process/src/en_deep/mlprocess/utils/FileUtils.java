@@ -30,6 +30,7 @@ package en_deep.mlprocess.utils;
 import en_deep.mlprocess.Process;
 import java.io.*;
 import java.nio.channels.*;
+import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Scanner;
 import weka.core.Instances;
@@ -299,7 +300,7 @@ public class FileUtils{
         in.close();
         return sb.toString();
     }
-
+    
     /**
      * This reads a named numeric value from a file. The file must have the <pre>name:value</tt> format.
      * If the value of the given name is not present in the file, this returns null.

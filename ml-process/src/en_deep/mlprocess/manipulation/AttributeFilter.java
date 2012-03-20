@@ -70,7 +70,7 @@ public class AttributeFilter extends MergedHeadersOutput {
     private static final String ATTR_NAME_SUFF = "_filt";
 
     /** The attribute value to replace all the filtered-out values */
-    private static final String OTHER_VALUE = "[OTHER]";
+    public static final String OTHER_VALUE = "[OTHER]";
 
     /* DATA */
 

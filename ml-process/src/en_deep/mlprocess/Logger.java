@@ -128,4 +128,12 @@ public class Logger {
             }
         }
     }
+
+    /**
+     * Return the current verbosity setting.
+     * @return the current verbosity setting.
+     */
+    public int getVerbosity() {
+        return this.verbosity;
+    }
 }

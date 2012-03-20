@@ -49,6 +49,8 @@ public class ParamException extends GeneralException {
     public static final int ERR_FILE_NOT_FOUND = 6;
     /** Error code: The working directory cannot be found */
     public static final int ERR_DIR_NOT_FOUND = 7;
+    /** Error code: Invalid parameter combination */
+    public static final int ERR_INV_COMBINATION = 8;
 
     /* DATA */
 
@@ -87,19 +89,21 @@ public class ParamException extends GeneralException {
             case ERR_OK:
                 return "No error.";
             case ERR_INVPAR:
-                return "Invalid command parameter:" + this.parName;
+                return "Invalid command parameter: " + this.parName;
             case ERR_NONNUMARG:
-                return "Argument of a command parameter must be numeric:" + this.parName;
+                return "Argument of a command parameter must be numeric: " + this.parName;
             case ERR_INVARG:
-                return "Invalid argument of a command parameter:" + this.parName;
+                return "Invalid argument of a command parameter: " + this.parName;
             case ERR_MISSING:
                 return "Missing command parameter:" + this.parName;
             case ERR_TOO_MANY:
-                return "Too many arguments.";
+                return "Too many parameters.";
+            case ERR_INV_COMBINATION:
+                return "Invalid parameter combination: " + this.parName;
             case ERR_FILE_NOT_FOUND:
                 return "The input file cannot be found.";
             case ERR_DIR_NOT_FOUND:
-                return "The working directory cannot be found";
+                return "The working directory cannot be found.";
             default:
                 return "Unknown error.";
         }
