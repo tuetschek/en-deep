@@ -201,6 +201,8 @@ public class Simple {
         Instances toClassif = new Instances(settings.dataHeaders, 0);
         int ctr = 0;
         
+        Logger.getInstance().message("Ready.", Logger.V_DEBUG);
+        
         // read input, modify it to comply with the current headers, classify it
         while (true){
             String line = this.read();
@@ -297,9 +299,7 @@ public class Simple {
      * @throws Exception if there's a classification error
      */
     private void haveClassifiedAndPrint(Instances toClassif) throws Exception {
-        
-        Logger.getInstance().message("Classifying a chunk of " + toClassif.numInstances() + " instances ...", Logger.V_DEBUG);
-        
+                
         Instances results = classif.classifyInstances(toClassif);
         
         Enumeration<Instance> resultEnum = results.enumerateInstances();
@@ -401,6 +401,7 @@ public class Simple {
      * @param inst the target instance
      * @param attrNum the target attribute number
      * @param field the ARFF string field value
+     * @todo make it faster by avoiding setValue (i.e. preparing the values elsewhere)
      */
     private void assignValue(Instance inst, int attrNum, String field) {
         
