@@ -47,7 +47,7 @@ import weka.core.SparseInstance;
 
 
 /**
- * The main program for running a simple classification as a filter (reading ARFF without headers
+ * The main program for running a simple classification as a Unix filter (reading ARFF without headers
  * from the input and writing ARFF without headers on the output). 
  * 
  * It checks the command parameters, loads the given models and awaits data on the standard input.
@@ -84,19 +84,24 @@ public class Simple {
     /** The --charset option short name */
     private static final char OPTS_CHARSET = 'c';
     
+    /** The --signal_ready option long name */
+    private static final String OPTL_SIGNAL_READY = "signal_ready";
+    /** The --signal_ready short name */
+    private static final char OPTS_SIGNAL_READY = 'r';
+    
     /** Default chunking size */
     private static final int DEFAULT_CHUNK_SIZE = 10;
     
     /** Basic help string */
     private static final String USAGE = "Usage:\n\tjava -cp ml-process.jar en_deep.mlprocess.simple.Simple\n\t"
-            + "[-s num|-a attribute_name] [-c charset] [-v verbosity]\n\tmodels.dat.gz < input > output\n\n";
+            + "[-s num|-a attribute_name] [-c charset] [-v verbosity] [-r]\n\tmodels.dat.gz < input > output\n\n";
     
 
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process_simple";
 
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "a:s:v:c:";
+    private static final String OPTSTRING = "a:s:v:c:r";
 
     /* DATA */
     
@@ -114,6 +119,18 @@ public class Simple {
     /* METHODS */
 
     
+    /**
+     * The main program entry. Possible command arguments:
+     * <ul>
+     * <li><tt>--charset|-c</tt> -- Character set used for communication (Java character set names, default: UTF-8).</li>
+     * <li><tt>--verbosity|-v</tt> -- Verbosity setting (0-4, default: 1).</li>
+     * <li><tt>--chunk_size|-s</tt> -- Size of chunks fed to the classifier (default: 10, set to 1 for instant responses).</li>
+     * <li><tt>--chunk_attr|-c</tt> -- Control the chunks fed to the classifier by a change in the value of one of
+     * the attributes (specify the name here; this is an alternative to the <tt>-s</tt> option).</li>
+     * <li><tt>--signal_ready|-r</tt> -- Output <tt>READY</tt> on the first line when the classifiers are loaded.</li>
+     * </ul>
+     * @param args the command-line arguments
+     */
     public static void main(String[] args) {
         
         try {
@@ -142,7 +159,10 @@ public class Simple {
                         Logger.getInstance().setVerbosity(StringUtils.getNumericArgPar(OPTL_VERBOSITY, getter.getOptarg()));                        
                         break;
                     case OPTS_CHARSET:
-                        
+                        opts.charset = getter.getOptarg();                        
+                        break;
+                    case OPTS_SIGNAL_READY:
+                        opts.signalReady = true;
                         break;
                     case ':':
                         throw new ParamException(ParamException.ERR_MISSING, "" + (char) getter.getOptopt());
@@ -202,6 +222,9 @@ public class Simple {
         int ctr = 0;
         
         Logger.getInstance().message("Ready.", Logger.V_DEBUG);
+        if (this.opts.signalReady){
+            System.out.println("READY");
+        }
         
         // read input, modify it to comply with the current headers, classify it
         while (true){
@@ -454,6 +477,9 @@ public class Simple {
         
         /** The charset to be used during the processing */
         String charset;
+        
+        /** Signal 'READY' on the output */
+        boolean signalReady;
     }
     
 }
