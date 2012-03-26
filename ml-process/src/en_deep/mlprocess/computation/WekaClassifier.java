@@ -101,7 +101,7 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String TREE_READER = "tree_reader";
 
     /** Key for the default model in the hash table */
-    private static final String DEFAULT = "";
+    public static final String DEFAULT_MODEL = "";
 
     /* DATA */
 
@@ -302,7 +302,7 @@ public class WekaClassifier extends GeneralClassifier {
         Model model = new Model();
         // put the (single) model to a default place
         this.models = new Hashtable<String, Model>(1);
-        this.models.put(DEFAULT, model);
+        this.models.put(DEFAULT_MODEL, model);
 
         // try to create the classifier corresponding to the given WEKA class name
         try {
@@ -347,7 +347,7 @@ public class WekaClassifier extends GeneralClassifier {
                 }
             }
             else {  // just a single model
-                this.models.put(DEFAULT, new Model(this.id, trainFile));
+                this.models.put(DEFAULT_MODEL, new Model(this.id, trainFile));
             }
         }
         // train a new model
@@ -361,7 +361,7 @@ public class WekaClassifier extends GeneralClassifier {
         }
 
         if (this.modelOutputFile != null){
-            this.models.get(DEFAULT).save(this.id, this.modelOutputFile);
+            this.models.get(DEFAULT_MODEL).save(this.id, this.modelOutputFile);
         }
 
         // clean up
@@ -494,7 +494,7 @@ public class WekaClassifier extends GeneralClassifier {
             retained[pos++] = i;
         }
 
-        this.models.get(DEFAULT).selectedAttributes = retained;
+        this.models.get(DEFAULT_MODEL).selectedAttributes = retained;
 
         // write the settings to a file, if needed
         if (this.attribsOutputFile != null){
@@ -707,23 +707,23 @@ public class WekaClassifier extends GeneralClassifier {
         Logger.getInstance().message(this.id + ": reading " + trainFile + "...", Logger.V_DEBUG);
         Instances train = FileUtils.readArff(trainFile);
         this.findClassFeature(train);
-        this.models.get(DEFAULT).classAttrib = train.classIndex();
+        this.models.get(DEFAULT_MODEL).classAttrib = train.classIndex();
 
         // pre-select the attributes
         int maxAttrib = train.numAttributes();
         Logger.getInstance().message(this.id + ": preselecting attributes...", Logger.V_DEBUG);
         train = this.attributesPreselection(train);
-        this.models.get(DEFAULT).initAttribsMask(maxAttrib);
+        this.models.get(DEFAULT_MODEL).initAttribsMask(maxAttrib);
 
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
             train = this.sparseNominalToBinary(train);
-            this.models.get(DEFAULT).binarize = true;
+            this.models.get(DEFAULT_MODEL).binarize = true;
         }
 
         Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
         // train the classifier
-        this.models.get(DEFAULT).classif.buildClassifier(train);
+        this.models.get(DEFAULT_MODEL).classif.buildClassifier(train);
     }
 
     /**
@@ -731,7 +731,7 @@ public class WekaClassifier extends GeneralClassifier {
      * by setting the target class, binarizing and removing unneeded attributes.
      *
      * @param eval the evaluation data
-     * @param key the model name to be used (@{link #DEFAULT} if one model only)
+     * @param key the model name to be used (@{link #DEFAULT_MODEL} if one model only)
      * @return the input data to the given model
      */
     private Instances prepareModelInputs(Instances eval, String key) throws TaskException, Exception {
@@ -767,7 +767,7 @@ public class WekaClassifier extends GeneralClassifier {
             return inst.get(index).stringValue(inst.attribute(this.modelSelectionAttribute));
         }
         else {
-            return DEFAULT;
+            return DEFAULT_MODEL;
         }
     }
 

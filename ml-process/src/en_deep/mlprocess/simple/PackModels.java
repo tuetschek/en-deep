@@ -27,6 +27,7 @@
 package en_deep.mlprocess.simple;
 
 import en_deep.mlprocess.Logger;
+import en_deep.mlprocess.computation.WekaClassifier;
 import en_deep.mlprocess.computation.wekaclassifier.Model;
 import en_deep.mlprocess.exception.ParamException;
 import en_deep.mlprocess.utils.FileUtils;
@@ -99,7 +100,7 @@ public class PackModels {
     private static final String OPTSTRING = "a:h:c:m:t:v:op";
 
     private static final String USAGE = "Usage:\n\tjava -cp ml-process.jar en_deep.mlprocess.simple.PackModels "
-            + "-h data_headers_file -m model_pattern -a model_sel_attr\n\t-c class -t to_output_file [-o] [-p]\n\t"
+            + "-h data_headers_file [-m model_pattern -a model_sel_attr]\n\t-c class -t to_output_file [-o] [-p]\n\t"
             + "model-xxx.dat [model-yyy.dat ...]\n\n";
     
     /* DATA */
@@ -166,10 +167,18 @@ public class PackModels {
                 throw new ParamException(ParamException.ERR_MISSING, "model data files list");
             }
             // checking if the required parameters have been set
-            if (opts.modelPattern == null || opts.classArg == null || opts.outputFile == null || opts.headers == null 
-                    || opts.modelSelAttr == null){
-                throw new ParamException(ParamException.ERR_MISSING, "required parameters (model pattern, "
-                        + "class attribute, output file, data headers, model selection attribute)");
+            if (opts.classArg == null || opts.outputFile == null || opts.headers == null){
+                throw new ParamException(ParamException.ERR_MISSING, "required parameters ("
+                        + "class attribute, output file, data headers)");
+            }
+            //
+            if ((opts.modelSelAttr == null)  ^ (opts.modelPattern == null)){
+                throw new ParamException(ParamException.ERR_INV_COMBINATION, "model pattern and "
+                        + "model selection attribute must either be both set or both unset");
+            }
+            // allow only one model if the model selection attribute & model pattern are not set
+            if ( opts.modelPattern == null && opts.modelSelAttr == null && getter.getOptind() < args.length - 1){
+                throw new ParamException(ParamException.ERR_TOO_MANY);
             }
             // handle all model files
             for (int i = getter.getOptind(); i < args.length; ++i){
@@ -207,26 +216,37 @@ public class PackModels {
         cls.classArg = opts.classArg;
         cls.classesOnly = opts.classesOnly;
         cls.probDist = opts.probDist;
-        cls.modelSelAttr = opts.modelSelAttr;
 
         // load filtering information
         cls.dataHeaders = FileUtils.readArffStructure(opts.headers);
+        
+        // multiple model settings
+        if (opts.modelSelAttr != null){
 
-        // load the individual models
-        for (String modelFile : opts.modelFiles){
+            cls.modelSelAttr = opts.modelSelAttr;
 
-            // determine model name
-            String name = StringUtils.matches(modelFile, opts.modelPattern);
-            if (name == null){
-                throw new ParamException(ParamException.ERR_INVPAR, "file " + modelFile 
-                        + " does not match the pattern " + opts.modelPattern);
+            // load the individual models
+            for (String modelFile : opts.modelFiles){
+
+                // determine model name
+                String name = StringUtils.matches(modelFile, opts.modelPattern);
+                if (name == null){
+                    throw new ParamException(ParamException.ERR_INVPAR, "file " + modelFile 
+                            + " does not match the pattern " + opts.modelPattern);
+                }
+                // load the model
+                Model model = new Model("PackModels", modelFile);
+                model.load();
+
+                // save it to the settings
+                cls.models.put(FileUtils.fileNameDecode(name), model);
             }
-            // load the model
-            Model model = new Model("PackModels", modelFile);
+        }
+        // single model
+        else {
+            Model model = new Model("PackModels", opts.modelFiles.get(0));
             model.load();
-            
-            // save it to the settings
-            cls.models.put(name, model);
+            cls.models.put(WekaClassifier.DEFAULT_MODEL, model);
         }
         
         cls.save(opts.outputFile);

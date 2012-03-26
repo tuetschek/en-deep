@@ -242,6 +242,7 @@ public class Simple {
                 if (line == null){
                     break;
                 }
+                continue; // otherwise, skip this line
             }
             
             this.addInstance(toClassif, line);
@@ -322,7 +323,9 @@ public class Simple {
      * @throws Exception if there's a classification error
      */
     private void haveClassifiedAndPrint(Instances toClassif) throws Exception {
-                
+
+        Logger.getInstance().message("Classifying a set of " + toClassif.numInstances() + " instances ... ", Logger.V_DEBUG);
+        
         Instances results = classif.classifyInstances(toClassif);
         
         Enumeration<Instance> resultEnum = results.enumerateInstances();
