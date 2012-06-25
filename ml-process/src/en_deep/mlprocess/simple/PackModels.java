@@ -252,6 +252,9 @@ public class PackModels {
         cls.save(opts.outputFile);
     }
 
+    /**
+     * A container for the various {@link PackModels} options.
+     */
     private static class PackOptions {
 
         /** Is nominalization via {@link BigDataSplitter} needed ? */

@@ -33,6 +33,8 @@ import java.nio.channels.*;
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Scanner;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
@@ -111,7 +113,9 @@ public class FileUtils{
     public static Instances readArff(String fileName, boolean close) throws Exception {
 
         FileInputStream in = new FileInputStream(fileName);
-        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(in);
+        InputStream plainIn = fileName.endsWith(".gz") ? new GZIPInputStream(in) : in;
+        
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(plainIn);
         Instances data = reader.getDataSet();
 
         if (close){
@@ -156,7 +160,9 @@ public class FileUtils{
     public static Instances readArffStructure(String fileName, boolean close) throws Exception {
 
         FileInputStream in = new FileInputStream(fileName);
-        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(in);
+        InputStream plainIn = fileName.endsWith(".gz") ? new GZIPInputStream(in) : in;
+        
+        ConverterUtils.DataSource reader = new ConverterUtils.DataSource(plainIn);
         Instances data = reader.getStructure();
 
         if (close){
@@ -200,10 +206,12 @@ public class FileUtils{
     public static void writeArff(String fileName, Instances data) throws Exception {
 
         FileOutputStream os = new FileOutputStream(fileName);
-        ConverterUtils.DataSink writer = new ConverterUtils.DataSink(os);
+        OutputStream out = fileName.endsWith(".gz") ? new GZIPOutputStream(os) : os;
+       
+        ConverterUtils.DataSink writer = new ConverterUtils.DataSink(out);
 
         writer.write(data);
-        os.close();
+        out.close();
     }
 
     /**
