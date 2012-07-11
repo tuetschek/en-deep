@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010 Ondrej Dusek
+ *  Copyright (c) 2010-2012 Ondrej Dusek
  *  All rights reserved.
  * 
  *  Redistribution and use in source and binary forms, with or without modification, 
@@ -27,20 +27,17 @@
 
 package en_deep.mlprocess.manipulation;
 
+import en_deep.mlprocess.Process;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Enumeration;
+import java.io.*;
 import java.util.Hashtable;
 import java.util.Vector;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -197,7 +194,7 @@ public class BigDataSplitter extends Task {
      */
     private void splitToChunks(int fileNo) throws Exception {
 
-        BufferedReader inRead = openAndSkipHeader(this.input.get(fileNo));
+        BufferedReader inRead = this.openAndSkipHeader(this.input.get(fileNo));
 
         boolean eof = false;
         int curChunkNo = 0;
@@ -238,8 +235,10 @@ public class BigDataSplitter extends Task {
      */
     private BufferedReader openAndSkipHeader(String fileName) throws IOException, FileNotFoundException {
 
-        FileReader in = new FileReader(fileName);
-        BufferedReader inRead = new BufferedReader(in);
+        FileInputStream in = new FileInputStream(fileName);
+        InputStream plainIn = fileName.endsWith(".gz") ? new GZIPInputStream(in) : in;
+        BufferedReader inRead = new BufferedReader(new InputStreamReader(plainIn, Process.getInstance().getCharset()));
+
         String line = inRead.readLine();
 
         while (line != null && !line.matches("^@[dD][aA][tT][aA]\\s*")) {
@@ -286,6 +285,14 @@ public class BigDataSplitter extends Task {
 
     }
 
+    /**
+     * Split the given file into several files according to the values of the
+     * given attribute (<tt>by_attribute</tt> setting).
+     * 
+     * @param fileNo the input file number in the {@link #input} list.
+     * @throws TaskException
+     * @throws IOException 
+     */
     private void splitByAttribute(int fileNo) throws TaskException, IOException {
 
         Attribute splitAttrib;
@@ -319,10 +326,11 @@ public class BigDataSplitter extends Task {
                 writer = new ArffSaver();
                 out.put(val, writer);
 
-                File file = new File(StringUtils.replace(this.output.get(fileNo), FileUtils.fileNameEncode(val)));
-
-                writer.setFile(file);
-                writer.setDestination(file);
+                String fileName = StringUtils.replace(this.output.get(fileNo), FileUtils.fileNameEncode(val));
+                FileOutputStream fos = new FileOutputStream(fileName);
+                OutputStream os = fileName.endsWith(".gz") ? new GZIPOutputStream(fos) : fos;
+                
+                writer.setDestination(os);
                 writer.setStructure(this.header);
                 writer.setRetrieval(Saver.INCREMENTAL);
             }
