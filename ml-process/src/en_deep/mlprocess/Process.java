@@ -419,7 +419,7 @@ public class Process {
      * @return
      */
     private int getExitStatus(){
-        return Plan.getInstance().hasFailedTasks() ? 1 : 0;
+        return ( Plan.getInstance().hasFailedTasks() || Plan.getInstance().hasPlanErrors() ) ? 1 : 0;
     }
 
     /**

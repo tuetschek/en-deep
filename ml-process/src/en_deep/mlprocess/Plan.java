@@ -88,6 +88,8 @@ public class Plan {
 
     /** Were there any tasks with a {@link TaskStatus#FAILED} in the plan file upon last use ? */
     private boolean failedTasks;
+    /** Were there any plan/scenario errors when using the {@link Plan} object ? */
+    private boolean planError;
 
     /** The only instance of {@link Plan}. */
     private static Plan instance = null;
@@ -175,18 +177,22 @@ public class Plan {
         }
         catch(IOException ex){
             Logger.getInstance().message("I/O error - " + ex.getMessage(), Logger.V_IMPORTANT);
+            this.planError = true;
             throw new PlanException(PlanException.ERR_IO_ERROR);
         }
         catch(DataException ex){
             Logger.getInstance().message("Data error - " + ex.getMessage(), Logger.V_IMPORTANT);
+            this.planError = true;
             throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
         catch(ClassNotFoundException ex){
             Logger.getInstance().message("Incorrect plan file - " + ex.getMessage(), Logger.V_IMPORTANT);
+            this.planError = true;
             throw new PlanException(PlanException.ERR_INVALID_PLAN);
         }
         catch(TaskException ex){
             Logger.getInstance().message("Task error - " + ex.getMessage(), Logger.V_IMPORTANT);
+            this.planError = true;
             throw new PlanException(PlanException.ERR_INVALID_SCENARIO);
         }
 
@@ -201,6 +207,7 @@ public class Plan {
             }
             catch(IOException ex){
                 Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                this.planError = true;
                 throw new PlanException(PlanException.ERR_IO_ERROR);
             }
             if (resetLock != null && resetLock.isValid()){
@@ -209,6 +216,7 @@ public class Plan {
                 }
                 catch(IOException ex){
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                    this.planError = true;
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
             }
@@ -218,6 +226,7 @@ public class Plan {
                 }
                 catch(IOException ex){
                     Logger.getInstance().message(ex.getMessage(), Logger.V_IMPORTANT);
+                    this.planError = true;
                     throw new PlanException(PlanException.ERR_IO_ERROR);
                 }
             }
@@ -940,6 +949,14 @@ public class Plan {
      */
     public boolean hasFailedTasks(){
         return this.failedTasks;
+    }
+    
+    /**
+     * Returns true, if there were any errors within the plan/scenario access, ever.
+     * @return true for any plan/scenario-related errors
+     */
+    public boolean hasPlanErrors() {
+        return this.planError;
     }
 
     /**
