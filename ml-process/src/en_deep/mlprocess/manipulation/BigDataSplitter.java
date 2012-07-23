@@ -311,7 +311,7 @@ public class BigDataSplitter extends Task {
         boolean eof = false;
         ArffLoader.ArffReader instRead = new ArffLoader.ArffReader(inRead, this.header, 0, 0);
         Instance inst;
-
+        
         while (!eof){
 
             if ((inst = instRead.readInstance(this.header)) == null){

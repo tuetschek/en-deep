@@ -88,7 +88,7 @@ public class ModelDumper extends Task {
         }
 
         // retrieve the model weights
-        liblinear.Model internal = (liblinear.Model) ((LibLINEAR) model.classif).getModel();
+        de.bwaldvogel.liblinear.Model internal = (de.bwaldvogel.liblinear.Model) ((LibLINEAR) model.classif).getModel();
         double [] weights = internal.getFeatureWeights();
         StringBuilder sb = new StringBuilder();
         
