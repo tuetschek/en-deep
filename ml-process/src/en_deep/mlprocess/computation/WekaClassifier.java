@@ -357,7 +357,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         // classify each data file
         for (int fileNo = 0; fileNo < evalFiles.size(); ++fileNo){
-            classifyFile(evalFiles.get(fileNo), outFiles.get(fileNo));
+            this.classifyFile(evalFiles.get(fileNo), outFiles.get(fileNo));
         }
 
         if (this.modelOutputFile != null){
@@ -594,6 +594,13 @@ public class WekaClassifier extends GeneralClassifier {
 
     }
 
+    /**
+     * Converts instances one-by-one to sparse format and then feeds the copies to the
+     * {@link NominalToBinary} filter, saving memory.
+     * @param train the bulk of instances to be binarized
+     * @return the binarized data set, as {@link SparseInstance} objects
+     * @throws Exception 
+     */
     static Instances sparseNominalToBinary(Instances train) throws Exception {
 
         NominalToBinary ntb = new NominalToBinary();
@@ -717,7 +724,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         if (this.binarize){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
-            train = this.sparseNominalToBinary(train);
+            train = WekaClassifier.sparseNominalToBinary(train);
             this.models.get(DEFAULT_MODEL).binarize = true;
         }
 
@@ -747,7 +754,7 @@ public class WekaClassifier extends GeneralClassifier {
         // binarize, if supposed to
         if (model.binarize){
             Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-            modelInput = this.sparseNominalToBinary(modelInput);
+            modelInput = WekaClassifier.sparseNominalToBinary(modelInput);
         }
 
         return modelInput;

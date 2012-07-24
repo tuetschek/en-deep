@@ -160,6 +160,9 @@ public class Plan {
         
         // try to acquire planLock on the to-do file and get a planned task
         try {
+            
+            Logger.getInstance().message("Accessing plan file ...", Logger.V_DEBUG);
+            
             planFileIO = new RandomAccessFile(this.planFile, "rw");
             planLock = planFileIO.getChannel().lock();
 

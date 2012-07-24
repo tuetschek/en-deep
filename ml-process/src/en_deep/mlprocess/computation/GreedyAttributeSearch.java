@@ -197,6 +197,10 @@ public class GreedyAttributeSearch extends EvalSelector {
         if (this.output.size() != 3){
             throw new TaskException(TaskException.ERR_WRONG_NUM_OUTPUTS, this.id);
         }
+        // turn compression on for tempfiles if a compressed output is required
+        if (this.output.get(0).endsWith(COMPRESS_EXT)){
+            this.compressArffs = true;
+        }        
     }
 
     @Override

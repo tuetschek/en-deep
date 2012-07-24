@@ -56,6 +56,8 @@ public abstract class EvalSelector extends Task {
     protected static final String CLASS_EXT = ".arff";
     /** Extension for statistics tempfiles */
     protected static final String STATS_EXT = ".txt";
+    /** Compressed files extension */
+    protected static final String COMPRESS_EXT = ".gz";
     /** The name of the "tempfile" parameter */
     static final String TEMPFILE = "tempfile";
     /** The 'delete_tempfiles' parameter name */
@@ -76,6 +78,8 @@ public abstract class EvalSelector extends Task {
     protected String expandedId;
     /** Delete temporary files after selecting from the possibilities ? */
     protected boolean deleteTempfiles;
+    /** Compress ARFF files ? */
+    protected boolean compressArffs;
 
     /* METHODS */
 
@@ -193,10 +197,11 @@ public abstract class EvalSelector extends Task {
     protected String getTempfileName(TempfileTypes type, int round, int order) {
 
         String lbr = round >= 0 ? "(" + round + "-" : "(";
+        String classExt = CLASS_EXT + (this.compressArffs ? COMPRESS_EXT : "");
 
         switch (type) {
             case CLASSIF:
-                return this.tempFilePattern.replace("*", this.expandedId + lbr + order + ")") + CLASS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + order + ")") + classExt;
             case STATS:
                 return this.tempFilePattern.replace("*", this.expandedId + lbr + order + ")") + STATS_EXT;
             case ROUND_STATS:
@@ -204,7 +209,7 @@ public abstract class EvalSelector extends Task {
             case BEST_STATS:
                 return this.tempFilePattern.replace("*", this.expandedId + lbr + "best)") + STATS_EXT;
             case BEST_CLASSIF:
-                return this.tempFilePattern.replace("*", this.expandedId + lbr + "best)") + CLASS_EXT;
+                return this.tempFilePattern.replace("*", this.expandedId + lbr + "best)") + classExt;
             default:
                 return "";
         }
