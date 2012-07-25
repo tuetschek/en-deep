@@ -5,11 +5,7 @@
 package en_deep.mlprocess.computation.wekaclassifier;
 
 import en_deep.mlprocess.Logger;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.util.Arrays;
 import weka.classifiers.AbstractClassifier;
 
@@ -21,6 +17,10 @@ import weka.classifiers.AbstractClassifier;
  * @author odusek
  */
 public class Model {
+    
+    /** Binarization types used */
+    public enum BinarizationTypes { NONE, STANDARD, SET_AWARE }
+    
     /** The classifier */
     public AbstractClassifier classif;
     /** Attribute preselection setting */
@@ -30,7 +30,7 @@ public class Model {
     /** The class attribute number */
     public int classAttrib;
     /** Binarize the data set for classification ? */
-    public boolean binarize;
+    public BinarizationTypes binarize;
     /** The current task ID */
     private String taskId;
     /** The specified model file used for loading */
@@ -87,7 +87,7 @@ public class Model {
         out.writeObject(this.classif);
         out.writeObject(this.selectedAttributes);
         out.writeObject(new Integer(this.classAttrib));
-        out.writeBoolean(this.binarize);
+        out.writeObject(this.binarize);
         out.writeObject(this.attribsMask);
     }
 
@@ -116,7 +116,13 @@ public class Model {
         this.classif = (AbstractClassifier) oin.readObject();
         this.selectedAttributes = (int[]) oin.readObject();
         this.classAttrib = (Integer) oin.readObject();
-        this.binarize = oin.readBoolean();
+        try {
+            this.binarize = (BinarizationTypes) oin.readObject();
+        }
+        // accommodate for older model data versions, where binarization types were a boolean
+        catch (EOFException e){
+            this.binarize = oin.readBoolean() ? BinarizationTypes.STANDARD : BinarizationTypes.NONE;
+        }
         this.attribsMask = (int[]) oin.readObject();
     }
     

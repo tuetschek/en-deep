@@ -32,8 +32,10 @@ import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.utils.Pair;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.computation.wekaclassifier.LinearSequence;
+import en_deep.mlprocess.computation.wekaclassifier.Model.BinarizationTypes;
 import en_deep.mlprocess.computation.wekaclassifier.Sequence;
 import en_deep.mlprocess.computation.wekaclassifier.TreeReader;
+import en_deep.mlprocess.manipulation.SetAwareNominalToBinary;
 import en_deep.mlprocess.simple.ClassificationSettings;
 import en_deep.mlprocess.simple.Simple;
 import en_deep.mlprocess.utils.FileUtils;
@@ -55,6 +57,7 @@ import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.SparseInstance;
+import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
 
 /**
@@ -96,6 +99,11 @@ public class WekaClassifier extends GeneralClassifier {
     private static final String MODEL_SEL_PATTERN = "model_sel_pattern";
     /** The name of the 'classes_only' parameter */
     private static final String CLASSES_ONLY = "classes_only";
+    /** 
+     * Prefix for set-like attributes in set-aware binarization.
+     * @todo make this customizable
+     */
+    private static final String SET_ATTR_PREFIX = "*";
 
     /** {@link TreeReader} parameter name */
     private static final String TREE_READER = "tree_reader";
@@ -108,7 +116,7 @@ public class WekaClassifier extends GeneralClassifier {
     /** Output probability distribution instead of classification ? */
     private boolean probabilities;
     /** Should the nominal attributes be binarized before classification ? */
-    private boolean binarize;
+    private BinarizationTypes binarize;
     /** The name of the file where the used attribute indexes should be written, or null */
     private String attribsOutputFile;
     /** The name of the file where the preselected attribute indexes are */
@@ -158,8 +166,8 @@ public class WekaClassifier extends GeneralClassifier {
      * <li><tt>ignore_attr</tt> -- ignore these attributes (NAMES)</li>
      * <li><tt>prob_dist</tt> -- output probability distributions instead of the most likely class (must be
      * supported and/or switched on for the classifier</li>
-     * <li><tt>binarize</tt> -- if set, it converts all the nominal parameters to binary, while using
-     * sparse matrix to represent the result.</li>
+     * <li><tt>binarize</tt> -- possible values: <tt>none, standard, set_aware</tt>. Controls the conversion
+     * of nominal features to binary.</li>
      * <li><tt>out_attribs</tt> -- if set, there must be one additional output file into which the
      * used attributes will be output</li>
      * <li><tt>load_model</tt> -- if set, the first input(s) is(are) considered to be ready-trained model file(s).
@@ -207,10 +215,22 @@ public class WekaClassifier extends GeneralClassifier {
         if (!this.hasParameter(WEKA_CLASS) && !this.hasParameter(LOAD_MODEL)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Parameter weka_class is missing.");
         }
+        // output settings
         this.probabilities = this.parameters.remove(PROB_DIST) != null;
-        this.binarize = this.parameters.remove(BINARIZE) != null;
         this.classesOnly = this.parameters.remove(CLASSES_ONLY) != null;
-
+        
+        // binarization settings
+        this.binarize = BinarizationTypes.NONE;
+        if (this.hasParameter(BINARIZE)){
+            try {
+                this.binarize = BinarizationTypes.valueOf(this.getParameterVal(BINARIZE).toUpperCase());
+            }
+            catch (IllegalArgumentException e){
+                throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Binarize must be "
+                        + "one of: none, standard, set_aware");                        
+            }
+        }
+        
         if (this.hasParameter(SELECT_ARGS) && this.getBooleanParameterVal(ARGS_FILE)){
             throw new TaskException(TaskException.ERR_INVALID_PARAMS, this.id, "Select_args and args_file cannot be "
                     + "set at the same time!");
@@ -601,9 +621,17 @@ public class WekaClassifier extends GeneralClassifier {
      * @return the binarized data set, as {@link SparseInstance} objects
      * @throws Exception 
      */
-    static Instances sparseNominalToBinary(Instances train) throws Exception {
+    static Instances sparseNominalToBinary(Instances train, BinarizationTypes type) throws Exception {
 
-        NominalToBinary ntb = new NominalToBinary();
+        Filter ntb = null;
+        switch (type){
+            case STANDARD:
+                ntb = new NominalToBinary();
+                break;
+            case SET_AWARE:
+                ntb = new SetAwareNominalToBinary();
+                ((SetAwareNominalToBinary) ntb).setSetOnlyPrefix(SET_ATTR_PREFIX);
+        }
 
         ntb.setInputFormat(train);
         Instances out = ntb.getOutputFormat();
@@ -722,11 +750,11 @@ public class WekaClassifier extends GeneralClassifier {
         train = this.attributesPreselection(train);
         this.models.get(DEFAULT_MODEL).initAttribsMask(maxAttrib);
 
-        if (this.binarize){ // binarize the training file, if needed
+        if (this.binarize != BinarizationTypes.NONE){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
-            train = WekaClassifier.sparseNominalToBinary(train);
-            this.models.get(DEFAULT_MODEL).binarize = true;
+            train = WekaClassifier.sparseNominalToBinary(train, this.binarize);
         }
+        this.models.get(DEFAULT_MODEL).binarize = this.binarize;
 
         Logger.getInstance().message(this.id + ": training on " + trainFile + "...", Logger.V_DEBUG);
         // train the classifier
@@ -752,9 +780,9 @@ public class WekaClassifier extends GeneralClassifier {
         modelInput.setClassIndex(model.attribsMask[model.classAttrib]);
 
         // binarize, if supposed to
-        if (model.binarize){
+        if (model.binarize != BinarizationTypes.NONE){
             Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-            modelInput = WekaClassifier.sparseNominalToBinary(modelInput);
+            modelInput = WekaClassifier.sparseNominalToBinary(modelInput, model.binarize);
         }
 
         return modelInput;

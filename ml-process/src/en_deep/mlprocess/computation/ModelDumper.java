@@ -7,6 +7,7 @@ package en_deep.mlprocess.computation;
 import en_deep.mlprocess.computation.wekaclassifier.Model;
 import en_deep.mlprocess.Logger;
 import en_deep.mlprocess.Task;
+import en_deep.mlprocess.computation.wekaclassifier.Model.BinarizationTypes;
 import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
@@ -82,9 +83,9 @@ public class ModelDumper extends Task {
         Instances modelInput = FileUtils.filterAttributes(data, model.selectedAttributes);
         modelInput.setClassIndex(model.attribsMask[model.classAttrib]);
 
-        if (model.binarize){
+        if (model.binarize != BinarizationTypes.NONE){
             Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-            modelInput = WekaClassifier.sparseNominalToBinary(modelInput);
+            modelInput = WekaClassifier.sparseNominalToBinary(modelInput, model.binarize);
         }
 
         // retrieve the model weights

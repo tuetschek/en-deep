@@ -75,7 +75,8 @@ import java.util.Vector;
  *  Multiple-value separator string (default: one space).</pre>
  *
  * <pre> -D
- *  Dual mode (non-set-aware and set-aware output).</pre>
+ *  Dual mode (non-set-aware and set-aware output for each attribute, 
+ * i.e. some values will appear twice).</pre>
  *
  <!-- options-end -->
  *
@@ -603,7 +604,7 @@ public class SetAwareNominalToBinary
         ArrayList newAtts = new ArrayList<Attribute>();
 
         // In dual mode, use each possible value
-        // Apply this mode also to non-set attributes if set attributes have are marked with a prefix
+        // Apply this mode also to non-set attributes if set attributes are marked with a prefix
         if (m_DualMode || m_SetOnlyPrefix != null && !att.name().startsWith(m_SetOnlyPrefix)){
             for (int k = 0; k < att.numValues(); ++k){
 
@@ -715,7 +716,7 @@ public class SetAwareNominalToBinary
      * Sets the set-only prefix of attributes.
      * @param setOnlyPrefix the new value
      */
-    private void setSetOnlyPrefix(String setOnlyPrefix) {
+    public void setSetOnlyPrefix(String setOnlyPrefix) {
         if ("".equals(setOnlyPrefix)){
             setOnlyPrefix = null;
         }
@@ -726,7 +727,7 @@ public class SetAwareNominalToBinary
      * Returns the current the set-only prefix for attributes
      * @return  the current value of the set-only attribute prefix
      */
-    private String getSetOnlyPrefix() {
+    public String getSetOnlyPrefix() {
         return this.m_SetOnlyPrefix;
     }
 
