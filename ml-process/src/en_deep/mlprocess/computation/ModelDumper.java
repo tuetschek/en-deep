@@ -85,7 +85,7 @@ public class ModelDumper extends Task {
 
         if (model.binarize != BinarizationTypes.NONE){
             Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-            modelInput = WekaClassifier.sparseNominalToBinary(modelInput, model.binarize);
+            modelInput = WekaClassifier.sparseNominalToBinary(this.id, modelInput, model.binarize);
         }
 
         // retrieve the model weights

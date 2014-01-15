@@ -617,12 +617,20 @@ public class WekaClassifier extends GeneralClassifier {
     /**
      * Converts instances one-by-one to sparse format and then feeds the copies to the
      * {@link NominalToBinary} filter, saving memory.
+     * 
+     * @param taskId the ID of the task that called this function (for error messages)
      * @param train the bulk of instances to be binarized
+     * @param type type of binarization to be used
+     * 
      * @return the binarized data set, as {@link SparseInstance} objects
      * @throws Exception 
      */
-    static Instances sparseNominalToBinary(Instances train, BinarizationTypes type) throws Exception {
+    static Instances sparseNominalToBinary(String taskId, Instances train, BinarizationTypes type) throws Exception {
 
+        if (train.checkForAttributeType(Attribute.STRING)){
+            throw new TaskException(TaskException.ERR_INVALID_DATA, taskId, "Cannot handle string attributes.");
+        }
+        
         Filter ntb = null;
         switch (type){
             case STANDARD:
@@ -752,7 +760,7 @@ public class WekaClassifier extends GeneralClassifier {
 
         if (this.binarize != BinarizationTypes.NONE){ // binarize the training file, if needed
             Logger.getInstance().message(this.id + ": binarizing... (" + train.relationName() + ")", Logger.V_DEBUG);
-            train = WekaClassifier.sparseNominalToBinary(train, this.binarize);
+            train = WekaClassifier.sparseNominalToBinary(this.id, train, this.binarize);
         }
         this.models.get(DEFAULT_MODEL).binarize = this.binarize;
 
@@ -782,7 +790,7 @@ public class WekaClassifier extends GeneralClassifier {
         // binarize, if supposed to
         if (model.binarize != BinarizationTypes.NONE){
             Logger.getInstance().message(this.id + ": binarizing... (" + modelInput.relationName() + ")", Logger.V_DEBUG);
-            modelInput = WekaClassifier.sparseNominalToBinary(modelInput, model.binarize);
+            modelInput = WekaClassifier.sparseNominalToBinary(this.id, modelInput, model.binarize);
         }
 
         return modelInput;

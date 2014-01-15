@@ -34,7 +34,9 @@ import en_deep.mlprocess.exception.TaskException;
 import en_deep.mlprocess.utils.FileUtils;
 import en_deep.mlprocess.utils.StringUtils;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.Random;
 import java.util.Vector;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -286,6 +288,45 @@ public class BigDataSplitter extends Task {
     }
 
     /**
+     * State of one output ARFF writer.
+     */
+    private enum WriterState {
+        NONE,
+        OPEN,
+        CLOSED
+    }
+    
+    /**
+     * Information about one ARFF writer used by {@link #splitByAttribute(int)}.
+     */
+    private class WriterInfo {
+
+        /** The ARFF writer itself */
+        ArffSaver writer;
+        /** The current state of the ARFF writer */
+        WriterState state;
+        /** The output file name */
+        String fileName;
+        
+        /** Open/append the output file stream */
+        void openStream() throws IOException {
+            FileOutputStream fos = new FileOutputStream(this.fileName, this.state == WriterState.CLOSED ? true : false);
+            OutputStream os = this.fileName.endsWith(".gz") ? new GZIPOutputStream(fos) : fos;
+            writer.setDestination(os);
+            this.state = WriterState.OPEN;
+        }
+        
+        /** Close the file stream, but keep writer information */
+        void closeStream() throws IOException {
+            this.state = WriterState.CLOSED;
+            this.writer.getWriter().close();
+            this.writer.resetWriter();            
+        }
+    }
+    
+    private static int MAX_OPEN_FILES = 500;
+
+    /**
      * Split the given file into several files according to the values of the
      * given attribute (<tt>by_attribute</tt> setting).
      * 
@@ -306,11 +347,16 @@ public class BigDataSplitter extends Task {
         }
 
         BufferedReader inRead = openAndSkipHeader(this.input.get(fileNo));
-        Hashtable<String, ArffSaver> out = new Hashtable<String, ArffSaver>();
+        // pool of open writers (for all values encountered so far)
+        Hashtable<String, WriterInfo> out = new Hashtable<String, WriterInfo>();
 
         boolean eof = false;
         ArffLoader.ArffReader instRead = new ArffLoader.ArffReader(inRead, this.header, 0, 0);
         Instance inst;
+
+        Random random = new Random();
+        // keep a pool of writers with open files (whose size must not exceed the limit)
+        ArrayList<String> openWriters = new ArrayList<String>(MAX_OPEN_FILES);
         
         while (!eof){
 
@@ -318,27 +364,57 @@ public class BigDataSplitter extends Task {
                 eof = true;
                 break;
             }
-            ArffSaver writer;
+
             String val = inst.stringValue(splitAttrib);
-
-            if ((writer = out.get(val)) == null){
+            WriterInfo writerInfo = out.get(val);
+            
+            // the value has not yet been encountered
+            if (writerInfo == null){
                 
-                writer = new ArffSaver();
-                out.put(val, writer);
-
-                String fileName = StringUtils.replace(this.output.get(fileNo), FileUtils.fileNameEncode(val));
-                FileOutputStream fos = new FileOutputStream(fileName);
-                OutputStream os = fileName.endsWith(".gz") ? new GZIPOutputStream(fos) : fos;
+                // close some other writer if the pool is full 
+                // (this is sub-optimal, we are choosing at random even though LRU would be much better, but what the hell)
+                if (openWriters.size() >= MAX_OPEN_FILES){
+                    int toCloseNum = random.nextInt(openWriters.size());
+                    WriterInfo toClose = out.get(openWriters.get(toCloseNum));
+                    toClose.closeStream();
+                    openWriters.set(toCloseNum, val);
+                }
+                // if not, we just add the newly created writer to the pool
+                else {
+                    openWriters.add(val);
+                }
                 
-                writer.setDestination(os);
-                writer.setStructure(this.header);
-                writer.setRetrieval(Saver.INCREMENTAL);
+                // create the new writer
+                writerInfo = new WriterInfo();
+                writerInfo.writer = new ArffSaver();                
+                out.put(val, writerInfo);                
+
+                writerInfo.fileName = StringUtils.replace(this.output.get(fileNo), FileUtils.fileNameEncode(val));
+                writerInfo.openStream();
+                writerInfo.writer.setStructure(this.header);
+                writerInfo.writer.setRetrieval(Saver.INCREMENTAL);
             }
-            writer.writeIncremental(inst);
+            // we have closed this writer
+            else if (writerInfo.state == WriterState.CLOSED){
+
+                // close some other writer (as the pool must be full)
+                int toCloseNum = random.nextInt(openWriters.size());
+                WriterInfo toClose = out.get(openWriters.get(toCloseNum));
+                toClose.closeStream();
+                
+                // open our writer
+                openWriters.set(toCloseNum, val);
+                writerInfo.openStream();
+            }
+
+            writerInfo.writer.writeIncremental(inst);
         }
 
-        for (ArffSaver writer : out.values()){
-            writer.writeIncremental(null);
+        // close all open writers
+        for (WriterInfo writer : out.values()){
+            if (writer.state == WriterState.OPEN){
+                writer.closeStream();
+            }
         }
 
         inRead.close();
