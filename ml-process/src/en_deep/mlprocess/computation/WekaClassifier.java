@@ -59,6 +59,7 @@ import weka.core.Instances;
 import weka.core.SparseInstance;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
+import weka.filters.unsupervised.instance.RemoveWithValues;
 
 /**
  * This task runs a specified weka classifier with given parameters on the given train and adds its result
@@ -812,6 +813,18 @@ public class WekaClassifier extends GeneralClassifier {
         else {
             return DEFAULT_MODEL;
         }
+    }
+    
+    /**
+     * Lists all available model keys, returns them as as array.
+     * 
+     * @return Array of model keys, or empty array if only one model is used
+     */
+    public String [] listModels(){
+        if (this.modelSelectionAttribute != null){
+            return this.models.keySet().toArray(new String [0]);
+        }
+        return new String[0];
     }
 
     @Override

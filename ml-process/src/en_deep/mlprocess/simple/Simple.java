@@ -88,20 +88,25 @@ public class Simple {
     private static final String OPTL_SIGNAL_READY = "signal_ready";
     /** The --signal_ready short name */
     private static final char OPTS_SIGNAL_READY = 'r';
+
+    /** The --list_models option long name */
+    private static final String OPTL_LIST_MODELS = "list_models";
+    /** The --list_models short name */
+    private static final char OPTS_LIST_MODELS = 'l';
     
     /** Default chunking size */
     private static final int DEFAULT_CHUNK_SIZE = 10;
     
     /** Basic help string */
     private static final String USAGE = "Usage:\n\tjava -cp ml-process.jar en_deep.mlprocess.simple.Simple\n\t"
-            + "[-s num|-a attribute_name] [-c charset] [-v verbosity] [-r]\n\tmodels.dat.gz < input > output\n\n";
+            + "[-s num|-a attribute_name] [-c charset] [-v verbosity] [-r] [-l]\n\tmodels.dat.gz < input > output\n\n";
     
 
     /** Program name as it's passed to getopts */
     private static final String PROGNAME = "ML-Process_simple";
 
     /** Optstring for getopts, must correspond to the OPTS_ constants */
-    private static final String OPTSTRING = "a:s:v:c:r";
+    private static final String OPTSTRING = "a:s:v:c:rl";
 
     /* DATA */
     
@@ -164,6 +169,9 @@ public class Simple {
                     case OPTS_SIGNAL_READY:
                         opts.signalReady = true;
                         break;
+                    case OPTS_LIST_MODELS:
+                        opts.listModels = true;
+                        break;
                     case ':':
                         throw new ParamException(ParamException.ERR_MISSING, "" + (char) getter.getOptopt());
                     case '?':
@@ -221,9 +229,13 @@ public class Simple {
         Instances toClassif = new Instances(settings.dataHeaders, 0);
         int ctr = 0;
         
-        Logger.getInstance().message("Ready.", Logger.V_DEBUG);
+        Logger.getInstance().message("Ready.", Logger.V_DEBUG);        
         if (this.opts.signalReady){
             System.out.println("READY");
+        }
+        if (this.opts.listModels){
+            String [] models = this.classif.listModels();
+            System.out.println(StringUtils.join(models, " "));
         }
         
         // read input, modify it to comply with the current headers, classify it
@@ -483,6 +495,9 @@ public class Simple {
         
         /** Signal 'READY' on the output */
         boolean signalReady;
+        
+        /** Print a list of available model keys on the first line of output */
+        boolean listModels;
     }
     
 }
