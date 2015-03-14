@@ -1,3 +1,6 @@
+MLProcess
+---------
+
 Given a configuration file that lists the pre-programmed tasks (a _scenario file_, with each task corresponding to one Java class), this determines the dependencies among them and processes all of them in the right order. If multiple threads or program instances (which use the same scenario file) are used, parallel processing is possible.
 
 The program is also capable of processing multiple files in the same way (using wildcard patterns).
@@ -48,6 +51,4 @@ in our SRL system:
 
 ---
 
-**Author**: Ondřej Dušek.
-
-This program has been created to conduct the experiments needed for my master's thesis, _Deep Automatic Analysis of English_.
+This program has been created to conduct the experiments needed for my master's thesis, _Deep Automatic Analysis of English_. The repository has been moved from Google Code.
